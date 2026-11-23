@@ -1,0 +1,42 @@
+/*
+ * Shell wiring only.
+ *
+ * The product's own stylesheet (medmate.css) is the authority for every token,
+ * radius, size and colour. Nothing in this file may redefine one — a token
+ * duplicated here is a token that can drift (fidelity rule 2).
+ */
+
+::selection {
+  background: var(--mint-200);
+  color: var(--forest);
+}
+
+/* A visible keyboard focus. The stylesheet predates :focus-visible. */
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* The kiosk and the public pages animate continuously. Honour the setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The lock screen hides the app behind a scrim. */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 32, 26, 0.55);
+  backdrop-filter: blur(2px);
+}
