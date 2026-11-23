@@ -46,11 +46,13 @@ export type SidebarProps = {
   activeHref?: string;
   /** Resource → level, from the server. Filters the nav. */
   access?: Access;
+  /** Badge counts by href — how many people are waiting on each station. */
+  counts?: Record<string, number>;
   onAccount?: () => void;
   onLock?: () => void;
 };
 
-export function Sidebar({ activeHref, access, onAccount, onLock }: SidebarProps) {
+export function Sidebar({ activeHref, access, counts, onAccount, onLock }: SidebarProps) {
   const allowed = (entry: NavEntry) => {
     if (!entry.resource || !access?.levels) return true;
     return Boolean(access.levels[entry.resource]);
@@ -77,7 +79,11 @@ export function Sidebar({ activeHref, access, onAccount, onLock }: SidebarProps)
             <div key={group.heading ?? index}>
               {group.heading ? <div className="nav-h">{group.heading}</div> : null}
               {items.map((entry) => (
-                <NavLink key={entry.href} entry={entry} active={activeHref === entry.href} />
+                <NavLink
+                  key={entry.href}
+                  entry={{ ...entry, count: entry.count ?? counts?.[entry.href] }}
+                  active={activeHref === entry.href}
+                />
               ))}
             </div>
           );
@@ -134,6 +140,8 @@ export type AppShellProps = {
   clinic?: ShellClinic;
   user?: ShellUser;
   location?: string;
+  /** Badge counts by href. */
+  counts?: Record<string, number>;
   activeHref?: string;
   access?: Access;
   onAccount?: () => void;
@@ -151,6 +159,7 @@ export function AppShell({
   clinic,
   user,
   location,
+  counts,
   activeHref,
   access,
   onAccount,
@@ -159,7 +168,14 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div id="app">
-      <Sidebar clinic={clinic} activeHref={activeHref} access={access} onAccount={onAccount} onLock={onLock} />
+      <Sidebar
+        clinic={clinic}
+        activeHref={activeHref}
+        access={access}
+        counts={counts}
+        onAccount={onAccount}
+        onLock={onLock}
+      />
       <div>
         <Topbar clinic={clinic} user={user} location={location} onLock={onLock} onSignOut={onSignOut} />
         <div className="page">{children}</div>

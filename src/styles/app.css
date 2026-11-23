@@ -412,3 +412,525 @@
     font-size: 34px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The clinic sign-up flow.
+
+   The Figma file draws it as a split screen — a forest panel that explains the
+   promise on the left, the step's card on the right. The deployed MVP uses a
+   single centred column, so these rules are the file's design.
+   ------------------------------------------------------------------------- */
+
+.su {
+  min-height: 100vh;
+  background: #fff;
+  grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+  display: grid;
+}
+
+.su-side {
+  background: var(--forest);
+  color: #fff;
+  padding: 44px 48px;
+  display: flex;
+  flex-direction: column;
+}
+
+.su-side .wordmark {
+  color: #fff;
+  font-size: 30px;
+}
+
+.su-side .slogan {
+  color: var(--mint-200);
+}
+
+.su-side .su-pitch {
+  margin-top: auto;
+}
+
+.su-side h1 {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.su-side h1 em {
+  color: var(--gold);
+  font-style: normal;
+}
+
+.su-side .su-sub {
+  color: var(--mint-200);
+  margin: 14px 0 0;
+  font-size: 15px;
+}
+
+.su-handy {
+  background: #ffffff12;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-top: 28px;
+}
+
+.su-handy b {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: block;
+}
+
+.su-handy ul {
+  list-style: none;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+}
+
+.su-handy li {
+  color: var(--mint-100);
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  display: flex;
+}
+
+.su-handy svg {
+  color: var(--gold);
+  flex: none;
+  margin-top: 2px;
+}
+
+.su-main {
+  padding: 40px 24px;
+  place-items: center;
+  display: grid;
+}
+
+.su-card {
+  width: 100%;
+  max-width: 720px;
+  background: #fff;
+  border-radius: 22px;
+  padding: 28px 32px 32px;
+  box-shadow: var(--sh-2);
+}
+
+.su-steps {
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 26px;
+  display: grid;
+}
+
+.su-steps .seg {
+  background: var(--line-2);
+  height: 4px;
+  border-radius: 999px;
+}
+
+.su-steps .seg.on {
+  background: var(--green);
+}
+
+.su-steps .lbl {
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.su-steps .lbl.done {
+  color: var(--ink-2);
+}
+
+.su-steps .lbl.on {
+  color: var(--green-700);
+  font-weight: 700;
+}
+
+.su-eyebrow {
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.su-h {
+  margin: 10px 0 0;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+.su-h em {
+  color: var(--green);
+  font-style: normal;
+}
+
+.su-lead {
+  color: var(--ink-2);
+  margin: 10px 0 22px;
+  font-size: 14.5px;
+}
+
+.su-form {
+  gap: 16px;
+  display: grid;
+}
+
+.su-2 {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  display: grid;
+}
+
+.su-3 {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  display: grid;
+}
+
+.su-cc {
+  align-items: stretch;
+  display: flex;
+}
+
+.su-cc .cc {
+  border: 1.5px solid var(--line-2);
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+  height: 46px;
+  align-items: center;
+  color: var(--ink-2);
+  padding: 0 14px;
+  font-weight: 600;
+  display: flex;
+}
+
+.su-cc .input {
+  border-radius: 0 12px 12px 0;
+}
+
+.su-foot {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 26px;
+  display: flex;
+}
+
+.su-note {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border-radius: 12px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  display: flex;
+}
+
+.su-note svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.su-book {
+  background: var(--mint-50);
+  color: var(--green-700);
+  border-radius: 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  display: flex;
+}
+
+.su-book svg {
+  flex: none;
+}
+
+.su-book b {
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.su-ok {
+  background: var(--mint-50);
+  border: 1.5px solid var(--mint-300);
+  border-radius: 12px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  display: flex;
+}
+
+.su-ok svg {
+  color: var(--green);
+  flex: none;
+  margin-top: 2px;
+}
+
+.su-ok b {
+  font-size: 14px;
+  display: block;
+}
+
+.su-ok span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.su-agr {
+  border: 1.5px solid var(--line-2);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.su-agr.on {
+  border-color: var(--green);
+  background: var(--mint-50);
+}
+
+.su-agr-head {
+  align-items: center;
+  gap: 10px;
+  display: flex;
+}
+
+.su-agr-head b {
+  font-size: 15px;
+}
+
+.su-agr-head .v {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.su-agr-head a {
+  color: var(--green-700);
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.su-agr p {
+  color: var(--ink-2);
+  margin: 8px 0 0 34px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.su-agr .tick {
+  border: 2px solid var(--line-2);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  flex: none;
+  display: grid;
+}
+
+.su-agr.on .tick {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.su-signin {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.su-signin a {
+  color: var(--green-700);
+  font-weight: 700;
+}
+
+/* the first screen of the flow — one column, on mint */
+.su-intro-wrap {
+  min-height: 100vh;
+  background: var(--mint-50);
+  padding: 56px 20px;
+  place-items: center;
+  display: grid;
+}
+
+.su-intro {
+  max-width: 700px;
+  text-align: center;
+}
+
+.su-intro .lockup {
+  align-items: center;
+  display: flex;
+}
+
+.su-intro .wordmark {
+  font-size: 32px;
+}
+
+.su-intro h1 {
+  margin: 26px 0 0;
+  font-size: 42px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.su-intro h1 em {
+  color: var(--green);
+  font-style: normal;
+}
+
+.su-intro > p {
+  color: var(--ink-2);
+  margin: 14px 0 0;
+  font-size: 15.5px;
+}
+
+.su-intro .su-handy {
+  background: #fff;
+  border: 1px solid var(--line);
+  text-align: left;
+  margin: 30px 0 0;
+}
+
+.su-intro .su-handy b {
+  color: var(--gold-ink);
+}
+
+.su-intro .su-handy li {
+  color: var(--ink-2);
+}
+
+.su-intro .su-handy svg {
+  color: var(--green);
+}
+
+.su-intro .su-actions {
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 28px;
+  display: flex;
+}
+
+/* ---------------------------------------------------------------------------
+   The dashboard — the welcome state a clinic sees right after set-up.
+   ------------------------------------------------------------------------- */
+
+.db-welcome {
+  background: var(--forest);
+  color: #fff;
+  border-radius: 20px;
+  padding: 22px 24px;
+}
+
+.db-welcome h1 {
+  color: #fff;
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+.db-welcome h1 em {
+  color: var(--gold);
+  font-style: normal;
+}
+
+.db-welcome p {
+  color: var(--mint-200);
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.db-check {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  margin-top: 18px;
+}
+
+.db-check-head {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  display: flex;
+}
+
+.db-check-head b {
+  font-size: 17px;
+}
+
+.db-check-list {
+  gap: 8px;
+  display: grid;
+}
+
+.db-check-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  display: flex;
+}
+
+.db-check-item.done {
+  background: var(--mint-50);
+  border-color: transparent;
+}
+
+.db-check-item .tick {
+  background: var(--green);
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  flex: none;
+  display: grid;
+}
+
+.db-check-item .star {
+  color: var(--gold-ink);
+  flex: none;
+}
+
+.db-check-item b {
+  font-size: 14.5px;
+}
+
+.db-check-item span {
+  color: var(--muted);
+  font-size: 12.5px;
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .su {
+    grid-template-columns: 1fr;
+  }
+
+  .su-side {
+    padding: 28px 24px;
+  }
+
+  .su-side .su-pitch {
+    margin-top: 28px;
+  }
+
+  .su-2,
+  .su-3 {
+    grid-template-columns: 1fr;
+  }
+}
