@@ -326,13 +326,15 @@ export default function LandingPage() {
         <div className="lp-in">
           <h2>See it with your own patients.</h2>
           <p>Set up your clinic in about 10 minutes. Free for 14 days.</p>
-          <a className="btn xl" href="/start">
-            <Icon name="spark" size={18} />
-            Start free trial
-          </a>{" "}
-          <a className="btn sec xl" href="#talk">
-            Talk to us
-          </a>
+          <div className="lp-cta-btns">
+            <a className="btn xl" href="/start">
+              <Icon name="spark" size={18} />
+              Start free trial
+            </a>
+            <a className="btn sec xl" href="#talk">
+              Talk to us
+            </a>
+          </div>
         </div>
       </section>
 

@@ -341,6 +341,13 @@
 }
 
 /* the closing call — light, with a green action and an outline beside it */
+.lp-cta-btns {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  display: flex;
+}
+
 .lp-cta.fig {
   background: var(--mint-50);
   color: var(--ink);
