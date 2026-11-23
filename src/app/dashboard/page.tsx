@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell } from "@/components/shell/AppShell";
+import { AppShell } from "@/components/layout/AppShell";
 import { Icon } from "@/components/ui/Icon";
 import { StationCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import {
   signedIn,
   stations,
   welcome,
-} from "@/lib/data/dashboard";
+} from "@/lib/fixtures/dashboard";
 
 export default function DashboardPage() {
   return (

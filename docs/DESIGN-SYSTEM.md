@@ -187,7 +187,7 @@ control, not on the SVG.
 
 ## 5. The kit
 
-`src/components/ui/` — every component emits the stylesheet's own class names.
+`src/components/ui/` — the primitives. Each emits the stylesheet's own class names.
 
 | Component | Class | Notes |
 |---|---|---|
@@ -214,7 +214,10 @@ control, not on the SVG.
 | `MobileHeader` | `mob-head` | forest gradient, 32px bottom radius, lock button, avatar |
 | `MobileTabBar` | `bnav` | fixed white pill; the active tab is a forest tile with a gold icon |
 
-`src/components/shell/` — `AppShell`, `Sidebar`, `Topbar`, `NavLink`, `MobileHeader`,
+`ManageRow`, `FeatureCard` and `PlanCard` live in `src/components/marketing/`:
+they carry product knowledge, so they are not primitives.
+
+`src/components/layout/` — `AppShell`, `Sidebar`, `Topbar`, `NavLink`, `MobileHeader`,
 `MobileTabBar`.
 `src/lib/nav.ts` — the nav model; each entry carries a `resource` so the server's
 capability set can filter it. `builtRoutes` lists the routes that exist, so a link to a

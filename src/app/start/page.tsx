@@ -1,5 +1,5 @@
-import { SignUpFlow } from "@/components/start/SignUpFlow";
+import { ClinicSignUp } from "@/components/onboarding/ClinicSignUp";
 
 export default function StartPage() {
-  return <SignUpFlow />;
+  return <ClinicSignUp />;
 }
