@@ -43,6 +43,7 @@ com/medmate/clinic/grant/Role.class
 com/medmate/clinic/grant/Grant.class
 com/medmate/clinic/patient/Patient.class
 com/medmate/clinic/audit/AuditService.class
+com/medmate/clinic/security/AuthGuard.class
 com/medmate/clinic/auth/AuthController.class
 com/medmate/clinic/clinic/ClinicProfileRepository.class
 com/medmate/clinic/common/UnauthorizedException.class

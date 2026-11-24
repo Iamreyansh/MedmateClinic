@@ -36,6 +36,9 @@ management:
         include: health,info
 
 medmate:
+  # development | staging | production. Outside development the service refuses
+  # to start with the test-mode sign-in turned on.
+  env: ${APP_ENV:development}
   demo:
     # the development clinic gets people, patients and a queue; production does not
     enabled: ${DEMO_ENABLED:false}

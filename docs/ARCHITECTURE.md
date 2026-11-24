@@ -155,6 +155,37 @@ are wired as those endpoints are built.
 `GET /api/clinic/activity?person=&category=` reads the trail, for the Activity
 log screen.
 
+### Authentication — where it stands
+
+Real today:
+
+- the session is a signed JWT carrying the staff id, the clinic id, the role and
+  the capabilities; it is verified on every request, and the clinic id in it is
+  the only tenant a request can reach
+- the capabilities come from the database, and the same map drives the menu and
+  the API
+- the PIN is never stored in the clear, and the one-time code is spent after use
+
+Simulated for now, deliberately:
+
+- **the one-time code comes back in the API response** instead of being sent by
+  SMS. Anyone who knows a staff mobile number can sign in as them. The service
+  refuses to start with this on outside development (`medmate.env`), so it cannot
+  ship by accident
+- the code lives in memory: it is lost on a restart, and there is no delivery trail
+- the PIN is hashed with SHA-256 over the staff id. A four-digit PIN has ten
+  thousand possibilities, so this is not a password-grade hash — argon2id or
+  bcrypt is what a real deployment needs
+- the session lasts twelve hours and cannot be ended early: there is no logout
+  endpoint and no revocation
+- the token is kept in local storage, so a script injected into the page could
+  read it; an httpOnly, same-site cookie is the safer shape
+- there is no rate limiting on the code, no attempt counting and no lockout
+- nobody is verified against Aadhaar or a medical council — the HPR lookup is a stub
+
+None of this blocks building the screens; it is the work to do before the service
+carries anyone's real patient data.
+
 ### The access rules
 
 One place decides what a role may open: `grant/GrantService`, reading the

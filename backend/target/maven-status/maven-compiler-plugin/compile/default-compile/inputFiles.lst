@@ -30,6 +30,7 @@
 /Users/rey/Desktop/MedmateClinic/backend/src/main/java/com/medmate/clinic/patient/Patient.java
 /Users/rey/Desktop/MedmateClinic/backend/src/main/java/com/medmate/clinic/patient/PatientRepository.java
 /Users/rey/Desktop/MedmateClinic/backend/src/main/java/com/medmate/clinic/queue/QueueController.java
+/Users/rey/Desktop/MedmateClinic/backend/src/main/java/com/medmate/clinic/security/AuthGuard.java
 /Users/rey/Desktop/MedmateClinic/backend/src/main/java/com/medmate/clinic/security/ClinicAuthFilter.java
 /Users/rey/Desktop/MedmateClinic/backend/src/main/java/com/medmate/clinic/security/ClinicPrincipal.java
 /Users/rey/Desktop/MedmateClinic/backend/src/main/java/com/medmate/clinic/security/CurrentClinic.java
