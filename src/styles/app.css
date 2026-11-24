@@ -1218,6 +1218,21 @@
    Alignment fixes found in review.
    ------------------------------------------------------------------------- */
 
+/* The stylesheet carries a bare `.lg` utility (display:flex, weight 600) that
+   lands on the large avatar and knocks out its grid and weight — so the
+   initials sit left of centre in the wrong weight. The avatar keeps its own
+   class, and this puts the file's box back. */
+.avatar.lg {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+.avatar {
+  justify-content: center;
+  align-items: center;
+}
+
 /* a chip and a badge centre their own text — the stylesheet gives them a
    height but no box, so a span inside one sits on the baseline */
 .chip {
