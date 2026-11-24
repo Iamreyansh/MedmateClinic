@@ -1197,3 +1197,29 @@
 .pin-switch:hover {
   color: #fff;
 }
+
+/* ---------------------------------------------------------------------------
+   The console — the consult steps, and the screens the queue leads to.
+   ------------------------------------------------------------------------- */
+
+/* the green tick that marks a finished step */
+.step-done {
+  background: var(--green);
+  color: #fff;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  flex: none;
+  display: grid;
+}
+
+.card.ibx.current {
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+}
+
+.tpl .badge.plain {
+  background: var(--surface-3);
+  color: var(--muted);
+}
