@@ -29,6 +29,7 @@ public class MeController {
     private final StaffRepository staffRepository;
     private final RoleRepository roleRepository;
     private final GrantService grantService;
+    private final com.medmate.clinic.visit.VisitRepository visitRepository;
 
     public MeController(
             CurrentClinic current,
@@ -36,13 +37,15 @@ public class MeController {
             ClinicProfileRepository profiles,
             StaffRepository staffRepository,
             RoleRepository roleRepository,
-            GrantService grantService) {
+            GrantService grantService,
+            com.medmate.clinic.visit.VisitRepository visitRepository) {
         this.current = current;
         this.clinics = clinics;
         this.profiles = profiles;
         this.staffRepository = staffRepository;
         this.roleRepository = roleRepository;
         this.grantService = grantService;
+        this.visitRepository = visitRepository;
     }
 
     @GetMapping("/me")
@@ -84,8 +87,34 @@ public class MeController {
                         "tone", "doctor"));
         body.put("location", profile == null || profile.getCity() == null ? clinic.getName() : profile.getCity());
         body.put("capabilities", grantService.capabilitiesFor(clinicId, staff.getRoleId()));
-        body.put("navCounts", Map.of());
+        body.put("navCounts", navCounts(clinicId, profile, staff));
         return body;
+    }
+
+    /**
+     * How many people are waiting on each station.
+     *
+     * <p>The sidebar badges come from here, not from the client, so a number on
+     * screen is the number in the database.
+     */
+    private Map<String, Integer> navCounts(
+            UUID clinicId, ClinicProfile profile, Staff signedIn) {
+        long waiting = visitRepository.findByClinicIdAndStatusOrderByCreatedAtAsc(clinicId, "waiting").size();
+        long doctors = staffRepository.findByClinicId(clinicId).stream()
+                .filter(person -> person.getRoleId() != null)
+                .count();
+
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        counts.put("/queue", (int) waiting);
+        counts.put("/nurse", 0);
+        counts.put("/inbox", 0);
+        counts.put("/desk", 0);
+        counts.put("/billing", 0);
+        counts.put("/schedule", 0);
+        counts.put("/doctors", (int) doctors);
+        counts.put("/staff", (int) staffRepository.countByClinicId(clinicId));
+        counts.put("/locations", profile == null ? 1 : profile.getLocations());
+        return counts;
     }
 
     private String initials(String name) {
