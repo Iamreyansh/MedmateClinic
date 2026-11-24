@@ -350,7 +350,7 @@ function Signed({ person }: { person: ReturnType<typeof patient> }) {
           </b>
         </div>
 
-        <div className="grid2" style={{ marginTop: 14 }}>
+        <div className="sent-grid" style={{ marginTop: 14 }}>
           <div className="card" style={{ padding: 14, boxShadow: "none" }}>
             <b>Reception desk</b>
             <p className="t-cap">Ready to print and hand over</p>

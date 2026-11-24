@@ -39,7 +39,7 @@ export function TemplatesScreen() {
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 14 }}>
+            <div className="tpl-acts">
               <Button variant="secondary">Edit</Button>
               <span style={{ color: "var(--green-700)", fontWeight: 700, fontSize: 13.5 }}>Share with colleagues</span>
             </div>

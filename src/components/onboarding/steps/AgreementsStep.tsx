@@ -66,9 +66,7 @@ export function AgreementsStep({
           Set up your clinic
         </Button>
       </div>
-      <p className="su-signin" style={{ marginTop: 14 }}>
-        Free to try. Nothing is charged during set-up.
-      </p>
+      <p className="su-fine">Free to try. Nothing is charged during set-up.</p>
     </>
   );
 }

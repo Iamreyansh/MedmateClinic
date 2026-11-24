@@ -74,8 +74,8 @@ export function InboxScreen() {
             Kumar at {selected.time}
           </p>
 
-          <div className="note red" style={{ marginTop: 14 }}>
-            <span style={{ fontSize: 28, fontWeight: 800, color: "var(--red)" }}>48 mg/L</span>
+          <div className="note red" style={{ marginTop: 14, alignItems: "center", gap: 14 }}>
+            <span className="measure">48 mg/L</span>
             <span>C-reactive protein · reference under 6 mg/L. Was 12 mg/L on 15 Nov.</span>
           </div>
 

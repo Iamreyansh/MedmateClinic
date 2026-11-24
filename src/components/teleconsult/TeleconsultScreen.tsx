@@ -21,45 +21,19 @@ export function TeleconsultScreen() {
         </Button>
       </div>
 
-      <div className="rx-grid">
-        <div>
-          <div className="tv-main" style={{ marginTop: 0 }}>
-            <div
-              style={{
-                background: "var(--forest)",
-                borderRadius: 18,
-                minHeight: 380,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 12,
-                color: "#fff",
-              }}
-            >
-              <Avatar initials="DK" tone="doctor" large />
-              <b style={{ fontSize: 18 }}>Diya Kamath · 5 F (with mother)</b>
-              <span className="tc-sub">Connected · 06:42 · good connection</span>
-              <div
-                style={{
-                  background: "#ffffff24",
-                  color: "#fff",
-                  borderRadius: 14,
-                  padding: "34px 52px",
-                  fontWeight: 700,
-                }}
-              >
-                You
-              </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", padding: 16 }}>
-                <Button variant="secondary">Mute</Button>
-                <Button variant="secondary" icon="video">
-                  Camera off
-                </Button>
-                <Button variant="secondary">Switch to phone</Button>
-                <Button variant="danger">End call</Button>
-              </div>
-            </div>
+      <div className="rx-grid stretch">
+        <div className="call-panel">
+          <Avatar initials="DK" tone="doctor" large />
+          <b style={{ fontSize: 18 }}>Diya Kamath · 5 F (with mother)</b>
+          <span className="tc-sub">Connected · 06:42 · good connection</span>
+          <div className="you">You</div>
+          <div className="call-acts">
+            <Button variant="secondary">Mute</Button>
+            <Button variant="secondary" icon="video">
+              Camera off
+            </Button>
+            <Button variant="secondary">Switch to phone</Button>
+            <Button variant="danger">End call</Button>
           </div>
         </div>
 
@@ -68,7 +42,7 @@ export function TeleconsultScreen() {
             <b style={{ fontSize: 16 }}>Identity &amp; consent</b>
             <div style={{ marginTop: 8, display: "grid", gap: 10 }}>
               {consent.map((item) => (
-                <div key={item.label} style={{ display: "flex", gap: 10 }}>
+                <div key={item.label} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <Icon name="check" size={17} style={{ color: "var(--green)" }} />
                   <div>
                     <b style={{ fontSize: 14 }}>{item.label}</b>

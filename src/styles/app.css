@@ -1214,6 +1214,153 @@
   display: grid;
 }
 
+/* ---------------------------------------------------------------------------
+   Alignment fixes found in review.
+   ------------------------------------------------------------------------- */
+
+/* a chip and a badge centre their own text — the stylesheet gives them a
+   height but no box, so a span inside one sits on the baseline */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* a line of copy with a link in it keeps them on one baseline */
+.su-signin {
+  align-items: center;
+  gap: 4px;
+  display: flex;
+}
+
+.su-signin a {
+  text-underline-offset: 2px;
+}
+
+.su-fine {
+  color: var(--muted);
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+/* the role cards: the choice and what it means, side by side */
+.su-roles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  display: grid;
+}
+
+.su-role {
+  text-align: left;
+  border: 1.5px solid var(--line-2);
+  color: var(--ink);
+  background: #fff;
+  border-radius: 14px;
+  align-items: start;
+  gap: 4px 14px;
+  grid-template-columns: 132px minmax(0, 1fr);
+  padding: 14px 16px;
+  display: grid;
+}
+
+.su-role b {
+  font-size: 15px;
+}
+
+.su-role span {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.su-role.on {
+  border-color: var(--green);
+  background: var(--mint-50);
+  box-shadow: 0 0 0 1px var(--green);
+}
+
+/* a measured value stays on one line */
+.measure {
+  color: var(--red);
+  display: block;
+  white-space: nowrap;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+/* the call panel fills its column */
+.rx-grid.stretch {
+  align-items: stretch;
+}
+
+.call-panel {
+  background: var(--forest);
+  color: #fff;
+  border-radius: 18px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.call-panel .you {
+  background: #ffffff24;
+  color: #fff;
+  border-radius: 14px;
+  padding: 30px 48px;
+  font-weight: 700;
+}
+
+.call-acts {
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 8px;
+  display: flex;
+  width: 100%;
+}
+
+.call-acts .btn {
+  flex: 1;
+  white-space: nowrap;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+/* a template card pins its actions to the bottom, so the buttons line up
+   across a row of cards whatever the content length */
+.tpl {
+  display: flex;
+  flex-direction: column;
+}
+
+.tpl-acts {
+  align-items: center;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+}
+
+/* the four hand-off statuses after signing sit in one row */
+.sent-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  display: grid;
+}
+
+/* the verification link under a printed document */
+.paper-check > span > span,
+.paper-check b {
+  display: block;
+}
+
 .card.ibx.current {
   border-color: var(--green);
   box-shadow: 0 0 0 1px var(--green);

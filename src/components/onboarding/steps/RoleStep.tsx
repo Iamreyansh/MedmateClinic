@@ -28,12 +28,12 @@ export function RoleStep({ form, set, onBack, onNext, valid }: StepProps) {
       </h2>
       <p className="su-lead">You can add other doctors and staff once the clinic is set up.</p>
       <div className="su-form">
-        <div className="su-2">
+        <div className="su-roles">
           {ROLES.map((role) => (
             <button
               key={role.value}
               type="button"
-              className={`opt col${form.role === role.value ? " on" : ""}`}
+              className={`su-role${form.role === role.value ? " on" : ""}`}
               onClick={() => set("role", role.value)}
             >
               <b>{role.title}</b>
