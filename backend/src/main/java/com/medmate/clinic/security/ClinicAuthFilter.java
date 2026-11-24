@@ -1,5 +1,6 @@
 package com.medmate.clinic.security;
 
+import com.medmate.clinic.tenancy.ClinicRouting;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,21 +10,26 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Reads the bearer token and puts the person in the request.
+ * Reads the bearer token, puts the person in the request, and points the
+ * request at their clinic's schema.
  *
- * <p>Public paths are listed here; everything else needs a token.
+ * <p>Public paths are listed here; everything else needs a token. The schema is
+ * set before the controller runs and cleared after, so every statement the
+ * controller makes is inside the caller's own clinic.
  */
 @Component
 public class ClinicAuthFilter extends OncePerRequestFilter {
 
     private static final String[] PUBLIC_PATHS = {
-        "/api/auth/otp", "/api/auth/verify", "/api/auth/pin", "/api/auth/unlock", "/actuator/health"
+        "/api/auth/otp", "/api/auth/verify", "/api/auth/unlock", "/api/auth/signup", "/actuator/health"
     };
 
     private final JwtService jwtService;
+    private final ClinicRouting routing;
 
-    public ClinicAuthFilter(JwtService jwtService) {
+    public ClinicAuthFilter(JwtService jwtService, ClinicRouting routing) {
         this.jwtService = jwtService;
+        this.routing = routing;
     }
 
     @Override
@@ -33,7 +39,11 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
         if (isPublic(path)) {
-            chain.doFilter(request, response);
+            try {
+                chain.doFilter(request, response);
+            } finally {
+                routing.clear();
+            }
             return;
         }
 
@@ -42,6 +52,7 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
             try {
                 ClinicPrincipal principal = jwtService.verify(header.substring(7).trim());
                 request.setAttribute(ClinicPrincipal.class.getName(), principal);
+                routing.route(java.util.UUID.fromString(principal.clinicId()));
             } catch (IllegalArgumentException e) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
@@ -49,7 +60,11 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
                 return;
             }
         }
-        chain.doFilter(request, response);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            routing.clear();
+        }
     }
 
     private boolean isPublic(String path) {

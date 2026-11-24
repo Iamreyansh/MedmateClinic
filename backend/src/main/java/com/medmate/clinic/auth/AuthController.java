@@ -3,6 +3,7 @@ package com.medmate.clinic.auth;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
+import com.medmate.clinic.tenancy.ClinicRouting;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,14 +17,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final ClinicRouting routing;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, ClinicRouting routing) {
         this.authService = authService;
+        this.routing = routing;
     }
 
     /** Send a code to a mobile number. */
     @PostMapping("/otp")
     public ResponseEntity<Map<String, Object>> requestCode(@Valid @RequestBody PhoneRequest request) {
+        routing.routeByPhone(request.phone());
         OtpService.Issued challenge = authService.requestCode(request.phone());
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("sent", true);
@@ -36,6 +40,7 @@ public class AuthController {
     /** Check the code and open a session. */
     @PostMapping("/verify")
     public ResponseEntity<Map<String, Object>> verify(@Valid @RequestBody CodeRequest request) {
+        routing.routeByPhone(request.phone());
         String token = authService.openSession(request.phone(), request.code());
         return ResponseEntity.ok(Map.of("accessToken", token));
     }
@@ -43,6 +48,7 @@ public class AuthController {
     /** Unlock a device with the PIN. */
     @PostMapping("/unlock")
     public ResponseEntity<Map<String, Object>> unlock(@Valid @RequestBody UnlockRequest request) {
+        routing.route(UUID.fromString(request.clinicId()));
         String token = authService.unlock(UUID.fromString(request.clinicId()), request.pin());
         return ResponseEntity.ok(Map.of("accessToken", token));
     }

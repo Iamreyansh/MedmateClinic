@@ -1,25 +1,25 @@
-package com.medmate.clinic.registry;
+package com.medmate.clinic.clinic;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import java.util.UUID;
 
-/** A clinic: one tenant. */
+/**
+ * The clinic's own profile: its address, its registrations, its rooms.
+ *
+ * <p>This lives in the clinic's schema, with the rest of its data. The
+ * directory — who the clinic is and where its schema is — lives in the
+ * registry, because that is the one thing every clinic shares.
+ */
 @Entity
-@Table(name = "clinics")
-public class Clinic {
+@Table(name = "clinic_profile")
+public class ClinicProfile {
 
     @Id
-    private UUID id;
-
-    @Column(nullable = false)
-    private String name;
-
-    @Column(nullable = false)
-    private String initials;
+    @Column(name = "clinic_id")
+    private UUID clinicId;
 
     private String phone;
     private String address;
@@ -29,36 +29,19 @@ public class Clinic {
     private String gstin;
     private String pan;
     private String registration;
+
+    @Column(name = "hfr_id")
     private String hfrId;
 
     @Column(nullable = false)
     private int locations = 1;
 
-    @Column(nullable = false)
-    private Instant createdAt = Instant.now();
-
-    public UUID getId() {
-        return id;
+    public UUID getClinicId() {
+        return clinicId;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getInitials() {
-        return initials;
-    }
-
-    public void setInitials(String initials) {
-        this.initials = initials;
+    public void setClinicId(UUID clinicId) {
+        this.clinicId = clinicId;
     }
 
     public String getPhone() {
@@ -106,7 +89,11 @@ public class Clinic {
     }
 
     public void setGstin(String gstin) {
-        this.gstin = gstin;
+        this.gstin = gstsin(gstin);
+    }
+
+    private String gstsin(String value) {
+        return value;
     }
 
     public String getPan() {
@@ -139,13 +126,5 @@ public class Clinic {
 
     public void setLocations(int locations) {
         this.locations = locations;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
     }
 }

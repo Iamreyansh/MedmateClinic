@@ -86,8 +86,23 @@ backend/src/main/resources/db/migration/   the schema, and the seed
 
 ### The schema belongs to Flyway
 
-Hibernate maps the entities and **validates** them (`ddl-auto: validate`). It
-never creates or alters a table. The migrations are the schema.
+Hibernate maps the entities and never creates or alters a table: the schema is
+Flyway's, and the migrations are the schema. There is one schema per clinic, so
+a single Hibernate validation pass cannot cover them all — `ddl-auto` is `none`
+and the mapping is checked by the integration test instead.
+
+Three sets of migrations, and they are deliberately separate:
+
+| Location | What it holds | When it runs |
+|---|---|---|
+| `db/registry` | the tenant directory: clinics, the phone directory | once, at boot |
+| `db/clinic` | the schema of a clinic, and the defaults every clinic gets (`V200`, with the clinic id as a placeholder) | when a clinic is provisioned |
+| `db/demo` | the development clinic's people, patients and queue | development only, for one clinic |
+
+A clinic added today gets exactly what a clinic added a year ago got: the five
+roles, the eighteen screens, and the same grant map. The demo data is not a
+migration — it is applied as a script to the clinic the development environment
+points at, so it never reaches production.
 
 ### The session
 
@@ -99,6 +114,46 @@ never creates or alters a table. The migrations are the schema.
 
 Every request is scoped by the clinic id in the token. The api never takes a
 clinic id from the caller.
+
+### One schema per clinic
+
+The registry — the directory of clinics — is the only thing the tenants share.
+Everything else lives in the clinic's own schema:
+
+```
+registry.clinics              the directory: who a clinic is, and where its data is
+registry.clinic_staff_directory which clinic a mobile number belongs to
+
+clinic_11111111.staff         the people
+clinic_11111111.patients      the patients
+clinic_11111111.visits        the queue
+clinic_11111111.roles         the roles
+clinic_11111111.grants        what each role may open
+clinic_11111111.audit_events  what happened, and who did it
+```
+
+One connection pool serves every clinic. The request's schema is set on the
+connection itself (`search_path`), so every statement is inside the tenant's
+schema whether or not the code remembered to scope it. The clinic id travels in
+the token, so the caller never chooses it.
+
+The registry tables are addressed by name (`registry.clinics`), because they are
+the one thing a request must be able to read from any schema.
+
+### The audit trail
+
+`audit_events` lives in the clinic's own schema, so a clinic's trail is as
+isolated as its patients. Every row records who, what, which record, when, from
+where, and any detail — and there is no update or delete path: the rows are
+written once and cannot be changed afterwards.
+
+It is written on its own transaction, so the record of a thing never depends on
+the thing's transaction committing. It covers the sign-ins and the device
+unlocks so far; the prescription, payment, appointment and record-opened events
+are wired as those endpoints are built.
+
+`GET /api/clinic/activity?person=&category=` reads the trail, for the Activity
+log screen.
 
 ### The access rules
 
@@ -140,12 +195,9 @@ Environment for the API:
 ## Before production
 
 - [ ] `AUTH_SECRET` set to a real secret, and `AUTH_EXPOSE_CODE=false`.
-- [ ] The tenancy decision: one schema per clinic, or one database per clinic. Right
-      now every table carries `clinic_id` and every query is scoped by it. That is
-      the simplest thing that works and the weakest isolation. The product's
-      promise is that a clinic's data is its own, so this should be settled
-      deliberately — see `docs/ROLE-MODEL.md`.
-- [ ] The audit log. Every sign-in, record opened, prescription signed and payment
-      taken has to be written down, and it must not be editable.
+- [ ] The audit trail still needs the prescription, payment, appointment and
+      record-opened events — they are written as those endpoints are built.
+- [ ] The sign-up endpoint: the five-step flow on the frontend is not wired to
+      the service yet, so a new clinic cannot be created through the product.
 - [ ] The SMS gateway for the OTP, and the DLT templates that go with it.
 - [ ] HTTPS, and the SPA served from the same origin as the API.

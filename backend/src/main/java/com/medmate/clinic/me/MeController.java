@@ -1,14 +1,16 @@
 package com.medmate.clinic.me;
 
+import com.medmate.clinic.clinic.ClinicProfile;
+import com.medmate.clinic.clinic.ClinicProfileRepository;
 import com.medmate.clinic.grant.GrantService;
 import com.medmate.clinic.grant.Role;
 import com.medmate.clinic.grant.RoleRepository;
-import com.medmate.clinic.registry.Clinic;
-import com.medmate.clinic.registry.ClinicRepository;
 import com.medmate.clinic.security.ClinicPrincipal;
 import com.medmate.clinic.security.CurrentClinic;
 import com.medmate.clinic.staff.Staff;
 import com.medmate.clinic.staff.StaffRepository;
+import com.medmate.clinic.tenancy.RegistryClinic;
+import com.medmate.clinic.tenancy.RegistryClinicRepository;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -22,19 +24,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     private final CurrentClinic current;
-    private final ClinicRepository clinicRepository;
+    private final RegistryClinicRepository clinics;
+    private final ClinicProfileRepository profiles;
     private final StaffRepository staffRepository;
     private final RoleRepository roleRepository;
     private final GrantService grantService;
 
     public MeController(
             CurrentClinic current,
-            ClinicRepository clinicRepository,
+            RegistryClinicRepository clinics,
+            ClinicProfileRepository profiles,
             StaffRepository staffRepository,
             RoleRepository roleRepository,
             GrantService grantService) {
         this.current = current;
-        this.clinicRepository = clinicRepository;
+        this.clinics = clinics;
+        this.profiles = profiles;
         this.staffRepository = staffRepository;
         this.roleRepository = roleRepository;
         this.grantService = grantService;
@@ -43,8 +48,10 @@ public class MeController {
     @GetMapping("/me")
     public Map<String, Object> me() {
         ClinicPrincipal principal = current.get();
-        Clinic clinic = clinicRepository.findById(UUID.fromString(principal.clinicId()))
-                .orElseThrow(() -> new IllegalStateException("the clinic is gone"));
+        UUID clinicId = UUID.fromString(principal.clinicId());
+        RegistryClinic clinic =
+                clinics.findById(clinicId).orElseThrow(() -> new IllegalStateException("the clinic is gone"));
+        ClinicProfile profile = profiles.findById(clinicId).orElse(null);
         Staff staff = staffRepository.findById(UUID.fromString(principal.staffId()))
                 .orElseThrow(() -> new IllegalStateException("the person is gone"));
 
@@ -63,8 +70,8 @@ public class MeController {
                         "id", clinic.getId().toString(),
                         "name", clinic.getName(),
                         "initials", clinic.getInitials(),
-                        "locations", clinic.getLocations(),
-                        "doctors", staffRepository.findByClinicId(clinic.getId()).stream()
+                        "locations", profile == null ? 1 : profile.getLocations(),
+                        "doctors", staffRepository.findByClinicId(clinicId).stream()
                                 .filter(s -> s.getRoleId() != null)
                                 .count()));
         body.put(
@@ -75,8 +82,8 @@ public class MeController {
                         "initials", initials(staff.getFullName()),
                         "detail", roleName + (staff.getSpeciality() == null ? "" : " · " + staff.getSpeciality()),
                         "tone", "doctor"));
-        body.put("location", clinic.getCity() == null ? clinic.getName() : clinic.getCity());
-        body.put("capabilities", grantService.capabilitiesFor(clinic.getId(), staff.getRoleId()));
+        body.put("location", profile == null || profile.getCity() == null ? clinic.getName() : profile.getCity());
+        body.put("capabilities", grantService.capabilitiesFor(clinicId, staff.getRoleId()));
         body.put("navCounts", Map.of());
         return body;
     }

@@ -2,15 +2,17 @@ spring:
   application:
     name: medmate-clinic-api
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/medmate}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/medmate_clinic_api}
     username: ${DATABASE_USER:medmate}
     password: ${DATABASE_PASSWORD:medmate}
     hikari:
       maximum-pool-size: ${DATABASE_POOL_SIZE:10}
   jpa:
-    # Flyway owns the schema. Hibernate only checks that the mapping matches it.
+    # Flyway owns every schema. Hibernate never creates or alters a table:
+    # there is one schema per clinic, so a single validation pass cannot cover
+    # them all — the mapping is checked by ClinicApiIT instead.
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     open-in-view: false
     properties:
       hibernate:
@@ -18,11 +20,9 @@ spring:
           time_zone: UTC
         format_sql: false
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    schemas: ${DATABASE_SCHEMA:medmate}
-    default-schema: ${DATABASE_SCHEMA:medmate}
-    create-schemas: true
+    # the registry is migrated by TenancyConfig, and each clinic schema is
+    # migrated when the clinic is provisioned
+    enabled: false
 
 server:
   port: ${SERVER_PORT:8080}
@@ -36,6 +36,13 @@ management:
         include: health,info
 
 medmate:
+  demo:
+    # the development clinic gets people, patients and a queue; production does not
+    enabled: ${DEMO_ENABLED:false}
+    clinic-id: ${DEMO_CLINIC_ID:}
+  tenancy:
+    registry-schema: ${REGISTRY_SCHEMA:registry}
+    clinic-schema-prefix: ${CLINIC_SCHEMA_PREFIX:clinic_}
   auth:
     # HS256 secret for the session tokens. Override in production.
     secret: ${AUTH_SECRET:dev-only-secret-change-me-please-32-bytes-min}
