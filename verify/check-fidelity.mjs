@@ -24,7 +24,8 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.FIDELITY_PORT ?? 3100);
-const URL = process.env.FIDELITY_URL ?? `http://127.0.0.1:${PORT}`;
+const BASE_URL = process.env.FIDELITY_URL ?? `http://localhost:${PORT}`;
+const FIDELITY_PHONE = process.env.FIDELITY_PHONE ?? "9876543210";
 const DEPLOYED_CSS = "https://medmate-doctor-clinic.netlify.app/_next/static/chunks/252i6fbna1-7c.css";
 
 const sha256 = (buffer) => createHash("sha256").update(buffer).digest("hex");
@@ -271,8 +272,8 @@ async function reachable(url) {
 }
 
 async function ensureServer() {
-  if (await reachable(URL)) return null;
-  console.log(`· starting the app on ${URL}`);
+  if (await reachable(BASE_URL)) return null;
+  console.log(`· starting the app on ${BASE_URL}`);
   const child = spawn("npx", ["next", "start", "-p", String(PORT)], {
     cwd: root,
     stdio: "ignore",
@@ -280,10 +281,32 @@ async function ensureServer() {
   });
   for (let attempt = 0; attempt < 40; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    if (await reachable(URL)) return child;
+    if (await reachable(BASE_URL)) return child;
   }
   child.kill();
   throw new Error("the app did not start");
+}
+
+/**
+ * Sign in, so the shell draws the clinic, the person and the location that the
+ * signed-in person actually has.
+ */
+async function signIn() {
+  const otp = await fetch(`${BASE_URL}/api/auth/otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: FIDELITY_PHONE }),
+  }).then((response) => response.json());
+
+  if (!otp.code) return null;
+
+  const session = await fetch(`${BASE_URL}/api/auth/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: FIDELITY_PHONE, code: otp.code }),
+  }).then((response) => response.json());
+
+  return session.accessToken ?? null;
 }
 
 async function checkStyles() {
@@ -292,11 +315,18 @@ async function checkStyles() {
     executablePath,
     args: ["--no-sandbox"],
   });
+  const token = await signIn();
   // deviceScaleFactor 2 matches the reference capture; a 1.5px border reports as 1px at DPR 1.
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2 });
+  if (token) {
+    // the app keeps its token in local storage, so the measurement needs it too
+    await context.addInitScript((value) => {
+      window.localStorage.setItem("medmate.token", value);
+    }, token);
+  }
   const page = await context.newPage();
-  await page.goto(`${URL}/fidelity`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(400);
+  await page.goto(`${BASE_URL}/fidelity`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
 
   const results = await page.evaluate((checks) => {
     return checks.map(([selector, property, expected]) => {
@@ -310,8 +340,13 @@ async function checkStyles() {
 
   // The mobile surfaces get their own pass at the phone viewport.
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  if (token) {
+    await phone.addInitScript((value) => {
+      window.localStorage.setItem("medmate.token", value);
+    }, token);
+  }
   const phonePage = await phone.newPage();
-  await phonePage.goto(`${URL}/fidelity`, { waitUntil: "networkidle" });
+  await phonePage.goto(`${BASE_URL}/fidelity`, { waitUntil: "networkidle" });
   await phonePage.waitForTimeout(400);
   const phoneResults = await phonePage.evaluate((checks) => {
     return checks.map(([selector, property, expected]) => {

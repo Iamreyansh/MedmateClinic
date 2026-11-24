@@ -16,13 +16,25 @@ export type RequestOptions = {
   signal?: AbortSignal;
 };
 
-let currentToken: string | null = null;
+const TOKEN_KEY = "medmate.token";
 
-/** The bearer token for the signed-in session. */
+/**
+ * The bearer token for the signed-in session.
+ *
+ * It is kept in local storage so a refresh does not sign the person out.
+ */
 export const auth = {
-  get: () => currentToken,
+  get: () => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(TOKEN_KEY);
+  },
   set: (token: string | null) => {
-    currentToken = token;
+    if (typeof window === "undefined") return;
+    if (token) {
+      window.localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      window.localStorage.removeItem(TOKEN_KEY);
+    }
   },
 };
 
@@ -34,7 +46,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     signal,
     headers: {
       ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
+      ...(auth.get() ? { Authorization: `Bearer ${auth.get()}` } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
