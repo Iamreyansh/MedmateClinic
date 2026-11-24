@@ -26,3 +26,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local screenshots — evidence, never shipped
+/screenshots/
