@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar, ClinicChip, UserChip, type AvatarTone } from "@/components/ui/Avatar";
 import { IconButton } from "@/components/ui/Button";
+import { useRouter } from "next/navigation";
 import { builtRoutes, nav, sideActions, type NavEntry, type Resource } from "@/lib/nav";
 
 export type ShellUser = {
@@ -53,6 +54,7 @@ export type SidebarProps = {
 };
 
 export function Sidebar({ activeHref, access, counts, onAccount, onLock }: SidebarProps) {
+  const router = useRouter();
   const allowed = (entry: NavEntry) => {
     if (!entry.resource || !access?.levels) return true;
     return Boolean(access.levels[entry.resource]);
@@ -95,7 +97,11 @@ export function Sidebar({ activeHref, access, counts, onAccount, onLock }: Sideb
           <Icon name={sideActions[0].icon} />
           <span className="lbl">{sideActions[0].label}</span>
         </button>
-        <button type="button" className="side-act" onClick={onLock}>
+        <button
+          type="button"
+          className="side-act"
+          onClick={() => (onLock ? onLock() : router.push("/lock"))}
+        >
           <Icon name={sideActions[1].icon} />
           <span className="lbl">{sideActions[1].label}</span>
         </button>
@@ -114,6 +120,9 @@ export type TopbarProps = {
 };
 
 export function Topbar({ clinic, user, location, onLock, onSignOut }: TopbarProps) {
+  const router = useRouter();
+  const lock = () => (onLock ? onLock() : router.push("/lock"));
+
   return (
     <div className="topbar">
       {clinic ? (
@@ -129,7 +138,7 @@ export function Topbar({ clinic, user, location, onLock, onSignOut }: TopbarProp
       {user ? (
         <UserChip initials={user.initials} name={user.name} detail={user.detail} tone={user.tone} />
       ) : null}
-      <IconButton icon="lock" label="Lock this device" onClick={onLock} />
+      <IconButton icon="lock" label="Lock this device" onClick={lock} />
       <IconButton icon="out" label="Sign out" onClick={onSignOut} />
     </div>
   );

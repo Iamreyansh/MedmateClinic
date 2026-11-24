@@ -1093,3 +1093,107 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The lock screen — a full forest screen, the PIN typed on a keyboard.
+   ------------------------------------------------------------------------- */
+
+.pin-lock {
+  min-height: 100vh;
+  background: var(--forest);
+  color: #fff;
+  padding: 40px 20px;
+  place-items: center;
+  display: grid;
+}
+
+.pin-lock-in {
+  text-align: center;
+}
+
+.pin-lock .wordmark {
+  color: #fff;
+  font-size: 28px;
+}
+
+.pin-avatar {
+  background: var(--gold);
+  color: var(--forest);
+  border-radius: 24px;
+  width: 80px;
+  height: 80px;
+  place-items: center;
+  margin: 28px auto 0;
+  font-size: 24px;
+  font-weight: 800;
+  display: grid;
+}
+
+.pin-lock h1 {
+  color: #fff;
+  margin: 18px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.pin-lock .why {
+  color: var(--mint-100);
+  margin: 8px 0 0;
+  font-size: 14.5px;
+}
+
+.pin-lock .label {
+  color: var(--mint-200);
+  margin: 30px 0 0;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.pin-dots {
+  gap: 14px;
+  justify-content: center;
+  margin: 14px 0 0;
+  display: flex;
+}
+
+.pin-dots input {
+  border: 2px solid #ffffffe6;
+  background: transparent;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: transparent;
+  text-align: center;
+  cursor: pointer;
+}
+
+.pin-dots input.filled {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.pin-dots input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px #d9a64833;
+}
+
+.pin-lock .err {
+  color: var(--gold-50);
+  display: block;
+}
+
+.pin-switch {
+  background: 0 0;
+  border: 0;
+  color: var(--mint);
+  cursor: pointer;
+  margin-top: 34px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pin-switch:hover {
+  color: #fff;
+}
