@@ -1,0 +1,26 @@
+package com.medmate.clinic.config;
+
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/** Lets the SPA talk to the API from its own host during development. */
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    private final List<String> origins;
+
+    public WebConfig(@Value("${medmate.cors.origins}") String origins) {
+        this.origins = List.of(origins.split(","));
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")
+                .allowedOrigins(origins.toArray(String[]::new))
+                .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
+                .allowedHeaders("*");
+    }
+}

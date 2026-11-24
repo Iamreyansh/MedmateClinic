@@ -1,27 +1,43 @@
 {
-  "name": "medmate-doctor",
+  "name": "medmate-clinic",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "fidelity": "node verify/check-fidelity.mjs",
-    "typecheck": "tsc --noEmit"
+    "dev": "vite --port 3100",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 3100",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "fidelity": "node verify/check-fidelity.mjs"
   },
   "dependencies": {
-    "next": "16.4.6",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "@reduxjs/toolkit": "^2.14.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-redux": "^9.3.1",
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.4.6",
-    "playwright-core": "^1.65.1",
-    "typescript": "^5"
-  }
+    "@eslint/js": "^9.39.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^10.15.0",
+    "eslint-import-resolver-node": "^0.4.0",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^5.4.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "jsdom": "^28.0.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.74.0",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  },
+  "type": "module"
 }

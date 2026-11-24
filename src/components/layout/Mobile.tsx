@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Avatar, type AvatarTone } from "@/components/ui/Avatar";
@@ -68,7 +68,7 @@ export function MobileTabBar({ items, className, ...rest }: MobileTabBarProps) {
           </>
         );
         return item.href ? (
-          <Link key={item.label} href={item.href} className={cn(item.active && "on")}>
+          <Link key={item.label} to={item.href} className={cn(item.active && "on")}>
             {content}
           </Link>
         ) : (

@@ -1,13 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
 import type { ReactNode } from "react";
-import Link from "next/link";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar, ClinicChip, UserChip, type AvatarTone } from "@/components/ui/Avatar";
 import { IconButton } from "@/components/ui/Button";
-import { useRouter } from "next/navigation";
-import { builtRoutes, nav, sideActions, type NavEntry, type Resource } from "@/lib/nav";
+import { nav, sideActions, type NavEntry, type Resource } from "@/constants/nav";
+import { loadSession } from "@/features/session";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 export type ShellUser = {
   name: string;
@@ -23,18 +25,13 @@ export type ShellClinic = {
 };
 
 export type Access = {
-  /** Resource → "view" | "use". A missing resource means no access. */
+  /** Resource → level, from the server. Filters the nav. */
   levels?: Partial<Record<Resource, "view" | "use">>;
 };
 
-function NavLink({ entry, active, onNavigate }: { entry: NavEntry; active: boolean; onNavigate?: () => void }) {
+function NavLink({ entry, active }: { entry: NavEntry; active: boolean }) {
   return (
-    <Link
-      href={entry.href}
-      className={cn(active && "on")}
-      onClick={onNavigate}
-      prefetch={builtRoutes.has(entry.href)}
-    >
+    <Link to={entry.href} className={cn(active && "on")}>
       <Icon name={entry.icon} />
       <span className="lbl">{entry.label}</span>
       {entry.count ? <span className="count">{entry.count}</span> : null}
@@ -43,7 +40,6 @@ function NavLink({ entry, active, onNavigate }: { entry: NavEntry; active: boole
 }
 
 export type SidebarProps = {
-  clinic?: ShellClinic;
   activeHref?: string;
   /** Resource → level, from the server. Filters the nav. */
   access?: Access;
@@ -54,7 +50,7 @@ export type SidebarProps = {
 };
 
 export function Sidebar({ activeHref, access, counts, onAccount, onLock }: SidebarProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const allowed = (entry: NavEntry) => {
     if (!entry.resource || !access?.levels) return true;
     return Boolean(access.levels[entry.resource]);
@@ -100,7 +96,7 @@ export function Sidebar({ activeHref, access, counts, onAccount, onLock }: Sideb
         <button
           type="button"
           className="side-act"
-          onClick={() => (onLock ? onLock() : router.push("/lock"))}
+          onClick={() => (onLock ? onLock() : navigate("/lock"))}
         >
           <Icon name={sideActions[1].icon} />
           <span className="lbl">{sideActions[1].label}</span>
@@ -120,8 +116,8 @@ export type TopbarProps = {
 };
 
 export function Topbar({ clinic, user, location, onLock, onSignOut }: TopbarProps) {
-  const router = useRouter();
-  const lock = () => (onLock ? onLock() : router.push("/lock"));
+  const navigate = useNavigate();
+  const lock = () => (onLock ? onLock() : navigate("/lock"));
 
   return (
     <div className="topbar">
@@ -146,13 +142,7 @@ export function Topbar({ clinic, user, location, onLock, onSignOut }: TopbarProp
 
 export type AppShellProps = {
   children: ReactNode;
-  clinic?: ShellClinic;
-  user?: ShellUser;
-  location?: string;
-  /** Badge counts by href. */
-  counts?: Record<string, number>;
   activeHref?: string;
-  access?: Access;
   onAccount?: () => void;
   onLock?: () => void;
   onSignOut?: () => void;
@@ -160,33 +150,53 @@ export type AppShellProps = {
 
 /**
  * The staff shell: a 248px dark forest sidebar beside a sticky top bar.
- * At ≤1180px the sidebar collapses to an 84px icon rail — that is the
- * stylesheet's job, not the component's.
+ *
+ * The clinic, the person signed in and what they may open come from the
+ * session — the server decides, the shell only draws. At ≤1180px the sidebar
+ * collapses to an 84px icon rail; that is the stylesheet's job.
  */
-export function AppShell({
-  children,
-  clinic,
-  user,
-  location,
-  counts,
-  activeHref,
-  access,
-  onAccount,
-  onLock,
-  onSignOut,
-}: AppShellProps) {
+export function AppShell({ children, activeHref, onAccount, onLock, onSignOut }: AppShellProps) {
+  const dispatch = useAppDispatch();
+  const { status, session } = useAppSelector((state) => state.session);
+
+  useEffect(() => {
+    if (status === "idle") void dispatch(loadSession());
+  }, [dispatch, status]);
+
   return (
     <div id="app">
       <Sidebar
-        clinic={clinic}
         activeHref={activeHref}
-        access={access}
-        counts={counts}
+        access={{ levels: session?.capabilities }}
+        counts={session?.navCounts}
         onAccount={onAccount}
         onLock={onLock}
       />
       <div>
-        <Topbar clinic={clinic} user={user} location={location} onLock={onLock} onSignOut={onSignOut} />
+        <Topbar
+          clinic={
+            session
+              ? {
+                  name: session.clinic.name,
+                  initials: session.clinic.initials,
+                  detail: `${session.clinic.locations} locations · ${session.clinic.doctors} doctors`,
+                }
+              : undefined
+          }
+          user={
+            session
+              ? {
+                  name: session.user.name,
+                  initials: session.user.initials,
+                  detail: session.user.detail,
+                  tone: session.user.tone,
+                }
+              : undefined
+          }
+          location={session?.location}
+          onLock={onLock}
+          onSignOut={onSignOut}
+        />
         <div className="page">{children}</div>
       </div>
     </div>

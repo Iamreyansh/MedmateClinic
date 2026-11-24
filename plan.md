@@ -20,6 +20,16 @@ Next.js application, on `main`, with no monorepo.
 | Fidelity | `docs/FIDELITY.md` — how a screen is proved to match the design |
 | This file | the plan and the order of work |
 
+### The stack
+
+| | |
+|---|---|
+| Frontend | Vite 8 · React 19 · react-router-dom 7 · **Redux Toolkit with thunks** · the product's own stylesheet (no Tailwind) |
+| Backend | Spring Boot 3.5.6 · Java 21 · **Hibernate (JPA)** · **Flyway** · PostgreSQL · Nimbus JOSE sessions |
+| Structure | Atomic modules: `app` / `shell` / `feature` / `shared` / `infra` / `store`, enforced by eslint-plugin-boundaries |
+
+See `docs/ARCHITECTURE.md` for the whole shape and the production checklist.
+
 ### Done
 
 - Next.js 16.4.6 + React 19.3 on `main`, TypeScript strict, single app, no monorepo.
@@ -37,9 +47,20 @@ Next.js application, on `main`, with no monorepo.
 - `/fidelity` — the style guide, and the fixture the fidelity harness measures.
 - `npm run fidelity` — 138 computed properties checked, **0 drift** (122 desktop, 16 mobile).
 
+### Done since
+
+- The frontend moved off Next.js to a Vite SPA with the atomic module structure.
+  The routes, the screens and the stylesheet came across unchanged, so the fidelity
+  harness still passes.
+- The Java service exists and runs: Flyway owns the schema, Hibernate validates it,
+  and the JWT carries the clinic id and the capabilities.
+- The sign-in flow, `/api/me`, `/api/clinic/queue` and `/api/clinic/dashboard` are
+  wired end to end against the real service.
+- The lock screen unlocks a device with the PIN, through the API.
+
 ### Not started
 
-Every product screen. The screen list is deliberately empty until the order is chosen:
+Every other product screen. The screen list is deliberately empty until the order is chosen:
 
 | Screen | Route | Figma frame | Status |
 |---|---|---|---|
