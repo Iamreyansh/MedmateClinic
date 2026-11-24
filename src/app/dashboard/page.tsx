@@ -1,73 +1,70 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { Icon } from "@/components/ui/Icon";
+import { Avatar } from "@/components/ui/Avatar";
 import { StationCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ManageRow } from "@/components/marketing/ManageRow";
 import {
   clinic,
+  dashboardMeta,
+  doctors,
   firstName,
-  firstPatient,
   location,
+  manage,
   navCounts,
   signedIn,
   stations,
-  welcome,
+  trial,
 } from "@/lib/fixtures/dashboard";
 
-export default function DashboardPage() {
+/**
+ * The dashboard shows the signed-in person's own data and greets them by the
+ * clock, so it is rendered per request rather than prerendered.
+ */
+export const instant = false;
+
+export default async function DashboardPage() {
+  // The greeting follows the clock, and the dashboard shows the signed-in
+  // person's own data — so the route is rendered per request, not prerendered.
+  await connection();
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <AppShell
       activeHref="/dashboard"
       clinic={{
         initials: clinic.initials,
         name: clinic.name,
-        detail: `${clinic.locations} location · ${clinic.doctors} doctor`,
+        detail: `${clinic.locations} locations · ${clinic.doctors} doctors`,
       }}
       user={{ initials: signedIn.initials, name: signedIn.name, detail: signedIn.detail, tone: signedIn.tone }}
       location={location}
       counts={navCounts}
     >
-      <section className="db-welcome">
-        <h1>
-          Welcome to <em>MedMate</em>, {firstName}
-        </h1>
-        <p>{welcome.body}</p>
-      </section>
-
-      <section className="db-check">
-        <div className="db-check-head">
-          <b>{firstPatient.title}</b>
-          <span className="badge">
-            {firstPatient.done} of {firstPatient.total} done
-          </span>
+      <div className="hello">
+        <div>
+          <h1 className="t-h1">
+            {greeting}, Dr. <em>{firstName}</em>
+          </h1>
+          <p>{dashboardMeta}</p>
         </div>
-        <div className="db-check-list">
-          {firstPatient.items.map((item) => (
-            <div key={item.title} className={`db-check-item${item.done ? " done" : ""}`}>
-              {item.done ? (
-                <span className="tick">
-                  <Icon name="check" size={14} />
-                </span>
-              ) : (
-                <Icon name="spark" size={18} className="star" />
-              )}
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <b>{item.title}</b>
-                <span>{item.detail}</span>
-              </span>
-              {item.action ? (
-                <Link href={item.href ?? "#"}>
-                  <Button variant="secondary">{item.action}</Button>
-                </Link>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </section>
+      </div>
 
-      <h2 className="t-h3" style={{ margin: "24px 0 12px" }}>
-        Open a station
-      </h2>
+      <div className="db-trial">
+        <Icon name="alert" size={18} />
+        <span>{trial.message}</span>
+        <Link href={trial.href}>
+          <Button variant="forest">{trial.action}</Button>
+        </Link>
+      </div>
+
+      <div className="db-sec-head">
+        <h2 className="t-h3">Open a station</h2>
+        <span>Patients move left to right, top to bottom</span>
+      </div>
       <div className="st-grid">
         {stations.map((station) => (
           <StationCard
@@ -76,10 +73,46 @@ export default function DashboardPage() {
             tone={station.tone}
             title={station.title}
             description={station.description}
+            count={station.count}
+            countWarn={station.countWarn}
             tag={station.tag}
           />
         ))}
       </div>
+
+      <section className="db-section">
+        <div className="t-eyebrow">Open a doctor&apos;s console</div>
+        <div className="db-docs">
+          {doctors.map((doctor) => (
+            <div key={doctor.name} className={`db-doc${doctor.current ? " current" : ""}`}>
+              <Avatar initials={doctor.initials} />
+              <span className="db-doc-who">
+                <b>{doctor.name}</b>
+                <small>
+                  {doctor.speciality} · {doctor.room}
+                </small>
+              </span>
+              <span className="db-doc-count">{doctor.waiting}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="db-section">
+        <h2 className="t-h3">Manage</h2>
+        <div className="mg-grid">
+          {manage.map((link) => (
+            <ManageRow
+              key={link.title}
+              icon={link.icon}
+              title={link.title}
+              description={link.description}
+              value={link.count}
+              href={link.href}
+            />
+          ))}
+        </div>
+      </section>
     </AppShell>
   );
 }

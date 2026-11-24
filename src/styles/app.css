@@ -424,7 +424,7 @@
 .su {
   min-height: 100vh;
   background: #fff;
-  grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 36%) minmax(0, 1fr);
   display: grid;
 }
 
@@ -931,6 +931,165 @@
 
   .su-2,
   .su-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Signing in — the split layout, and the dashboard's own blocks.
+   ------------------------------------------------------------------------- */
+
+.su-card.narrow {
+  max-width: 520px;
+}
+
+.su-trust {
+  gap: 14px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.su-trust li {
+  align-items: flex-start;
+  gap: 10px;
+  display: flex;
+}
+
+.su-trust svg {
+  color: var(--gold);
+  flex: none;
+  margin-top: 2px;
+}
+
+.su-trust b {
+  font-size: 14px;
+  display: block;
+}
+
+.su-trust span span {
+  color: var(--mint-200);
+  font-size: 13px;
+}
+
+.su-note.neutral {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.su-link {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.su-link a {
+  color: var(--green-700);
+  font-weight: 700;
+}
+
+.su-link.plain {
+  cursor: pointer;
+  background: 0 0;
+  border: 0;
+  padding: 0;
+  color: var(--green-700);
+  font-weight: 700;
+  text-align: left;
+}
+
+/* the dashboard */
+.db-trial {
+  background: var(--gold-50);
+  border: 1px solid var(--gold-100);
+  border-radius: 14px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  display: flex;
+}
+
+.db-trial svg {
+  color: var(--gold-ink);
+  flex: none;
+}
+
+.db-trial span {
+  color: var(--gold-ink);
+  flex: 1;
+  font-size: 13.5px;
+}
+
+.db-sec-head {
+  align-items: baseline;
+  gap: 12px;
+  margin: 22px 0 12px;
+  display: flex;
+}
+
+.db-sec-head span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.db-section {
+  margin-top: 26px;
+}
+
+.db-docs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  display: grid;
+}
+
+.db-doc {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  display: flex;
+}
+
+.db-doc.current {
+  border-color: var(--green);
+  background: var(--mint-50);
+}
+
+.db-doc-who {
+  flex: 1;
+  min-width: 0;
+}
+
+.db-doc b {
+  font-size: 14.5px;
+  display: block;
+}
+
+.db-doc small {
+  color: var(--muted);
+  font-size: 12.5px;
+  display: block;
+}
+
+.db-doc-count {
+  background: var(--green);
+  color: #fff;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex: none;
+  display: grid;
+}
+
+@media (max-width: 900px) {
+  .db-docs {
     grid-template-columns: 1fr;
   }
 }
