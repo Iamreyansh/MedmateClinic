@@ -1,5 +1,32 @@
-import { apiGet } from "@/services/api";
+import { apiGet, apiPost } from "@/services/api";
 import type { Queue } from "@/features/queue/types";
 
 /** The doctor’s queue for today. */
 export const fetchQueue = () => apiGet<Queue>("/clinic/queue");
+
+/** The doctors a patient can be sent to. */
+export const fetchDoctors = () =>
+  apiGet<Array<{ id: string; name: string; speciality: string }>>("/clinic/doctors");
+
+/** What the front desk types to check a patient in. */
+export type CheckInPayload = {
+  name: string;
+  age: string;
+  sex: string;
+  phone: string;
+  reason: string;
+  mode: string;
+  doctor: string;
+};
+
+/** What the API answers with when a patient is checked in. */
+export type CheckInResult = {
+  visit: { id: string; token: string; status: string; reason: string | null };
+  token: string;
+  patient: { id: string; name: string; age: number; sex: string; phone: string };
+  doctor: string;
+};
+
+/** Check a patient in at the counter. */
+export const checkInPatient = (payload: CheckInPayload) =>
+  apiPost<CheckInResult>("/clinic/check-ins", payload);

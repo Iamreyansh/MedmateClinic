@@ -22,6 +22,8 @@ export type ConsultState = {
   diagnoses: DiagnosisLine[];
   medicines: MedicineLine[];
   tests: TestLine[];
+  /** The examination that was recorded — the signs the safety checker reads. */
+  examination: Array<Record<string, string>>;
   prescriptionId: string | null;
   signed: SignedResult | null;
   error: string | null;
@@ -35,6 +37,7 @@ const initialState: ConsultState = {
   diagnoses: [],
   medicines: [],
   tests: [],
+  examination: [],
   prescriptionId: null,
   signed: null,
   error: null,
@@ -110,6 +113,7 @@ const consultSlice = createSlice({
         state.diagnoses = action.payload.diagnoses ?? [];
         state.medicines = action.payload.medicines ?? [];
         state.tests = action.payload.tests ?? [];
+        state.examination = action.payload.consultation?.examination ?? [];
         state.prescriptionId = action.payload.prescriptions[0]?.id ?? null;
       })
       .addCase(loadVisit.rejected, (state, action) => {

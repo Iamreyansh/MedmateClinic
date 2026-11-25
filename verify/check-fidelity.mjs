@@ -179,6 +179,26 @@ const CHECKS = [
   [".topbar .avail", "height", "44px"],
   [".topbar .avail", "border-radius", "12px"],
   [".topbar .avail", "font-size", "13px"],
+
+  // the dialog — the sheet, the backdrop, and the three parts inside it
+  [".modal", "max-width", "440px"],
+  [".modal", "border-radius", "24px"],
+  [".modal", "padding", "22px"],
+  [".modal", "background-color", "rgb(255, 255, 255)"],
+  [".scrim", "background-color", "rgba(20, 32, 26, 0.5)"],
+  [".dlg-head", "align-items", "flex-start"],
+  [".dlg-body", "margin-top", "16px"],
+  [".dlg-foot", "justify-content", "flex-end"],
+  [".dlg-foot", "margin-top", "20px"],
+
+  // the safety panel — the checks the doctor reads before signing
+  [".sf", "border-radius", "14px"],
+  [".sf.warn", "background-color", "rgb(253, 248, 234)"],
+  [".sf-h", "font-size", "13.5px"],
+  [".sf-tag", "font-size", "10.5px"],
+  [".sf-tag", "font-weight", "800"],
+  [".sf-tag.gold", "background-color", "rgb(217, 166, 72)"],
+  [".sf-list li", "border-radius", "10px"],
 ];
 
 

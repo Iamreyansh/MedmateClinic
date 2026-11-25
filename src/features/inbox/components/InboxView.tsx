@@ -4,6 +4,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { cn } from "@/lib/cn";
 import { apiGet } from "@/services/api";
+import { CallPatientDialog } from "@/features/inbox/components/CallPatientDialog";
+import { SendMessageDialog } from "@/features/inbox/components/SendMessageDialog";
 
 /** One thing in the doctor's inbox. */
 export type InboxItem = {
@@ -41,6 +43,9 @@ export function InboxView() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // the two things that happen to a patient from the inbox
+  const [calling, setCalling] = useState(false);
+  const [messaging, setMessaging] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -147,8 +152,11 @@ export function InboxView() {
             <p style={{ color: "var(--ink-2)", marginTop: 12, fontSize: 13.5 }}>{selected.body}</p>
 
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-              <Button variant="secondary" icon="send">
+              <Button variant="secondary" icon="phone" onClick={() => setCalling(true)}>
                 Call the patient
+              </Button>
+              <Button variant="secondary" icon="send" onClick={() => setMessaging(true)}>
+                Send a message
               </Button>
               <Button variant="secondary" icon="cal">
                 Book a visit today
@@ -159,6 +167,24 @@ export function InboxView() {
           </aside>
         ) : null}
       </div>
+
+      <CallPatientDialog
+        open={calling}
+        onClose={() => setCalling(false)}
+        patientName={selected?.patient.name}
+        onCall={() => {
+          // The note about the call is kept on the patient's record.
+        }}
+      />
+
+      <SendMessageDialog
+        open={messaging}
+        onClose={() => setMessaging(false)}
+        patientName={selected?.patient.name}
+        onSend={() => {
+          // The message is sent through the messaging service.
+        }}
+      />
     </>
   );
 }

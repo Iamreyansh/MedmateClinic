@@ -183,6 +183,94 @@ mock.on("GET", "/clinic/queue", () => {
   };
 });
 
+// --------------------------------------------------------------- the doctors
+
+mock.on("GET", "/clinic/doctors", () => {
+  requireSession();
+  return doctors.map((person) => ({
+    id: person.id,
+    name: person.name,
+    speciality: person.speciality,
+    room: person.room,
+  }));
+});
+
+// --------------------------------------------------------------- check in
+
+mock.on("POST", "/clinic/check-ins", (body) => {
+  requireSession();
+  const request = body as {
+    name?: string;
+    age?: string;
+    sex?: string;
+    phone?: string;
+    reason?: string;
+    mode?: string;
+    doctor?: string;
+  };
+
+  const name = (request.name ?? "").trim();
+  if (name.length < 2) throw new Error("A name is needed to check a patient in.");
+
+  // A patient who is already on the list is not added twice — the visit is
+  // joined to the record that already exists.
+  const existing = patients.find(
+    (person) => person.name.toLowerCase() === name.toLowerCase(),
+  );
+
+  const patientId = existing?.id ?? `pt_new_${patients.length + 1}`;
+  if (!existing) {
+    patients.push({
+      id: patientId,
+      name,
+      age: Number(request.age ?? 0),
+      sex: request.sex === "M" ? "M" : "F",
+      initials: name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join(""),
+      phone: request.phone ?? "",
+      abha: "",
+      allergies: [],
+      conditions: [],
+      visits: 1,
+      since: "2026-11-25",
+    });
+  }
+
+  // The next token: the highest A-token so far, plus one.
+  const highest = visits
+    .map((item) => Number(item.token.replace(/\D/g, "")))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => b - a)[0] ?? 14;
+  const token = `A-${String(highest + 1).padStart(3, "0")}`;
+
+  const visit = {
+    id: `vs_${token.toLowerCase().replace("-", "_")}_${visits.length}`,
+    token,
+    patientId,
+    status: "waiting",
+    mode: request.mode === "online" ? "online" : "in_clinic",
+    source: "walk_in",
+    reason: request.reason ?? "Walk-in",
+    detail: null,
+    priority: null,
+    seenBy: null,
+    waitedMinutes: null,
+    consultMinutes: null,
+    createdAt: new Date().toISOString(),
+  };
+  visits.push(visit);
+
+  return {
+    visit,
+    token,
+    patient: patient(patientId),
+    doctor: request.doctor ?? signedInUser.name,
+  };
+});
+
 // ------------------------------------------------------------------ the inbox
 
 mock.on("GET", "/clinic/inbox", () => {

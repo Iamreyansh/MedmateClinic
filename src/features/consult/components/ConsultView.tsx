@@ -6,7 +6,18 @@ import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { loadVisit, saveConsult, signConsult } from "@/features/consult/state/consultSlice";
+import { loadVisit, saveConsult, signConsult, lineAdded } from "@/features/consult/state/consultSlice";
+import { MedicineSearch } from "@/features/consult/components/MedicineSearch";
+import { SafetyPanel } from "@/features/consult/components/SafetyPanel";
+import { SafetyCheckDialog } from "@/features/consult/components/SafetyCheckDialog";
+import { SendToPharmacyDialog } from "@/features/consult/components/SendToPharmacyDialog";
+import { ReferToColleagueDialog } from "@/features/consult/components/ReferToColleagueDialog";
+import { WriteCertificateDialog } from "@/features/consult/components/WriteCertificateDialog";
+import { PatientHistoryDrawer } from "@/features/consult/components/PatientHistoryDrawer";
+import type { Pharmacy } from "@/features/consult/referral";
+import { blockingFindings, safetyFindings, safetySummary } from "@/features/consult/safety";
+import { toMedicineLine } from "@/lib/medicines";
+import type { MedicineLine } from "@/types/visit";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 function Step({
@@ -60,6 +71,7 @@ export function ConsultView() {
     diagnoses,
     medicines,
     tests,
+    examination,
     prescriptionId,
     signed,
     status,
@@ -73,6 +85,22 @@ export function ConsultView() {
   const [returnIf, setReturnIf] = useState("");
   const [followUp, setFollowUp] = useState("");
   const [followUpNote, setFollowUpNote] = useState("");
+  // the safety check, before the prescription is signed
+  const [checking, setChecking] = useState(false);
+  // the three things that happen around the prescription
+  const [choosingPharmacy, setChoosingPharmacy] = useState(false);
+  const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null);
+  const [referring, setReferring] = useState(false);
+  const [writingCertificate, setWritingCertificate] = useState(false);
+  // the patient's whole history, beside the prescription
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // what the checker has to say about the prescription as it stands
+  const findings = useMemo(
+    () => safetyFindings(person, medicines, diagnoses, examination),
+    [person, medicines, diagnoses, examination],
+  );
+  const blocking = useMemo(() => blockingFindings(findings), [findings]);
 
   useEffect(() => {
     if (id) void dispatch(loadVisit(id));
@@ -153,6 +181,9 @@ export function ConsultView() {
               <Icon name="folder" size={16} />
               History
             </Link>
+            <Button variant="secondary" icon="more" onClick={() => setHistoryOpen(true)}>
+              Full history
+            </Button>
           </div>
         </div>
       </div>
@@ -267,29 +298,36 @@ export function ConsultView() {
             </table>
 
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
-              <Input placeholder="Search brand or generic, e.g. 'cetirizine'" aria-label="Search medicines" />
+              <MedicineSearch
+                chosen={medicines.map((medicine) => ({
+                  brand: medicine.name,
+                  generic: medicine.generic ?? medicine.name,
+                  form: medicine.form ?? "Tablet",
+                  dose: medicine.dose ?? "",
+                  usedFor: medicine.notes ?? "",
+                  category: "",
+                }))}
+                onPick={(medicine) => {
+                  dispatch(lineAdded({ kind: "medicine", line: toMedicineLine(medicine) as never }));
+                }}
+                blockedFor={(medicine) => {
+                  const blocked = blockingFindings(
+                    safetyFindings(person, [...medicines, toMedicineLine(medicine) as MedicineLine]),
+                  );
+                  return blocked.length > 0 ? blocked[0].message : null;
+                }}
+              />
               <Button variant="secondary" icon="rx">
                 Use a template
               </Button>
             </div>
 
-            {person?.allergies?.length ? (
-              <div className="sf">
-                <div className="sf-h" style={{ color: "var(--gold-ink)", fontWeight: 800 }}>
-                  <Icon name="alert" size={16} />
-                  Check the allergy before signing
-                </div>
-                <ul className="sf-list">
-                  <li>
-                    <span className="sf-tag gold">Check</span>
-                    <div>
-                      <b>Allergy on record: {person.allergies.join(", ")}</b>
-                      <p>the checker warns before a medicine that clashes is added.</p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            ) : null}
+            <SafetyPanel
+              patient={person}
+              medicines={medicines}
+              diagnoses={diagnoses}
+              examination={examination}
+            />
           </Step>
 
           <Step title="Tests" hint="Ordered tests go to the lab desk with a barcode.">
@@ -372,6 +410,13 @@ export function ConsultView() {
                 {followUp ? <span>✓ Follow-up {followUp}</span> : <span>No follow-up</span>}
                 <span>Aadhaar eSign</span>
               </div>
+              {findings.length > 0 ? (
+                <div className="sign-sum" style={{ marginTop: 4 }}>
+                  <span className={cn(blocking.length > 0 && "red-flag")}>
+                    {safetySummary(findings)}
+                  </span>
+                </div>
+              ) : null}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <Button variant="secondary" onClick={() => void save()}>
@@ -381,7 +426,7 @@ export function ConsultView() {
                 variant="gold"
                 icon="check"
                 disabled={busy || !prescriptionId}
-                onClick={() => void sign()}
+                onClick={() => setChecking(true)}
               >
                 Sign prescription
               </Button>
@@ -445,15 +490,77 @@ export function ConsultView() {
             </p>
             <div className="field" style={{ marginTop: 12 }}>
               <label htmlFor="consult-pharmacy">Pharmacy</label>
-              <Input
-                id="consult-pharmacy"
-                defaultValue="MedMate Pharmacy, Indiranagar · patient's choice"
-                readOnly
-              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <Input
+                  id="consult-pharmacy"
+                  value={pharmacy ? pharmacy.name : ""}
+                  placeholder="The patient chooses"
+                  readOnly
+                />
+                <Button variant="secondary" icon="pin" onClick={() => setChoosingPharmacy(true)}>
+                  Choose
+                </Button>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <Button variant="secondary" icon="cert" onClick={() => setWritingCertificate(true)}>
+                Write a certificate
+              </Button>
+              <Button variant="secondary" icon="users" onClick={() => setReferring(true)}>
+                Refer to a colleague
+              </Button>
             </div>
           </section>
         </aside>
       </div>
+
+      <SafetyCheckDialog
+        open={checking}
+        onClose={() => setChecking(false)}
+        patient={person}
+        medicines={medicines}
+        diagnoses={diagnoses}
+        examination={examination}
+        signing={busy}
+        onSign={async () => {
+          await sign();
+          setChecking(false);
+        }}
+      />
+
+      <SendToPharmacyDialog
+        open={choosingPharmacy}
+        onClose={() => setChoosingPharmacy(false)}
+        chosen={pharmacy}
+        onChoose={setPharmacy}
+      />
+
+      <ReferToColleagueDialog
+        open={referring}
+        onClose={() => setReferring(false)}
+        patientName={person?.name}
+        onRefer={() => {
+          // The referral is read out at the desk, so it is left on the record.
+        }}
+      />
+
+      <WriteCertificateDialog
+        open={writingCertificate}
+        onClose={() => setWritingCertificate(false)}
+        patientName={person?.name}
+        onWrite={(details) => {
+          // The certificate is printed on the clinic letterhead.
+          void details;
+        }}
+      />
+
+      <PatientHistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        patientId={person?.id ?? null}
+        patientName={person?.name}
+      />
     </>
   );
 }

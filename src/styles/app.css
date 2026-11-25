@@ -1609,3 +1609,146 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * The dialog.
+ *
+ * The stylesheet draws the sheet (`.modal`) and the backdrop (`.scrim`), but
+ * it has no head, body or foot — the deployed product composed them inline.
+ * These are the three parts every dialog in the product is made of.
+ * ------------------------------------------------------------------------- */
+
+.dlg-head {
+  align-items: flex-start;
+  gap: 12px;
+  justify-content: space-between;
+  display: flex;
+}
+
+.dlg-head h2 {
+  margin: 0;
+}
+
+.dlg-head p {
+  margin: 2px 0 0;
+}
+
+.dlg-body {
+  margin-top: 16px;
+}
+
+.dlg-foot {
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  display: flex;
+}
+
+/* A dialog with no head of its own — a form, a list — sits flush. */
+.modal > .dlg-body:first-child {
+  margin-top: 0;
+}
+
+/*
+ * A full-height dialog: the sheet owns the screen, and the body scrolls
+ * inside it rather than the sheet growing past the fold.
+ */
+.modal.full {
+  height: min(100vh - 32px, 900px);
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal.full > .dlg-body {
+  flex: 1;
+  overflow: auto;
+}
+
+/*
+ * The side drawer. The stylesheet has a sheet and a backdrop, but no drawer —
+ * so this is one of ours. It slides in from the right, over the scrim.
+ */
+.drawer {
+  z-index: 61;
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(480px, 100vw);
+  background: #fff;
+  box-shadow: var(--sh-3);
+  overflow: auto;
+  animation: drawer-in 0.22s ease-out;
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+
+.drawer-head {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  display: flex;
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
+
+.drawer-body {
+  padding: 16px 20px 24px;
+}
+
+.drawer-foot {
+  border-top: 1px solid var(--line);
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  display: flex;
+}
+
+/*
+ * A safety finding the doctor has to tick. The stylesheet has the panel and
+ * the row, but not the tick line inside a row.
+ */
+.sf-ack-row {
+  align-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  margin-top: 6px;
+  display: flex;
+}
+
+.sf-ack-row input {
+  accent-color: var(--green-700);
+  height: 15px;
+  margin: 0;
+  width: 15px;
+}
+
+/* The actions under a template card. */
+.tpl-acts {
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  display: flex;
+}
+
+/* The medicine the doctor has already put on the prescription. */
+.med-row-c.locked {
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    animation: none;
+  }
+}

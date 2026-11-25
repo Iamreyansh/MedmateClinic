@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/services/api";
+import { TemplateEditorDialog } from "@/features/templates/components/TemplateEditorDialog";
+import { CATALOGUE } from "@/lib/medicines";
 
 /** One prescription template. */
 export type Template = {
@@ -21,6 +23,9 @@ type TemplatesPayload = {
 export function TemplatesView() {
   const [payload, setPayload] = useState<TemplatesPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // the template being written, or null when the list is showing
+  const [editing, setEditing] = useState<Template | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -51,7 +56,9 @@ export function TemplatesView() {
               "Your reusable treatment protocols. Apply one in the console and adjust doses by weight."}
           </p>
         </div>
-        <Button icon="plus">New template</Button>
+        <Button icon="plus" onClick={() => setEditorOpen(true)}>
+          New template
+        </Button>
       </div>
 
       {error ? <div className="note red">{error}</div> : null}
@@ -89,7 +96,15 @@ export function TemplatesView() {
             </div>
 
             <div className="tpl-acts">
-              <Button variant="secondary">Edit</Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEditing(template);
+                  setEditorOpen(true);
+                }}
+              >
+                Edit
+              </Button>
               <span style={{ color: "var(--green-700)", fontWeight: 700, fontSize: 13.5 }}>
                 Share with colleagues
               </span>
@@ -97,6 +112,32 @@ export function TemplatesView() {
           </article>
         ))}
       </div>
+
+      <TemplateEditorDialog
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        template={
+          editing
+            ? {
+                id: editing.id,
+                name: editing.name,
+                diagnosis: editing.condition,
+                lines: editing.lines.map((line) => ({
+                  name: line,
+                  dose: "",
+                  when: "",
+                  forDays: "",
+                  notes: "",
+                })),
+              }
+            : null
+        }
+        catalogue={CATALOGUE}
+        onSave={(template) => {
+          // The template is saved on the server; the list refreshes with it.
+          void template;
+        }}
+      />
     </>
   );
 }

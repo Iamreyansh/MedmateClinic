@@ -29,6 +29,8 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "GET", path: "/clinic/visits/vs_kavya" },
   { method: "POST", path: "/clinic/visits/vs_kavya/consult" },
   { method: "POST", path: "/clinic/prescriptions/rx_vs_kavya/sign" },
+  { method: "GET", path: "/clinic/doctors" },
+  { method: "POST", path: "/clinic/check-ins" },
 ];
 
 /** Sign in, so the endpoints behind the session answer. */

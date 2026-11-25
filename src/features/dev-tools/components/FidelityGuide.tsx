@@ -3,6 +3,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { MobileHeader, MobileTabBar } from "@/components/layout/Mobile";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { Kpi, Kpis, Note, StatTile, StatTiles, StationCard, Title } from "@/components/ui/Card";
 import { Chip, Chips, Pills } from "@/components/ui/Chip";
 import { Input, SearchInput } from "@/components/ui/Input";
@@ -188,6 +189,44 @@ export function FidelityGuide() {
             { label: "More", icon: "more" },
           ]}
         />
+      </div>
+
+      {/*
+        The dialog, measured in place. It is rendered in a fixed box rather
+        than through the portal so the harness can measure it without the
+        dialog having to be open.
+      */}
+      <div style={{ position: "relative", height: 420, marginBottom: 40 }}>
+        <div className="scrim" style={{ position: "absolute" }}>
+          <div className="modal" style={{ position: "relative" }}>
+            <div className="dlg-head">
+              <div>
+                <h2 className="t-h2">Safety check before signing</h2>
+                <p className="t-cap">Read each one before the prescription is signed.</p>
+              </div>
+            </div>
+            <div className="dlg-body">
+              <div className="sf warn">
+                <div className="sf-h">
+                  <Icon name="shield" size={18} />
+                  <span>2 things to check before signing</span>
+                </div>
+                <ul className="sf-list">
+                  <li>
+                    <span className="sf-tag gold">Antibiotic</span>
+                    <div>
+                      <b>Antibiotic for a sore throat: is a bacterial cause likely?</b>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="dlg-foot">
+              <Button variant="ghost">Go back</Button>
+              <Button icon="check">Sign the prescription</Button>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );

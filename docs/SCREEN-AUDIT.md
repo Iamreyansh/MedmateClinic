@@ -47,6 +47,39 @@ Of the **41 phone frames**: **0 built.** The patient-facing web (`/book`, `/appt
 | Sub-pages & dialogs page | 70 | 11 | 0 | 0 | 59 |
 | **Total** | **137** | **17** | **8** | **12** | **100** |
 
+### The build log
+
+Ten fractions of twelve frames each. The bar moves as each one lands.
+
+| Fraction | Frames | Bar after | What it builds |
+|---|---|---|---|
+| — | — | 17/137 · 12.4% | what was already built |
+| **F1** | 12 | **29/137 · 21.2%** | the dialog + drawer primitives, the safety checker, the medicine search, and 8 overlays |
+| F2 | 12 | 41/137 · 29.9% | reception, billing, appointments + their overlays |
+| F3 | 12 | 53/137 · 38.7% | nurse station, lab, kiosk |
+| F4 | 12 | 65/137 · 47.4% | staff & roles, doctors, locations, messages |
+| F5 | 12 | 77/137 · 56.2% | settings, subscription, their overlays |
+| F6 | 12 | 89/137 · 65.0% | sign-up, patients list, dashboard fix, verify |
+| F7 | 12 | 101/137 · 73.7% | patient web: book, manage, live token, symptoms, legal |
+| F8 | 12 | 113/137 · 82.5% | patient phone check-in + booking on the phone |
+| F9 | 12 | 125/137 · 91.2% | patient phone verify/legal + mobile staff screens |
+| F10 | 12 | 137/137 · 100% | the last mobile staff screens + mobile landing |
+
+**F1 · done.** It lands the two primitives the other 29 overlays need — `Dialog` and
+`Drawer`, on the stylesheet's own `.scrim` and `.modal` — and with them:
+
+- the **safety checker** (`features/consult/safety.ts`): allergy clashes, drug interactions,
+  duplicates and the Centor score, with 17 tests over the rules;
+- the **safety check before signing** overlay, which blocks a prescription that clashes with
+  an allergy on record;
+- the **medicine search** over brand and salt, which shows a clash as blocked rather than
+  hiding it;
+- the **patient history drawer**;
+- the **check in a patient** overlay, with a new `POST /api/clinic/check-ins` on both the
+  mock and the Java service;
+- and six more: send to a pharmacy, refer to a colleague, write a certificate, the template
+  editor, add a lab result, send a message, call the patient, share the booking link.
+
 ## 3. Desktop screens (the Screens page) — the definitive matrix
 
 ### Built (6) — region-for-region match with Figma

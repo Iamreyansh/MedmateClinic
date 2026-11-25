@@ -4,52 +4,9 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { apiGet } from "@/services/api";
+import type { PatientRecord } from "@/types/patient";
 
-/** One visit in the patient's history. */
-export type HistoryVisit = {
-  id: string;
-  date: string;
-  doctor: string;
-  diagnosis: string;
-  code?: string;
-  medicines?: string;
-  extra?: string;
-  signed: string;
-};
-
-/** One reading over time. */
-export type Reading = {
-  label: string;
-  value: string;
-  state: "Improving" | "Steady" | "Better";
-  tone: "gold" | "plain" | "mint";
-};
-
-/** One lab result. */
-export type LabResult = { name: string; when: string; value: string; tone: "gold" | "plain" };
-
-/** One entry in the record's access log. */
-export type RecordAccess = { who: string; when: string; what: string };
-
-export type PatientRecord = {
-  patient: {
-    id: string;
-    name: string;
-    initials?: string;
-    age: number;
-    sex: string;
-    phone: string;
-    abha: string;
-    allergies: string[];
-    conditions: string[];
-    visits: number;
-    since: string;
-  };
-  visits: HistoryVisit[];
-  readings: Reading[];
-  labResults: LabResult[];
-  recordAccess: RecordAccess[];
-};
+export type { HistoryVisit, LabResult, PatientRecord, Reading, RecordAccess } from "@/types/patient";
 
 export function PatientRecordView({ patientId }: { patientId?: string }) {
   const { id } = useParams();

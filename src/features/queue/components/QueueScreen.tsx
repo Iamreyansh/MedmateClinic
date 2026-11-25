@@ -6,7 +6,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Icon } from "@/components/ui/Icon";
-import { loadQueue } from "@/features/queue/state/queueSlice";
+import { loadQueue, loadDoctors, checkIn } from "@/features/queue/state/queueSlice";
+import { CheckInPatientDialog } from "@/features/queue/components/CheckInPatientDialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 const FILTERS = [
@@ -19,11 +20,13 @@ const FILTERS = [
 
 export function QueueScreen() {
   const dispatch = useAppDispatch();
-  const { status, queue, error } = useAppSelector((state) => state.queue);
+  const { status, queue, doctors, lastCheckedIn, error } = useAppSelector((state) => state.queue);
   const [filter, setFilter] = useState(FILTERS[0].label);
+  const [checkingIn, setCheckingIn] = useState(false);
 
   useEffect(() => {
     void dispatch(loadQueue());
+    void dispatch(loadDoctors());
   }, [dispatch]);
 
   const next = queue?.next ?? null;
@@ -39,12 +42,21 @@ export function QueueScreen() {
           <p style={{ color: "var(--muted)", marginTop: 4 }}>{queue?.meta ?? "Loading the queue…"}</p>
         </div>
         <div className="nq-btns">
-          <Button variant="secondary" icon="plus">
+          <Button variant="secondary" icon="plus" onClick={() => setCheckingIn(true)}>
             Check in a patient
           </Button>
           <Button icon="check">Call in next</Button>
         </div>
       </div>
+
+      {lastCheckedIn ? (
+        <div className="note mint" style={{ marginBottom: 14 }}>
+          <Icon name="check" size={18} />
+          <span>
+            Checked in. The token is <b>{lastCheckedIn}</b>.
+          </span>
+        </div>
+      ) : null}
 
       <div className="chips" style={{ marginBottom: 14 }}>
         {FILTERS.map((entry) => (
@@ -142,6 +154,17 @@ export function QueueScreen() {
           </aside>
         ) : null}
       </div>
+
+      <CheckInPatientDialog
+        open={checkingIn}
+        onClose={() => setCheckingIn(false)}
+        doctors={doctors}
+        onCheckIn={(details) => {
+          void dispatch(checkIn(details)).then(() => {
+            void dispatch(loadQueue());
+          });
+        }}
+      />
     </AppShell>
   );
 }
