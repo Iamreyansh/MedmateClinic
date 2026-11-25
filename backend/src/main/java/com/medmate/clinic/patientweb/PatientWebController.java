@@ -1,10 +1,15 @@
 package com.medmate.clinic.patientweb;
 
+import com.medmate.clinic.tenancy.ClinicRouting;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,15 +20,21 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>These have no session: a patient at the clinic's front door is not
  * staff. The filter routes them to their clinic — by the slug on the booking
  * page, by the link on the token, the intake form and the verification.
+ *
+ * <p>The booking is the one write here, so it is the one that is checked: a
+ * name, a number and a doctor are needed, and a number that is not ten digits
+ * is refused with the same envelope as every other error.
  */
 @RestController
 @RequestMapping("/api")
 public class PatientWebController {
 
     private final PatientWebService patientWeb;
+    private final ClinicRouting routing;
 
-    public PatientWebController(PatientWebService patientWeb) {
+    public PatientWebController(PatientWebService patientWeb, ClinicRouting routing) {
         this.patientWeb = patientWeb;
+        this.routing = routing;
     }
 
     /** The booking page: the clinic, its doctors and the times. */
@@ -35,8 +46,23 @@ public class PatientWebController {
     /** Book the visit. The patient gets a token and two links to keep. */
     @PostMapping("/public/booking")
     public Map<String, Object> book(
-            @RequestParam("clinic") String slug, @RequestBody Map<String, Object> request) {
-        return patientWeb.book(slug, request);
+            @Valid @RequestBody BookingRequest request,
+            @RequestParam(value = "clinic", required = false) String clinicParam,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyHeader) {
+        // The clinic the booking is for travels in the body. It may also come
+        // as a query parameter, for a link that carries it.
+        String slug = request.clinic() == null || request.clinic().isBlank() ? clinicParam : request.clinic();
+        if (slug == null || slug.isBlank()) {
+            throw new com.medmate.clinic.common.NotFoundException(
+                    "Please use your clinic's own booking link.");
+        }
+        // The request is pointed at that clinic's schema before anything is read.
+        routing.routeBySlug(slug);
+        String idempotencyKey =
+                idempotencyHeader == null || idempotencyHeader.isBlank()
+                        ? request.idempotencyKey()
+                        : idempotencyHeader;
+        return patientWeb.book(slug, request.asMap(), idempotencyKey);
     }
 
     /** The patient's place in the queue. */
@@ -54,8 +80,8 @@ public class PatientWebController {
     /** Send the symptoms form in. */
     @PostMapping("/intake/{token}")
     public Map<String, Object> submitIntake(
-            @PathVariable String token, @RequestBody Map<String, Object> request) {
-        return patientWeb.submitIntake(token, request);
+            @PathVariable String token, @Valid @RequestBody IntakeRequest request) {
+        return patientWeb.submitIntake(token, request.asMap());
     }
 
     /** The prescription, as the patient verifies it. */
@@ -63,5 +89,56 @@ public class PatientWebController {
     public Map<String, Object> verify(
             @PathVariable String id, @RequestParam(value = "h", required = false) String hash) {
         return patientWeb.verify(id, hash == null ? "" : hash);
+    }
+
+    /**
+     * What the patient books.
+     *
+     * <p>The field names are the ones the SPA sends: {@code clinic}, {@code
+     * doctorId}, {@code startsAt}, {@code name}, {@code phone}, {@code age},
+     * {@code sex}, {@code reason}.
+     */
+    public record BookingRequest(
+            String clinic,
+            @NotBlank String doctorId,
+            String startsAt,
+            @NotBlank String name,
+            @NotBlank
+                    @Pattern(regexp = "^[0-9 +()-]{10,20}$", message = "must be a mobile number")
+                    String phone,
+            String age,
+            String sex,
+            String reason,
+            String idempotencyKey) {
+
+        public Map<String, Object> asMap() {
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("clinic", clinic);
+            body.put("doctorId", doctorId);
+            body.put("startsAt", startsAt);
+            body.put("name", name);
+            body.put("phone", phone);
+            body.put("age", age);
+            body.put("sex", sex);
+            body.put("reason", reason);
+            return body;
+        }
+    }
+
+    /** What the patient writes on the symptoms form. */
+    public record IntakeRequest(
+            String[] symptoms,
+            String[] redFlags,
+            String notes,
+            String duration) {
+
+        public Map<String, Object> asMap() {
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("symptoms", symptoms);
+            body.put("redFlags", redFlags);
+            body.put("notes", notes);
+            body.put("duration", duration);
+            return body;
+        }
     }
 }
