@@ -48,23 +48,34 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
         }
 
         String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            try {
-                ClinicPrincipal principal = jwtService.verify(header.substring(7).trim());
-                request.setAttribute(ClinicPrincipal.class.getName(), principal);
-                routing.route(java.util.UUID.fromString(principal.clinicId()));
-            } catch (IllegalArgumentException e) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"detail\":\"Please sign in again.\"}");
-                return;
-            }
+        if (header == null || !header.startsWith("Bearer ")) {
+            // No token at all. The request is not signed in, so it is refused
+            // here — otherwise it reaches a controller that throws, and the
+            // person sees a server error instead of being asked to sign in.
+            unauthorized(response, "Please sign in again.");
+            return;
+        }
+
+        try {
+            ClinicPrincipal principal = jwtService.verify(header.substring(7).trim());
+            request.setAttribute(ClinicPrincipal.class.getName(), principal);
+            routing.route(java.util.UUID.fromString(principal.clinicId()));
+        } catch (IllegalArgumentException e) {
+            unauthorized(response, "Please sign in again.");
+            return;
         }
         try {
             chain.doFilter(request, response);
         } finally {
             routing.clear();
         }
+    }
+
+    /** The 401 the API answers with when the session is missing or expired. */
+    private void unauthorized(HttpServletResponse response, String detail) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"title\":\"Please sign in\",\"detail\":\"" + detail + "\"}");
     }
 
     private boolean isPublic(String path) {

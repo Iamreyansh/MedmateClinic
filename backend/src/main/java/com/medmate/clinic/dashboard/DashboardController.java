@@ -1,6 +1,7 @@
 package com.medmate.clinic.dashboard;
 
 import com.medmate.clinic.catalogue.StationCatalogue;
+import com.medmate.clinic.common.ForbiddenException;
 import com.medmate.clinic.grant.GrantService;
 import com.medmate.clinic.patient.PatientRepository;
 import com.medmate.clinic.security.ClinicPrincipal;
@@ -46,6 +47,9 @@ public class DashboardController {
     @GetMapping("/dashboard")
     public Map<String, Object> dashboard() {
         ClinicPrincipal principal = current.get();
+        if (!principal.can("report")) {
+            throw new ForbiddenException("You cannot open the dashboard.");
+        }
         UUID clinicId = UUID.fromString(principal.clinicId());
 
         long waiting = visitRepository.findByClinicIdAndStatusOrderByCreatedAtAsc(clinicId, "waiting").size();

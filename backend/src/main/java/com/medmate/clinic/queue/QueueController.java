@@ -1,5 +1,7 @@
 package com.medmate.clinic.queue;
 
+import com.medmate.clinic.common.ClinicZoneService;
+import com.medmate.clinic.common.ForbiddenException;
 import com.medmate.clinic.patient.Patient;
 import com.medmate.clinic.patient.PatientRepository;
 import com.medmate.clinic.security.ClinicPrincipal;
@@ -8,6 +10,9 @@ import com.medmate.clinic.staff.Staff;
 import com.medmate.clinic.staff.StaffRepository;
 import com.medmate.clinic.visit.Visit;
 import com.medmate.clinic.visit.VisitRepository;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,21 +31,27 @@ public class QueueController {
     private final VisitRepository visitRepository;
     private final PatientRepository patientRepository;
     private final StaffRepository staffRepository;
+    private final ClinicZoneService zoneService;
 
     public QueueController(
             CurrentClinic current,
             VisitRepository visitRepository,
             PatientRepository patientRepository,
-            StaffRepository staffRepository) {
+            StaffRepository staffRepository,
+            ClinicZoneService zoneService) {
         this.current = current;
         this.visitRepository = visitRepository;
         this.patientRepository = patientRepository;
         this.staffRepository = staffRepository;
+        this.zoneService = zoneService;
     }
 
     @GetMapping("/queue")
     public Map<String, Object> queue() {
         ClinicPrincipal principal = current.get();
+        if (!principal.can("console")) {
+            throw new ForbiddenException("You cannot open the Doctor Console.");
+        }
         UUID clinicId = UUID.fromString(principal.clinicId());
 
         List<Visit> visits = visitRepository.findByClinicIdAndStatusOrderByCreatedAtAsc(clinicId, "waiting");
@@ -66,18 +77,48 @@ public class QueueController {
             items.add(item);
         }
 
+        // the doctor's own speciality — the console they work in, not the first
+        // doctor in the clinic
         String room = staffRepository.findByClinicId(clinicId).stream()
-                .filter(staff -> staff.getSpeciality() != null)
-                .findFirst()
+                .filter(person -> principal.staffIdAsUuid().equals(person.getId()))
                 .map(Staff::getSpeciality)
+                .filter(name -> name != null && !name.isBlank())
+                .findFirst()
                 .orElse("");
+
+        long seenToday = visitRepository.findByClinicIdAndCreatedAtBetweenOrderByCreatedAtAsc(
+                        clinicId, startOfDay(), endOfDay())
+                .stream()
+                .filter(visit -> !"waiting".equals(visit.getStatus()))
+                .count();
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("items", items);
         body.put("next", items.isEmpty() ? null : items.get(0));
         body.put("room", room);
-        body.put("meta", "Room " + (room.isEmpty() ? "1" : "1") + " · " + items.size() + " waiting · 9 seen today · average consult 8 min");
+        body.put(
+                "meta",
+                (room.isEmpty() ? "" : room + " · ")
+                        + items.size()
+                        + " waiting · "
+                        + seenToday
+                        + " seen today");
         return body;
+    }
+
+    /** The start of the clinic's day. */
+    private Instant startOfDay() {
+        return LocalDate.now(zoneOf()).atStartOfDay(zoneOf()).toInstant();
+    }
+
+    /** The end of the clinic's day. */
+    private Instant endOfDay() {
+        return LocalDate.now(zoneOf()).plusDays(1).atStartOfDay(zoneOf()).toInstant();
+    }
+
+    /** The zone the clinic works in. */
+    private ZoneId zoneOf() {
+        return zoneService.zoneOf(UUID.fromString(current.get().clinicId()));
     }
 
     private Map<String, Object> patient(Patient patient) {
