@@ -1385,3 +1385,227 @@
   background: var(--surface-3);
   color: var(--muted);
 }
+
+/*
+ * The reports screen.
+ *
+ * The four views sit on one row, and the charts and the two-column readouts
+ * are the product's own bars and grids — only the wiring is added here.
+ */
+
+/*
+ * The tab row is a segmented control, not the underline style the stylesheet
+ * uses elsewhere: `.tabs` sets `display: flex`, which would stop the grid
+ * from laying the four views out. The segmented control's own look wins.
+ */
+.seg.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 0;
+  gap: 0;
+  margin: 22px 0 18px;
+}
+
+.seg.tabs.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.rp-chart .rbars div {
+  background: var(--mint);
+  border-radius: 6px 6px 3px 3px;
+  flex: 1;
+}
+
+/* the day the clinic earned the most is the one worth reading twice */
+.rp-chart .rbars div.peak {
+  background: var(--green);
+}
+
+/* a day with nothing on it is a hairline, not a gap */
+.rp-chart .rbars div.flat {
+  background: var(--line-2);
+  border-radius: 0;
+}
+
+.rp-chart .rbars-axis {
+  gap: 12px;
+}
+
+.rp-chart .rbars-axis span:last-child {
+  text-align: right;
+}
+
+/* the delta under a KPI: the comparison with the period before */
+.rp-kpi-d {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.rp-stack {
+  align-content: start;
+  display: grid;
+  gap: 14px;
+}
+
+/* the money card is as tall as the two beside it, so the chart fills it */
+.rp-money {
+  display: flex;
+  flex-direction: column;
+}
+
+.rp-money .rp-chart {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.rp-money .rbars {
+  flex: 1;
+  height: auto;
+  min-height: 140px;
+}
+
+.rp-common {
+  margin-top: 14px;
+}
+
+.rp-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.rp-two h3 {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.rp-line {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 7px 0;
+  font-size: 13px;
+}
+
+.rp-line span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* a doctor, the money they brought in, and how many people they saw */
+.rp-doc-row .hbar-l span {
+  font-weight: 700;
+}
+
+.rp-doc-row .hbar-sub {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* one payment mode per row: what it is, and what it came to */
+.rp-modes {
+  display: grid;
+  gap: 10px;
+}
+
+.rp-modes .hbar-l {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.rp-modes .hbar-l span:last-child {
+  font-weight: 800;
+}
+
+/* the most common diagnoses and medicines, ranked */
+.rp-rank {
+  align-items: center;
+  display: flex;
+  font-size: 13.5px;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.rp-rank-n {
+  align-items: center;
+  background: var(--mint);
+  border-radius: 50%;
+  color: var(--forest);
+  display: inline-grid;
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  height: 22px;
+  place-items: center;
+  width: 22px;
+}
+
+.rp-rank-t {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-note-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 10px 0;
+}
+
+.rp-foot {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.rp-notes {
+  margin-top: 12px;
+}
+
+/*
+ * The chevron on a manage row is a quiet cue, not a control. The stylesheet
+ * has no rule for it, so it drew at full strength.
+ */
+.muted-icon {
+  color: var(--faint);
+  flex: none;
+}
+
+/*
+ * A field that failed its check. The `invalid` prop on the input has no rule
+ * behind it, so an invalid field looked exactly like a valid one.
+ */
+.input.invalid {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-bg);
+}
+
+@media (max-width: 900px) {
+  .seg.tabs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .rp-two {
+    grid-template-columns: 1fr;
+  }
+}

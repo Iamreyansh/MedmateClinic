@@ -274,12 +274,15 @@ async function reachable(url) {
 async function ensureServer() {
   if (await reachable(BASE_URL)) return null;
   console.log(`· starting the app on ${BASE_URL}`);
-  const child = spawn("npx", ["next", "start", "-p", String(PORT)], {
+  // The app is a Vite SPA now, so the dev server is what serves it. The mock
+  // answers the API, so no database and no Java service are needed.
+  const child = spawn("npx", ["vite", "--port", String(PORT), "--strictPort"], {
     cwd: root,
     stdio: "ignore",
     detached: false,
+    env: { ...process.env, VITE_USE_MOCK: process.env.VITE_USE_MOCK ?? "true" },
   });
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     if (await reachable(BASE_URL)) return child;
   }
@@ -290,23 +293,38 @@ async function ensureServer() {
 /**
  * Sign in, so the shell draws the clinic, the person and the location that the
  * signed-in person actually has.
+ *
+ * Against the Java service the code comes over HTTP. Against the mock — which
+ * runs in the browser, not on the server — there is no HTTP endpoint to call,
+ * so the mock's own token is used. The shell only needs a token in storage.
  */
 async function signIn() {
-  const otp = await fetch(`${BASE_URL}/api/auth/otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone: FIDELITY_PHONE }),
-  }).then((response) => response.json());
+  try {
+    const otp = await fetch(`${BASE_URL}/api/auth/otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: FIDELITY_PHONE }),
+    })
+      .then((response) => response.json())
+      .catch(() => null);
 
-  if (!otp.code) return null;
+    if (otp?.code) {
+      const session = await fetch(`${BASE_URL}/api/auth/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: FIDELITY_PHONE, code: otp.code }),
+      })
+        .then((response) => response.json())
+        .catch(() => null);
 
-  const session = await fetch(`${BASE_URL}/api/auth/verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone: FIDELITY_PHONE, code: otp.code }),
-  }).then((response) => response.json());
+      if (session?.accessToken) return session.accessToken;
+    }
+  } catch {
+    // no service on the other side — the mock answers in the browser
+  }
 
-  return session.accessToken ?? null;
+  // the mock's token: the app only checks that a token is present
+  return "mock.access.token";
 }
 
 async function checkStyles() {

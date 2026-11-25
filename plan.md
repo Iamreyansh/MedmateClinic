@@ -32,7 +32,7 @@ See `docs/ARCHITECTURE.md` for the whole shape and the production checklist.
 
 ### Done
 
-- Next.js 16.4.6 + React 19.3 on `main`, TypeScript strict, single app, no monorepo.
+- **Vite 8 · React 19** on `main`, TypeScript strict, single app, no monorepo.
 - `src/styles/medmate.css` — the deployed MVP's stylesheet, **byte-identical**
   (sha256 `434d4e71c6e4…`), 1,074 classes, 29 tokens.
 - `src/assets/icons.json` — the 38-icon set, byte-exact.
@@ -43,7 +43,7 @@ See `docs/ARCHITECTURE.md` for the whole shape and the production checklist.
   `ClinicChip`, `Badge`, `Token`, `Card`, `StationCard`, `StatTile`, `StatTiles`, `Kpi`,
   `Kpis`, `Note`, `Title`, `ManageRow`, `FeatureCard`, `PlanCard`.
 - The shell: `AppShell`, `Sidebar`, `Topbar`, `MobileHeader`, `MobileTabBar`, and the
-  nav model (`src/lib/nav.ts`).
+  nav model (`src/constants/nav.ts`).
 - `/fidelity` — the style guide, and the fixture the fidelity harness measures.
 - `npm run fidelity` — 138 computed properties checked, **0 drift** (122 desktop, 16 mobile).
 
@@ -57,14 +57,38 @@ See `docs/ARCHITECTURE.md` for the whole shape and the production checklist.
 - The sign-in flow, `/api/me`, `/api/clinic/queue` and `/api/clinic/dashboard` are
   wired end to end against the real service.
 - The lock screen unlocks a device with the PIN, through the API.
+- **The mock answers every path the app calls.** The router matches path templates
+  and hands the handler its parameters and query string, and the contract test
+  asserts the coverage. The mock holds state, so the screens agree with each other.
+- **The route guard.** Every staff screen sits behind `RequireSession`; a person
+  without a token is sent to the sign-in rather than into a screen that cannot load.
+- **The access model is enforced on the server.** The consult — the diagnoses, the
+  notes, the medicines — needs the `clinical` capability. A nurse or the front desk
+  cannot read it or sign a prescription, whatever the role's name says.
+- **The atomic structure is enforced.** `eslint-plugin-boundaries` holds the seven
+  module kinds apart: a feature is entered through its index, and no feature may
+  import another.
+- **The mock cannot ship.** A production build fails with the mock on.
 
 ### Not started
 
-Every other product screen. The screen list is deliberately empty until the order is chosen:
+The stations and the Manage band that the nav links to but that have no screen yet.
+Each has a placeholder that says so plainly, so a link never leads to a blank page.
 
 | Screen | Route | Figma frame | Status |
 |---|---|---|---|
-| _(to be confirmed)_ | | | |
+| Patient Kiosk | `/kiosk` | `15:1439` | placeholder — the tablet flow |
+| Nurse Station | `/nurse` | `9:701` | placeholder — the vitals endpoint |
+| Reception Desk | `/desk` | `15:1513` | placeholder — the hand-over endpoint |
+| Billing & POS | `/billing` | `9:986` | placeholder — the billing endpoints |
+| Lab & Diagnostics | `/lab` | `20:2294` | placeholder — the lab endpoints |
+| Appointments | `/schedule` | `17:1592` | placeholder — the appointments endpoints |
+| Doctors | `/doctors` | `22:3106` | placeholder — the doctors and HPR lookup |
+| Staff & roles | `/staff` | `10:942` | placeholder — the staff and roles endpoints |
+| Patient messages | `/messages` | `21:3256` | placeholder — the messages endpoints |
+| Locations | `/locations` | `22:3422` | placeholder — the branches endpoints |
+| Subscription | `/subscription` | `18:1895` | placeholder — the subscription endpoint |
+| Settings | `/settings` | `22:3701` | placeholder — the settings endpoints |
 
 ---
 
