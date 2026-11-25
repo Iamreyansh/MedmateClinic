@@ -66,7 +66,10 @@ public class StaffDirectoryService {
             item.put("initials", initials(person.getFullName()));
             item.put(
                     "role",
-                    person.getRoleId() == null ? "staff" : roleNames.getOrDefault(person.getRoleId(), "staff"));
+                    titleCase(
+                            person.getRoleId() == null
+                                    ? "staff"
+                                    : roleNames.getOrDefault(person.getRoleId(), "staff")));
             item.put("level", levelOf(clinicId, person.getRoleId()));
             item.put(
                     "detail",
@@ -96,6 +99,21 @@ public class StaffDirectoryService {
             }
         }
         return level;
+    }
+
+    /** The role, the way the screen shows it: "Doctor", "Front Desk". */
+    private static String titleCase(String role) {
+        StringBuilder out = new StringBuilder();
+        for (String part : role.replace('_', ' ').split("\\s+")) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            if (out.length() > 0) {
+                out.append(' ');
+            }
+            out.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return out.toString();
     }
 
     /** The person's initials. */
