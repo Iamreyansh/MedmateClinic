@@ -279,6 +279,9 @@ Tabs: My account · This device · Clinic & letterhead · Pharmacies · Ready to
 
 Mobile web, no app needed, opened from the clinic's booking link or an SMS.
 
+> **None of these routes exist in the app yet.** They are the design of record. The live MVP ships no
+> patient-facing surface — see `docs/SCREEN-AUDIT.md` §4.
+
 | Screen | Route | Figma |
 |---|---|---|
 | Book online 1 — Doctor & time | `/book?clinic=<slug>` | `[45:3069]` |
@@ -437,15 +440,24 @@ source, status, priority, symptoms, redFlags, allergies, nurseNote, vitals, inta
 
 ## 8. Figma ↔ live app
 
-The Figma file is the design of record for the whole product; the live MVP implements most of it.
-Everything on the Screens page and the desktop dialogs exists in the running app. The gaps are:
+The Figma file is the design of record for the whole product. The live MVP implements the core of it,
+but not all of it.
 
-- **Mobile screens** exist in Figma (`30:*`, `33:*`, `54:*`, `55:*`) but the live app ships no separate
-  mobile staff build — the staff app is one responsive shell (sidebar collapses to an 84px icon rail at
-  ≤1180px, top bar hides at ≤720px) with no bottom tab bar. Patients get the mobile web pages.
+**Read [`docs/SCREEN-AUDIT.md`](SCREEN-AUDIT.md) for the frame-by-frame matrix.** It was written
+from a full traversal of the live Figma file and is the authority on what is built. Summary:
+
+- **26 desktop screens** → 13 built, 5 partial, 12 placeholder, 0 missing.
+- **41 phone frames** → **0 built.** The live app ships one responsive shell (sidebar collapses to an
+  84px icon rail at ≤1180px, top bar hides at ≤720px) with no bottom tab bar. `MobileHeader` and
+  `MobileTabBar` exist in `src/components/layout/Mobile.tsx` but only the fidelity guide renders them.
+- **Patient-facing web** (`/book`, `/appt`, `/t`, `/intake`, `/verify/*`) is **entirely absent** —
+  there is no route for any of it. The clinic sign-up flow prints a booking link (`/book?clinic=<slug>`)
+  that resolves to a 404.
+- **31 desktop dialogs and drawers** → **0 built.** There is no dialog primitive in the codebase.
 - **Kiosk tablet steps** are in Figma (`58:4013`–`58:4149`) and in the app, but the live kiosk is
   desktop/tablet-width only.
-- **Prototype click-through page** (`58:*`) duplicates the dialogs page with click targets wired.
+- **Prototype click-through page** (`58:*`) duplicates the Screens and Sub-pages pages with click
+  targets wired — it is not new screens.
 - Live app extras not in Figma: the trial banner, the 8-step first-run checklist, the Activity log,
   the Roles & access matrix table, the Readiness checklist (7/13), the DLT message-wording tab.
 - The live app is seeded per clinic; the Figma shows a fictional three-doctor clinic
@@ -463,9 +475,12 @@ Seven pages in all.
 | Foundations | 2 | the palette, the type scale, the component and icon styles |
 | Components | 15 | the component set the screens are built from |
 | Screens | 26 | the desktop screens (above) |
-| Mobile | 40 | patient phone (booking, token, symptoms, verify, legal), kiosk-on-phone, mobile staff screens, mobile landing, mobile sign-up |
-| Sub-pages & dialogs | 40 | patient pages, kiosk tablet steps, 17 dialogs |
-| Prototype — desktop click-through | 40 | 31 dialogs/drawers with click targets wired, plus the patient pages again |
+| Mobile | 41 | patient phone (booking, token, symptoms, verify, legal), kiosk-on-phone, mobile staff screens, mobile landing, mobile sign-up |
+| Sub-pages & dialogs | 70 | patient pages, kiosk tablet steps, 31 dialogs, printouts |
+| Prototype — desktop click-through | 96 | the Screens and Sub-pages frames again, with click targets wired |
+
+Counts are from a full traversal of the live file. The Prototype page duplicates the other two
+content pages, so the file's **98 distinct screens** are 26 desktop + 41 phone + 31 dialogs.
 
 ---
 
