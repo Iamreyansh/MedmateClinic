@@ -12,6 +12,17 @@ export const env = {
   apiBaseUrl: import.meta.env.VITE_API_URL ?? "/api",
   /** The mock answers the API locally until the Java service is running. */
   useMock: import.meta.env.VITE_USE_MOCK !== "false",
+  /**
+   * Whether the clinic is in test mode.
+   *
+   * Test mode means the signatures, the ABDM links and the payments are not
+   * real, so the app says so in a strip at the top rather than letting a
+   * person believe a prescription was signed for money. It is on whenever
+   * the mock is answering, and otherwise it is the deployment's word — set
+   * VITE_TEST_MODE=true when the service behind the app is a test one.
+   */
+  testMode:
+    import.meta.env.VITE_TEST_MODE === "true" || import.meta.env.VITE_USE_MOCK !== "false",
 } as const;
 
 /**

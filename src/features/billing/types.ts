@@ -71,5 +71,5 @@ export type BillingBill = {
   total: number;
   totalInWords: string;
   exemptNote: string;
-  timeline: Array<{ label: string; at: string }>;
+  timeline: Array<{ text: string; at: string }>;
 };

@@ -65,12 +65,40 @@ export type DeskItem = {
   lab: DeskLab;
 };
 
+/** The line under the title. */
+export type DeskMeta = {
+  /** The sentence to show. */
+  label?: string;
+  /** The note itself. */
+  note?: string;
+  /** What the service calls it, when it calls it something else. */
+  text?: string;
+};
+
 export type DeskPayload = {
   counts: {
     toHandOver: number;
     waiting: number;
     doneToday: number;
   };
-  items: DeskItem[];
-  meta: string;
+  /** The rows — the service sends them under `visits`. */
+  visits: DeskItem[];
+  /** The line under the title, from the service: a label and the note. */
+  meta?: DeskMeta | string;
+  /** The service's other name for the same line. */
+  note?: string;
+  /** The bill of supply, when one is open at the till. */
+  invoice?: DeskInvoice | null;
+  /** The charges on that bill. */
+  lines?: Array<{ name: string; amount: number }>;
+  /** The tax on that bill. */
+  gst?: number;
+};
+
+/** The bill of supply the desk is looking at. */
+export type DeskInvoice = {
+  id: string;
+  number: string;
+  total: number;
+  status: string;
 };

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/services/api";
 import { TemplateEditorDialog } from "@/features/templates/components/TemplateEditorDialog";
 import { CATALOGUE } from "@/lib/medicines";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/ScreenStates";
 
 /** One prescription template. */
 export type Template = {
@@ -27,20 +28,32 @@ export function TemplatesView() {
   const [editing, setEditing] = useState<Template | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
+  // a retry asks again — the counter is what changes
+  const [attempt, setAttempt] = useState(0);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let alive = true;
-    apiGet<TemplatesPayload>("/clinic/templates")
+    const controller = new AbortController();
+    apiGet<TemplatesPayload>("/clinic/templates", { signal: controller.signal })
       .then((data) => {
-        if (alive) setPayload(data);
+        if (!alive) return;
+        setPayload(data);
+        setError(null);
       })
       .catch((reason: unknown) => {
         if (!alive) return;
+        if (reason instanceof Error && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load the templates");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
+      controller.abort();
     };
-  }, []);
+  }, [attempt]);
 
   const templates = payload?.items ?? [];
 
@@ -61,16 +74,24 @@ export function TemplatesView() {
         </Button>
       </div>
 
-      {error ? <div className="note red">{error}</div> : null}
+      {error ? (
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            setAttempt((value) => value + 1);
+          }}
+        />
+      ) : null}
 
-      {templates.length === 0 && !error ? (
-        <section className="card" style={{ padding: 18 }}>
-          <b style={{ fontSize: 15 }}>No templates yet</b>
-          <p className="t-cap" style={{ marginTop: 4 }}>
-            Build one for the conditions you treat most, such as viral fever or acidity, or copy one from
-            a colleague.
-          </p>
-        </section>
+      {loading && !payload ? <LoadingState title="Loading the templates…" /> : null}
+
+      {templates.length === 0 && !error && !loading ? (
+        <EmptyState
+          title="No templates yet"
+          copy="Build one for the conditions you treat most, such as viral fever or acidity, or copy one from a colleague."
+          icon="rx"
+        />
       ) : null}
 
       <div className="tpl-grid">

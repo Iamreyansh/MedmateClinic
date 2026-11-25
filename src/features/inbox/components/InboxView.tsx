@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { apiGet } from "@/services/api";
 import { CallPatientDialog } from "@/features/inbox/components/CallPatientDialog";
 import { SendMessageDialog } from "@/features/inbox/components/SendMessageDialog";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/ScreenStates";
 
 /** One thing in the doctor's inbox. */
 export type InboxItem = {
@@ -47,20 +48,32 @@ export function InboxView() {
   const [calling, setCalling] = useState(false);
   const [messaging, setMessaging] = useState(false);
 
+  // a retry asks again — the counter is what changes
+  const [attempt, setAttempt] = useState(0);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let alive = true;
-    apiGet<InboxPayload>("/clinic/inbox")
+    const controller = new AbortController();
+    apiGet<InboxPayload>("/clinic/inbox", { signal: controller.signal })
       .then((data) => {
-        if (alive) setPayload(data);
+        if (!alive) return;
+        setPayload(data);
+        setError(null);
       })
       .catch((reason: unknown) => {
         if (!alive) return;
+        if (reason instanceof Error && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load the inbox");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
+      controller.abort();
     };
-  }, []);
+  }, [attempt]);
 
   const items = payload?.items ?? [];
   const filtered = filter === "All" ? items : items.filter((item) => item.kind === filter);
@@ -98,17 +111,30 @@ export function InboxView() {
         ))}
       </div>
 
-      {error ? <div className="note red">{error}</div> : null}
+      {error ? (
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            setAttempt((value) => value + 1);
+          }}
+        />
+      ) : null}
+
+      {loading && !payload ? <LoadingState title="Loading the inbox…" /> : null}
 
       <div className="rx-grid">
         <div className="ibx-list">
           {filtered.length === 0 ? (
-            <div className="card" style={{ padding: 18 }}>
-              <b style={{ fontSize: 15 }}>Nothing here</b>
-              <p className="t-cap" style={{ marginTop: 4 }}>
-                There is nothing in this bucket. Everything has been seen.
-              </p>
-            </div>
+            <EmptyState
+              title="Nothing here"
+              copy={
+                filter === "All"
+                  ? "There is nothing in the inbox. Results, referrals and handovers land here."
+                  : "There is nothing in this bucket. Everything has been seen."
+              }
+              icon="inbox"
+            />
           ) : (
             filtered.map((item) => (
               <button

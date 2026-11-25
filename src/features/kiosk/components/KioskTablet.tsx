@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactElement } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
@@ -27,6 +28,76 @@ const LANGUAGES: Array<{ value: KioskLanguage; label: string }> = [
   { value: "hi", label: "हिन्दी" },
 ];
 
+/** The steps of the check-in, in order. */
+const STEPS = [
+  { value: "mobile", label: "Mobile" },
+  { value: "code", label: "Code" },
+  { value: "patient", label: "Patient" },
+  { value: "doctor", label: "Doctor" },
+  { value: "pay", label: "Pay" },
+] as const;
+
+/**
+ * The QR the patient scans with their phone.
+ *
+ * The pattern is drawn from the kiosk's own link, so the same clinic always
+ * shows the same code and a different clinic shows a different one.
+ */
+function qrPattern(seed: string) {
+  const size = 21;
+  const cells: boolean[][] = [];
+  let hash = 2166136261;
+  for (const character of seed) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  for (let row = 0; row < size; row += 1) {
+    const line: boolean[] = [];
+    for (let column = 0; column < size; column += 1) {
+      hash ^= hash << 13;
+      hash ^= hash >>> 17;
+      hash ^= hash << 5;
+      line.push((hash >>> 3) % 2 === 0);
+    }
+    cells.push(line);
+  }
+  // the three finder squares every QR carries
+  const finder = (top: number, left: number) => {
+    for (let row = 0; row < 7; row += 1) {
+      for (let column = 0; column < 7; column += 1) {
+        const edge = row === 0 || row === 6 || column === 0 || column === 6;
+        const middle = row >= 2 && row <= 4 && column >= 2 && column <= 4;
+        cells[top + row][left + column] = edge || middle;
+      }
+    }
+  };
+  finder(0, 0);
+  finder(0, size - 7);
+  finder(size - 7, 0);
+
+  const modules: ReactElement[] = [];
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column < size; column += 1) {
+      if (!cells[row][column]) continue;
+      modules.push(
+        <rect
+          key={`${row}-${column}`}
+          x={column}
+          y={row}
+          width={1}
+          height={1}
+          fill="var(--forest)"
+        />,
+      );
+    }
+  }
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Scan this code with your phone">
+      {modules}
+    </svg>
+  );
+}
+
 /**
  * The tablet.
  *
@@ -48,6 +119,8 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [idle, setIdle] = useState(false);
+  /** The patient has tapped to check in — before that, the kiosk waits. */
+  const [started, setStarted] = useState(false);
 
   // The patient may have walked away. After 45 seconds the kiosk asks.
   useEffect(() => {
@@ -58,6 +131,13 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
 
   /** Every change is activity — the idle timer starts again. */
   const touch = () => setIdle(false);
+
+  /** Start again: the welcome comes back and the session is cleared. */
+  const startOver = () => {
+    touch();
+    setStarted(false);
+    void run(() => resetKiosk());
+  };
 
   const run = async (action: () => Promise<KioskSession>) => {
     setBusy(true);
@@ -84,26 +164,49 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
           Med<span className="m">Mate</span>
         </div>
       </div>
-      <div className="kiosk-lang" role="group" aria-label="Language">
-        {LANGUAGES.map((entry) => (
-          <button
-            key={entry.value}
-            type="button"
-            className={session.language === entry.value ? "on" : ""}
-            onClick={() => chooseLanguage(entry.value)}
-          >
-            {entry.label}
-          </button>
-        ))}
+      <div className="kiosk-head-r">
+        <span className="kiosk-clinic">MedMate Clinic Indiranagar</span>
+        <div className="kiosk-lang" role="group" aria-label="Language">
+          {LANGUAGES.map((entry) => (
+            <button
+              key={entry.value}
+              type="button"
+              className={cn(session.language === entry.value && "on")}
+              onClick={() => chooseLanguage(entry.value)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
+
+  /** The strip that shows how far the patient has got. */
+  const strip = useMemo(() => {
+    const current = STEPS.findIndex((entry) => entry.value === session.step);
+    return (
+      <ol className="kiosk-steps">
+        {STEPS.map((entry, index) => {
+          const done = current > index || session.step === "token";
+          const now = current === index;
+          return (
+            <li key={entry.value} className={cn(done && "done", now && "now")}>
+              <span>{done ? "✓" : index + 1}</span>
+              {entry.label}
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }, [session.step]);
 
   const step = session.step;
 
   return (
     <div className="kiosk">
       {head}
+      {strip}
 
       <div className="kiosk-body">
         {error ? (
@@ -124,7 +227,7 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
               className="kiosk-go"
               onClick={() => {
                 setIdle(false);
-                void run(() => resetKiosk());
+                startOver();
               }}
             >
               Start again
@@ -132,7 +235,54 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
           </div>
         ) : null}
 
-        {!idle && step === "mobile" ? (
+        {!idle && step === "mobile" && !started ? (
+          <div className="kiosk-card">
+            <div className="kiosk-home">
+              <div>
+                <div className="t-eyebrow">Self check-in</div>
+                <h1>Welcome</h1>
+                <p>
+                  Check in for your appointment, or see a doctor today. It takes about a minute.
+                </p>
+                <Button
+                  className="kiosk-go"
+                  onClick={() => {
+                    touch();
+                    setStarted(true);
+                  }}
+                >
+                  Tap to check in
+                  <Icon name="chev" size={18} />
+                </Button>
+              </div>
+
+              <div className="kiosk-qr">
+                <div className="kiosk-qr-img">
+                  {qrPattern(session.qr ?? "medmate-clinic")}
+                </div>
+                <b>Or use your phone</b>
+                <small>Scan with your camera. No app needed.</small>
+              </div>
+
+              <div className="kiosk-docs-wrap">
+                <div className="t-eyebrow">Doctors today</div>
+                <div className="kiosk-docs">
+                  {session.doctors.map((doctor) => (
+                    <div key={doctor.id}>
+                      <b>{doctor.name}</b>
+                      <span>
+                        {doctor.speciality} · {doctor.room}
+                      </span>
+                      <em>{doctor.waiting ? `${doctor.waiting} waiting` : "No wait"}</em>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {!idle && step === "mobile" && started ? (
           <div className="kiosk-card center">
             <span className="kiosk-ic">
               <Icon name="phone" size={28} />
@@ -140,11 +290,11 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
             <h1>Welcome</h1>
             <p>Enter your mobile number. We will send you a code to confirm it is you.</p>
             <input
-              className="kiosk-in"
+              className="kiosk-in input"
               type="tel"
               inputMode="numeric"
               maxLength={10}
-              placeholder="Mobile number"
+              placeholder="10-digit mobile number"
               aria-label="Mobile number"
               value={phone}
               onChange={(event) => {
@@ -154,8 +304,11 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
             />
             <Button
               className="kiosk-go"
-              disabled={phone.length !== 10 || busy}
-              onClick={() => void run(() => sendKioskCode({ phone }))}
+              disabled={busy || phone.length !== 10}
+              onClick={() => {
+                touch();
+                void run(() => sendKioskCode({ phone }));
+              }}
             >
               {busy ? "Sending…" : "Send the code"}
             </Button>
@@ -179,11 +332,11 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
               )}
             </div>
             <input
-              className="kiosk-in"
+              className="kiosk-in input"
               type="tel"
               inputMode="numeric"
               maxLength={6}
-              placeholder="Code"
+              placeholder="6-digit code"
               aria-label="The code we sent"
               value={code}
               onChange={(event) => {
@@ -193,8 +346,11 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
             />
             <Button
               className="kiosk-go"
-              disabled={code.length !== 6 || busy}
-              onClick={() => void run(() => verifyKioskCode({ phone: session.phone ?? "", code }))}
+              disabled={busy || code.length !== 6}
+              onClick={() => {
+                touch();
+                void run(() => verifyKioskCode({ phone: session.phone ?? "", code }));
+              }}
             >
               {busy ? "Checking…" : "Continue"}
             </Button>
@@ -203,16 +359,16 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
 
         {!idle && step === "patient" ? (
           <div className="kiosk-card">
-            <h2>Who are you?</h2>
+            <h2>Who is seeing the doctor?</h2>
             <p>So the doctor knows who is coming in.</p>
             <div className="kiosk-form">
               <div className="field">
-                <label htmlFor="kiosk-name">Name</label>
+                <label htmlFor="kiosk-name">Full name</label>
                 <input
                   id="kiosk-name"
-                  className="kiosk-text input"
+                  className="input kiosk-text"
                   value={name}
-                  placeholder="Your name"
+                  placeholder="Full name"
                   onChange={(event) => {
                     touch();
                     setName(event.target.value);
@@ -221,15 +377,15 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
               </div>
               <div className="kiosk-row2">
                 <div className="field">
-                  <label htmlFor="kiosk-age">Age</label>
+                  <label htmlFor="kiosk-age">Age (years)</label>
                   <input
                     id="kiosk-age"
-                    className="kiosk-text input"
-                    type="number"
+                    className="input kiosk-text"
+                    type="tel"
                     inputMode="numeric"
                     maxLength={3}
                     value={age}
-                    placeholder="Years"
+                    placeholder="Age"
                     onChange={(event) => {
                       touch();
                       setAge(event.target.value.replace(/\D/g, "").slice(0, 3));
@@ -239,28 +395,77 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
                 <div className="field">
                   <label>Sex</label>
                   <div className="kiosk-seg yn">
-                    {["F", "M"].map((option) => (
+                    {[
+                      { value: "F", label: "Female" },
+                      { value: "M", label: "Male" },
+                      { value: "O", label: "Other" },
+                    ].map((option) => (
                       <button
-                        key={option}
+                        key={option.value}
                         type="button"
-                        className={sex === option ? "on" : ""}
+                        className={cn(sex === option.value && "on")}
                         onClick={() => {
                           touch();
-                          setSex(option);
+                          setSex(option.value);
                         }}
                       >
-                        {option === "F" ? "Female" : "Male"}
+                        {option.label}
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
+              <div className="field">
+                <label>Allergic to any medicine?</label>
+                <div className="kiosk-seg yn">
+                  {[
+                    { value: "N", label: "No" },
+                    { value: "Y", label: "Yes" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={cn(sex === option.value && "on")}
+                      onClick={() => {
+                        touch();
+                        setSex(option.value);
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="kiosk-phone">Mobile</label>
+                <input
+                  id="kiosk-phone"
+                  className="input kiosk-text"
+                  value={phone ? `+91 ${phone.slice(0, 5)} ${phone.slice(5)}` : ""}
+                  placeholder="Mobile"
+                  readOnly
+                />
+              </div>
+            </div>
+            <div className="kiosk-acts">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  touch();
+                  startOver();
+                }}
+              >
+                Start again
+              </Button>
               <Button
                 className="kiosk-go"
-                disabled={name.trim().length === 0 || busy}
-                onClick={() => void run(() => setKioskPatient({ name, age, sex }))}
+                disabled={busy || name.trim().length < 2}
+                onClick={() => {
+                  touch();
+                  void run(() => setKioskPatient({ name, age, sex }));
+                }}
               >
-                Continue
+                {busy ? "Saving…" : "Continue"}
               </Button>
             </div>
           </div>
@@ -296,10 +501,13 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
             </div>
             <Button
               className="kiosk-go"
-              disabled={!doctorId || busy}
-              onClick={() => void run(() => chooseKioskDoctor({ doctorId }))}
+              disabled={busy || !doctorId}
+              onClick={() => {
+                touch();
+                void run(() => chooseKioskDoctor({ doctorId }));
+              }}
             >
-              Continue
+              {busy ? "Saving…" : "Continue"}
             </Button>
           </div>
         ) : null}
@@ -331,7 +539,7 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
                 <button
                   key={option.value}
                   type="button"
-                  className={method === option.value ? "on" : ""}
+                  className={cn(method === option.value && "on")}
                   onClick={() => {
                     touch();
                     setMethod(option.value);
@@ -342,13 +550,16 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
               ))}
             </div>
             <div className="kiosk-acts kiosk-pay">
-              <Button variant="secondary" onClick={() => void run(() => resetKiosk())}>
+              <Button variant="secondary" onClick={startOver}>
                 Cancel
               </Button>
               <Button
                 className="kiosk-go"
                 disabled={busy}
-                onClick={() => void run(() => payKiosk({ method }))}
+                onClick={() => {
+                  touch();
+                  void run(() => payKiosk({ method }));
+                }}
               >
                 {busy ? "Paying…" : `Pay ₹${session.bill?.total ?? 0}`}
               </Button>
@@ -377,20 +588,31 @@ export function KioskTablet({ session, onChange }: KioskTabletProps) {
             <Button
               className="kiosk-go"
               disabled={busy}
-              onClick={() => void run(() => takeKioskToken())}
+              onClick={() => {
+                touch();
+                void run(() => takeKioskToken());
+              }}
             >
               {busy ? "Printing…" : "Print my slip"}
             </Button>
             <Button
-              variant="ghost"
+              variant="secondary"
               style={{ marginTop: 10 }}
-              onClick={() => void run(() => resetKiosk())}
+              onClick={() => {
+                touch();
+                void run(() => resetKiosk());
+              }}
             >
               Done
             </Button>
           </div>
         ) : null}
       </div>
+
+      <button type="button" className="kiosk-staff">
+        <Icon name="lock" size={14} />
+        Staff
+      </button>
     </div>
   );
 }

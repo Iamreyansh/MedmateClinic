@@ -50,19 +50,9 @@ export function SubscriptionScreen() {
     <AppShell activeHref="/subscription">
       <div className="nq-bar">
         <div>
-          <h1 className="t-h1">
-            Subscription <em>&amp; plan</em>
-          </h1>
+          <h1 className="t-h1">Subscription</h1>
           <p style={{ color: "var(--muted)", marginTop: 4 }}>
-            {payload
-              ? `${payload.planName} · ${
-                  state === "trial"
-                    ? `${payload.trialDaysLeft} days of trial left`
-                    : state === "ended"
-                      ? "the plan has ended"
-                      : "active"
-                }`
-              : "Loading the plan…"}
+            Your MedMate plan, what it includes, and payments.
           </p>
         </div>
         <div className="nq-btns">
@@ -95,17 +85,15 @@ export function SubscriptionScreen() {
         )}
       >
         <div className="sb-plan">
-          <div className="t-eyebrow">
-            {state === "trial" ? "On trial" : state === "ended" ? "Ended" : "Active"}
-          </div>
+          <div className="t-eyebrow">Your plan</div>
           <h2 className="t-h2" style={{ marginTop: 6 }}>
-            {payload?.planName ?? "—"} plan
+            {state === "trial" ? "Free trial" : (payload?.planName ?? "—")}
           </h2>
           <p>
             {state === "trial"
-              ? `The trial ends on ${payload?.trialEndsOn ?? "—"}. After that the plan starts at ${
-                  money(current?.price ?? 0)
-                } a year.`
+              ? `${payload?.trialDaysLeft ?? 0} days left of your ${
+                  payload?.trialDaysLeft ?? 14
+                }-day trial of the ${payload?.planName ?? "Clinic"} plan.`
               : state === "ended"
                 ? "The plan has ended. Nothing is lost — the records stay, and the plan can start again."
                 : `Renews on ${payload?.renewalOn ?? "—"}.`}
@@ -133,18 +121,29 @@ export function SubscriptionScreen() {
         </div>
       </section>
 
-      <div className="t-eyebrow" style={{ marginBottom: 8 }}>
-        The plans
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <h2 className="t-h2">Choose a plan</h2>
+        <span className="t-cap">Prices per clinic, plus 18% GST</span>
       </div>
       <div className="plan-grid">
         {(payload?.plans ?? []).map((plan) => (
           <section className="card plan-col" key={plan.id}>
             <b style={{ fontSize: 16, color: "var(--forest)" }}>{plan.name}</b>
             <div style={{ marginTop: 4, fontSize: 22, fontWeight: 800, color: "var(--forest)" }}>
-              {plan.price > 0 ? money(plan.price) : "Talk to us"}
+              {plan.price > 0 ? `${money(Math.round(plan.price / 12))} / month` : "Custom"}
             </div>
             <p className="t-cap" style={{ marginTop: 4 }}>
-              {plan.summary}
+              {plan.price > 0
+                ? `${money(plan.price)} billed yearly · 2 months free · 18% GST`
+                : plan.summary}
             </p>
             <ul className="plan-list" style={{ marginTop: 10 }}>
               {plan.includes.map((line) => (
@@ -179,6 +178,14 @@ export function SubscriptionScreen() {
             </div>
           </section>
         ))}
+      </div>
+
+      <div className="note gold" style={{ marginTop: 14 }}>
+        <Icon name="alert" size={18} />
+        <span>
+          <b>Test payments.</b> Payment keys aren&rsquo;t set on this site, so upgrades use a test
+          payment and no money moves.
+        </span>
       </div>
 
       {payload?.lastPayment ? (

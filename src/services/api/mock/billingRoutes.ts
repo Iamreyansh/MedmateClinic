@@ -38,6 +38,15 @@ export function registerBillingRoutes() {
       };
     });
 
+    // The money still to collect is its own row — the till shows four bars,
+    // the last one being what has not come in yet.
+    byMode.push({
+      mode: "pending",
+      label: "Pending",
+      amount: pendingAmount,
+      bills: pending.length,
+    });
+
     const pendingItems = pending.map((bill) => {
       const person = patientByVisit(bill.visitId);
       return {
@@ -66,7 +75,8 @@ export function registerBillingRoutes() {
         pendingAmount,
         refundCount: refunded.length,
         refundAmount,
-        dayBills: invoices.length,
+        // The bills raised today — not every bill the clinic has ever raised.
+        dayBills: invoices.filter((bill) => (bill.createdAt ?? "").startsWith("2026-11-25")).length,
       },
       byMode,
       pending: pendingItems,

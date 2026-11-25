@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiGet } from "@/services/api";
 import type { VisitResponse } from "@/types/visit";
+import type { PatientRecord } from "@/types/patient";
 
 /**
  * The medical certificate.
@@ -11,28 +12,84 @@ import type { VisitResponse } from "@/types/visit";
  */
 export function CertificatePaper() {
   const [params] = useSearchParams();
-  const visitId = params.get("visit") ?? "";
+  // the visit may be named outright, or found from the patient's record
+  const wanted = params.get("visit") ?? "";
+  const patientId = params.get("patient") ?? "";
   const [data, setData] = useState<VisitResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** What has been loaded, so a new visit shows its own loading again. */
+  const [loaded, setLoaded] = useState<string | null>(null);
+
+  const target = wanted || (patientId ? `patient:${patientId}` : "");
+  const loading = target !== "" && loaded !== target && error === null;
 
   useEffect(() => {
-    if (!visitId) return;
     let alive = true;
-    apiGet<VisitResponse>(`/clinic/visits/${visitId}`)
+    if (!target) {
+      return () => {
+        alive = false;
+      };
+    }
+
+    /** The visit the certificate is about. */
+    async function resolve(): Promise<string> {
+      if (wanted) return wanted;
+      const record = await apiGet<PatientRecord>(`/clinic/patients/${patientId}`);
+      const latest = record.visits[0];
+      if (!latest) throw new Error("This patient has no visits yet.");
+      return latest.id;
+    }
+
+    resolve()
+      .then((visitId) => apiGet<VisitResponse>(`/clinic/visits/${visitId}`))
       .then((value) => {
         if (alive) setData(value);
       })
       .catch((reason: unknown) => {
         if (!alive) return;
         setError(reason instanceof Error ? reason.message : "Could not load the certificate");
+      })
+      .finally(() => {
+        if (alive) setLoaded(target);
       });
     return () => {
       alive = false;
     };
-  }, [visitId]);
+  }, [target, wanted, patientId]);
 
-  if (error) return <div className="note red">{error}</div>;
+  if (error) {
+    return (
+      <div className="paper-wrap">
+        <div className="paper">
+          <div className="note red">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
   if (!data) {
+    // No visit was chosen. Say so plainly rather than waiting for ever.
+    if (!loading) {
+      return (
+        <div className="paper-wrap">
+          <div className="paper">
+            <b style={{ fontSize: 15 }}>No visit chosen</b>
+            <p className="t-cap" style={{ marginTop: 6 }}>
+              A certificate is written for a visit. Open it from the doctor&rsquo;s console, or from
+              the patient&rsquo;s record.
+            </p>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <Link className="btn sec" to="/queue">
+                Doctor console
+              </Link>
+              <Link className="btn sec" to="/patients">
+                Patient records
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="paper-wrap">
         <div className="paper">

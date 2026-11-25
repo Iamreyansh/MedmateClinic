@@ -18,6 +18,8 @@ export type MockContext = {
   params: Record<string, string>;
   /** The query string, parsed. */
   query: URLSearchParams;
+  /** The request headers, in lower case. */
+  headers: Record<string, string>;
 };
 
 export type Handler = (body: unknown, context: MockContext) => unknown;
@@ -78,7 +80,7 @@ export const mock = {
     method: string,
     target: string,
     body: unknown,
-    context?: MockContext,
+    context?: Partial<MockContext>,
   ): Promise<unknown> => {
     const { path, query } = split(target);
     const wanted = method.toUpperCase();
@@ -89,7 +91,7 @@ export const mock = {
       throw new Error(`no mock for ${wanted} ${path}`);
     }
     const params = matches(route, path) ?? {};
-    return route.handler(body, { params, query, ...context });
+    return route.handler(body, { params, query, headers: {}, ...context });
   },
 
   /** Whether a path is answered. Used by the contract test. */

@@ -16,6 +16,11 @@ type Step = "doctor" | "details" | "confirmed";
  * The patient arrives here from the clinic's own link. One question a step:
  * who to see, then their details, then the confirmation.
  */
+/** A key for one booking attempt. */
+function newAttemptKey(): string {
+  return `book-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function BookScreen() {
   const [params] = useSearchParams();
   const slug = params.get("clinic") ?? "";
@@ -33,6 +38,8 @@ export function BookScreen() {
   const [reason, setReason] = useState("");
   const [booking, setBooking] = useState<BookResult | null>(null);
   const [busy, setBusy] = useState(false);
+  // One key per attempt, so a double tap cannot make two visits.
+  const [attemptKey, setAttemptKey] = useState(() => newAttemptKey());
 
   useEffect(() => {
     let alive = true;
@@ -58,18 +65,23 @@ export function BookScreen() {
     setBusy(true);
     setError(null);
     try {
-      const result = await bookVisit({
-        clinic: slug,
-        doctorId,
-        startsAt,
-        name,
-        phone,
-        age,
-        sex,
-        reason,
-      });
+      const result = await bookVisit(
+        {
+          clinic: slug,
+          doctorId,
+          startsAt,
+          name,
+          phone,
+          age,
+          sex,
+          reason,
+        },
+        attemptKey,
+      );
       setBooking(result);
       setStep("confirmed");
+      // The next attempt gets its own key.
+      setAttemptKey(newAttemptKey());
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Could not book the visit");
     } finally {
@@ -265,9 +277,9 @@ export function BookScreen() {
               {booking.clinic} · {booking.doctor}
             </p>
             <div className="kiosk-token" style={{ fontSize: 44 }}>
-              {booking.token}
+              {booking.queueToken}
             </div>
-            <div className="kiosk-token-l">Your token</div>
+              <div className="kiosk-token-l">Your queue number</div>
 
             <div className="live-row" style={{ marginTop: 18, textAlign: "left" }}>
               <span>Keep this link to track your turn</span>

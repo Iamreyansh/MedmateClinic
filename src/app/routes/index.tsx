@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
 import { LandingScreen } from "@/features/landing";
 import { LoginScreen, LockScreen } from "@/features/auth";
@@ -5,7 +6,7 @@ import { StartScreen } from "@/features/onboarding";
 import { DashboardScreen } from "@/features/dashboard";
 import { QueueScreen } from "@/features/queue";
 import { ConsultScreen } from "@/features/consult";
-import { PatientRecordScreen } from "@/features/patients";
+import { PatientListScreen, PatientRecordScreen } from "@/features/patients";
 import { InboxScreen } from "@/features/inbox";
 import { TeleconsultScreen } from "@/features/teleconsult";
 import { TemplatesScreen } from "@/features/templates";
@@ -18,13 +19,35 @@ import { ScheduleScreen } from "@/features/schedule";
 import { SubscriptionScreen } from "@/features/subscription";
 import { SettingsScreen } from "@/features/settings";
 import { DevToolsScreen } from "@/features/dev-tools";
+import { MessagesScreen } from "@/features/messages";
 import { PlaceholderScreen } from "@/features/placeholders";
 import { NurseScreen } from "@/features/nurse";
 import { LabScreen } from "@/features/lab";
-import { KioskScreen } from "@/features/kiosk";
-import { BookScreen, LiveTokenScreen, IntakeScreen, VerifyScreen } from "@/features/patient-web";
 import { RequireSession } from "@/app/routes/RequireSession";
 import { NotFoundScreen } from "@/app/routes/NotFoundScreen";
+
+/**
+ * The surfaces a clinic tablet never opens.
+ *
+ * The patient-facing web and the kiosk are fetched when they are asked for, so
+ * the first bundle a doctor opens does not carry them. Each lazy call names
+ * one screen, but they share one chunk — the feature is fetched once.
+ */
+const BookScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.BookScreen })),
+);
+const LiveTokenScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.LiveTokenScreen })),
+);
+const IntakeScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.IntakeScreen })),
+);
+const VerifyScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.VerifyScreen })),
+);
+const KioskScreen = lazy(() =>
+  import("@/features/kiosk").then((module) => ({ default: module.KioskScreen })),
+);
 
 /**
  * The routes.
@@ -51,7 +74,9 @@ export const routes: RouteObject[] = [
   ...guard("/dashboard", <DashboardScreen />),
   ...guard("/queue", <QueueScreen />),
   ...guard("/visit/:id", <ConsultScreen />),
-  ...guard("/patients", <PatientRecordScreen />),
+  // The list is the front door; the record is one patient inside it.
+  ...guard("/patients", <PatientListScreen />),
+  ...guard("/patients/:id", <PatientRecordScreen />),
   ...guard("/inbox", <InboxScreen />),
   ...guard("/teleconsult", <TeleconsultScreen />),
   ...guard("/templates", <TemplatesScreen />),
@@ -74,10 +99,6 @@ export const routes: RouteObject[] = [
     <LabScreen />,
   ),
   ...guard(
-    "/kiosk",
-    <KioskScreen />,
-  ),
-  ...guard(
     "/doctors",
     <PlaceholderScreen
       activeHref="/doctors"
@@ -97,16 +118,7 @@ export const routes: RouteObject[] = [
       dependsOn="the staff and roles endpoints"
     />,
   ),
-  ...guard(
-    "/messages",
-    <PlaceholderScreen
-      activeHref="/messages"
-      title="Patient messages"
-      icon="send"
-      purpose="Every message to a patient, word for word, and the wording to register."
-      dependsOn="the messages endpoints"
-    />,
-  ),
+  ...guard("/messages", <MessagesScreen />),
   ...guard(
     "/locations",
     <PlaceholderScreen
@@ -133,6 +145,11 @@ export const routes: RouteObject[] = [
       purpose="The terms of service, the data processing agreement and the clinic declaration."
     />,
   ),
+
+  // The kiosk is a device at the front of the clinic, not a screen in the
+  // staff app: a patient walks up to it and nobody is signed in. So it stands
+  // outside the shell and outside the session guard.
+  { path: "/kiosk", element: <KioskScreen /> },
 
   { path: "/fidelity", element: <DevToolsScreen /> },
   { path: "*", element: <NotFoundScreen /> },
