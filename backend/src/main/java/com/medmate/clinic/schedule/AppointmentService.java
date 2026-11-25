@@ -38,7 +38,7 @@ public class AppointmentService {
     private static final DateTimeFormatter DAY_LABEL = DateTimeFormatter.ofPattern("EEEE, d MMM yyyy");
     private static final DateTimeFormatter COLUMN_LABEL = DateTimeFormatter.ofPattern("EEE d");
     private static final LocalTime DAY_START = LocalTime.of(9, 0);
-    private static final LocalTime DAY_END = LocalTime.of(19, 0);
+    private static final LocalTime DAY_END = LocalTime.of(20, 0);
     private static final int SLOT_MINUTES = 30;
 
     private final AppointmentRepository appointments;
@@ -212,7 +212,10 @@ public class AppointmentService {
         body.put("dayEnd", DAY_END.format(CLOCK));
         body.put("slotMinutes", SLOT_MINUTES);
         body.put("slots", slots);
+        // The canonical key is appointments; items is kept as an alias so a
+        // screen that was written against the older name keeps working.
         body.put("appointments", items);
+        body.put("items", items);
         body.put("summary", summary);
         return body;
     }
@@ -259,6 +262,8 @@ public class AppointmentService {
             column.put("dayName", date.getDayOfWeek().getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH));
             column.put("booked", entry.getValue().size());
             column.put("isToday", date.equals(LocalDate.now(zone)));
+            // The canonical key is appointments; items is kept as an alias.
+            column.put("appointments", entry.getValue());
             column.put("items", entry.getValue());
             days.add(column);
         }
@@ -273,6 +278,9 @@ public class AppointmentService {
         body.put("from", monday.toString());
         body.put("to", saturday.toString());
         body.put("days", days);
+        // The canonical key is appointments; items is kept as an alias.
+        body.put("appointments", days);
+        body.put("items", days);
         body.put("summary", summary);
         return body;
     }
@@ -298,6 +306,11 @@ public class AppointmentService {
                                         - appointment.getStartsAt().getEpochSecond())
                                 / 60);
         item.put("doctorId", appointment.getDoctorId() == null ? null : appointment.getDoctorId().toString());
+        item.put("doctor", doctorName(clinicId, appointment.getDoctorId()));
+        item.put("visitId", appointment.getVisitId() == null ? null : appointment.getVisitId().toString());
+        item.put("patientId", appointment.getPatientId() == null ? null : appointment.getPatientId().toString());
+        item.put("source", appointment.getSource());
+        item.put("room", appointment.getDoctorId() == null ? null : doctorName(clinicId, appointment.getDoctorId()));
 
         Map<String, Object> patient = new LinkedHashMap<>();
         patients.findById(appointment.getPatientId()).ifPresent(person -> {

@@ -32,18 +32,21 @@ public class QueueController {
     private final PatientRepository patientRepository;
     private final StaffRepository staffRepository;
     private final ClinicZoneService zoneService;
+    private final com.medmate.clinic.vital.VitalsRepository vitalsRepository;
 
     public QueueController(
             CurrentClinic current,
             VisitRepository visitRepository,
             PatientRepository patientRepository,
             StaffRepository staffRepository,
-            ClinicZoneService zoneService) {
+            ClinicZoneService zoneService,
+            com.medmate.clinic.vital.VitalsRepository vitalsRepository) {
         this.current = current;
         this.visitRepository = visitRepository;
         this.patientRepository = patientRepository;
         this.staffRepository = staffRepository;
         this.zoneService = zoneService;
+        this.vitalsRepository = vitalsRepository;
     }
 
     @GetMapping("/queue")
@@ -74,6 +77,9 @@ public class QueueController {
             item.put("detail", visit.getDetail());
             item.put("wait", wait(visit));
             item.put("waiting", waitingFor(visit, clinicId));
+            // The reading the nurse took: the doctor reads it beside the
+            // patient's name, and without it the line is blank.
+            item.put("vitals", vitalsFor(visit, clinicId));
             items.add(item);
         }
 
@@ -103,6 +109,44 @@ public class QueueController {
                         + " waiting · "
                         + seenToday
                         + " seen today");
+        return body;
+    }
+
+    /** The patient's last reading, as the queue shows it. */
+    private Map<String, Object> vitalsFor(Visit visit, UUID clinicId) {
+        com.medmate.clinic.vital.Vitals reading =
+                vitalsRepository
+                        .findFirstByClinicIdAndVisitIdOrderByRecordedAtDesc(clinicId, visit.getId())
+                        .orElse(null);
+        if (reading == null) {
+            return null;
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", reading.getId().toString());
+        body.put("visitId", reading.getVisitId().toString());
+        body.put(
+                "recordedAt",
+                reading.getRecordedAt() == null ? null : reading.getRecordedAt().toString());
+        body.put(
+                "tempF",
+                reading.getTempF() == null ? null : reading.getTempF().stripTrailingZeros().toPlainString());
+        body.put(
+                "bp",
+                reading.getBpSystolic() == null || reading.getBpDiastolic() == null
+                        ? null
+                        : reading.getBpSystolic() + "/" + reading.getBpDiastolic());
+        body.put("bpSystolic", reading.getBpSystolic());
+        body.put("bpDiastolic", reading.getBpDiastolic());
+        body.put("pulse", reading.getPulse());
+        body.put("spo2", reading.getSpo2());
+        body.put("breathRate", reading.getBreathRate());
+        body.put("weightKg", reading.getWeightKg());
+        body.put("heightCm", reading.getHeightCm());
+        body.put("sugarMg", reading.getSugarMg());
+        body.put("note", reading.getNote());
+        body.put("priority", reading.getPriority());
+        body.put("sentTo", reading.getSentTo() == null ? null : reading.getSentTo().toString());
+        body.put("recordedBy", reading.getRecordedBy() == null ? null : reading.getRecordedBy().toString());
         return body;
     }
 

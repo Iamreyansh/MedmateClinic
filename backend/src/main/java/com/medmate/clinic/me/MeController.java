@@ -11,7 +11,9 @@ import com.medmate.clinic.staff.Staff;
 import com.medmate.clinic.staff.StaffRepository;
 import com.medmate.clinic.tenancy.RegistryClinic;
 import com.medmate.clinic.tenancy.RegistryClinicRepository;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,7 +68,23 @@ public class MeController {
             }
         }
 
+        // The clinic's doctors, as the session screen shows them: the doctor
+        // consoles the person can open.
+        List<Map<String, Object>> doctors = new ArrayList<>();
+        for (Staff person : staffRepository.findByClinicId(clinicId)) {
+            Map<String, Object> doctor = new LinkedHashMap<>();
+            doctor.put("id", person.getId().toString());
+            doctor.put("name", person.getFullName());
+            doctor.put("initials", initials(person.getFullName()));
+            doctor.put("speciality", person.getSpeciality() == null ? "" : person.getSpeciality());
+            doctor.put("room", person.getSpeciality() == null ? "" : person.getSpeciality());
+            doctor.put("registration", person.getRegistration() == null ? "" : person.getRegistration());
+            doctor.put("hpr", person.getHprId() == null ? "" : person.getHprId());
+            doctors.add(doctor);
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
+        body.put("doctors", doctors);
         body.put(
                 "clinic",
                 Map.of(

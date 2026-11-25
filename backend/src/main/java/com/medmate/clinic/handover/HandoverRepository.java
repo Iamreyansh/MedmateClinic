@@ -10,4 +10,7 @@ public interface HandoverRepository extends JpaRepository<Handover, UUID> {
 
     List<Handover> findByClinicIdAndStatusOrderByCreatedAtDesc(UUID clinicId, String status);
     List<Handover> findByClinicIdAndPatientIdOrderByCreatedAtDesc(UUID clinicId, UUID patientId);
+
+    /** Every handover the clinic has, newest first. */
+    List<Handover> findByClinicIdOrderByCreatedAtDesc(UUID clinicId);
 }
