@@ -95,6 +95,12 @@ create unique index if not exists lab_orders_sample_no
 create index if not exists lab_orders_collected
     on lab_orders (clinic_id, collected_at);
 
+-- The video fee, beside the consultation fee.
+--
+-- The sign-up collects both, and the doctor's card shows both.
+alter table staff
+    add column if not exists video_fee numeric(10, 2) not null default 0;
+
 -- The nurse's reading says which doctor the patient was sent to.
 create index if not exists vitals_sent_to
     on vitals (clinic_id, sent_to);

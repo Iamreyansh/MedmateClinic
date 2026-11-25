@@ -91,6 +91,7 @@ public class PatientDirectoryService {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("items", items);
+        body.put("total", items.size());
         body.put("meta", items.size() + " patients");
         return body;
     }

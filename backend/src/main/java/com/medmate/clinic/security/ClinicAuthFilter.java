@@ -233,12 +233,20 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
      * clinic's schema — the link alone says which clinic the patient is in.
      */
     private void routePatient(HttpServletRequest request, String path) {
+        // The booking page carries the clinic's slug.
         if (path.startsWith("/api/public/doctors")) {
             String slug = request.getParameter("clinic");
             if (slug != null && !slug.isBlank()) {
                 routing.routeBySlug(slug);
                 return;
             }
+        }
+
+        // The booking names its clinic in the body, so the controller reads it
+        // from there and routes the request itself. The filter must not treat
+        // the path as a patient's link.
+        if (path.startsWith("/api/public/booking")) {
+            return;
         }
 
         String linkKey = linkKeyOf(path);

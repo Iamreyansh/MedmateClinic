@@ -33,6 +33,14 @@ public class AppointmentController {
         return appointments.book(current.get(), view, date, doctor);
     }
 
+    /** The strip: a day at a time, and what is free for each doctor. */
+    @GetMapping("/summary")
+    public Map<String, Object> summary(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        return appointments.summary(current.get(), from, to);
+    }
+
     /** Book a visit. */
     @PostMapping
     public Map<String, Object> create(@RequestBody(required = false) BookingRequest request) {

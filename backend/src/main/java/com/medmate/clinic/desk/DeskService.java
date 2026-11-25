@@ -182,13 +182,20 @@ public class DeskService {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("counts", counts);
-        // The canonical key is visits; items is kept as an alias so a screen
-        // that was written against the older name keeps working.
+        // The canonical key is visits: the rows of the desk.
         body.put("visits", items);
-        body.put("items", items);
-        body.put(
-                "meta",
+        // The line under the title: what to show, and the note itself.
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put(
+                "label",
+                items.size()
+                        + " in the clinic · "
+                        + toHandOver
+                        + " to hand over");
+        meta.put(
+                "note",
                 "Patients also get the prescription by SMS. Print the paper copy at the hand-over.");
+        body.put("meta", meta);
         body.put("invoice", bill);
         body.put("lines", bill == null ? List.of() : bill.get("lines"));
         body.put("gst", java.math.BigDecimal.ZERO);

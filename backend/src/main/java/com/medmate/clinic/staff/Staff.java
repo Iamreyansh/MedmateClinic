@@ -36,6 +36,10 @@ public class Staff {
     @Column(name = "consultation_fee")
     private java.math.BigDecimal consultationFee = java.math.BigDecimal.ZERO;
 
+    /** What the doctor charges for a video consultation. */
+    @Column(name = "video_fee")
+    private java.math.BigDecimal videoFee = java.math.BigDecimal.ZERO;
+
     /** The PIN, hashed with the staff id as the salt. */
     @Column(name = "pin_hash")
     private String pinHash;
@@ -128,6 +132,14 @@ public class Staff {
 
     public String getPinHash() {
         return pinHash;
+    }
+
+    public java.math.BigDecimal getVideoFee() {
+        return videoFee;
+    }
+
+    public void setVideoFee(java.math.BigDecimal videoFee) {
+        this.videoFee = videoFee;
     }
 
     public void setPinHash(String pinHash) {

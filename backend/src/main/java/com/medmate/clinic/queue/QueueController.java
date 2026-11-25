@@ -112,8 +112,13 @@ public class QueueController {
         return body;
     }
 
-    /** The patient's last reading, as the queue shows it. */
-    private Map<String, Object> vitalsFor(Visit visit, UUID clinicId) {
+    /**
+     * The patient's last reading, as the queue shows it.
+     *
+     * <p>A line of text, the way the doctor reads it at the desk: the
+     * temperature and the saturation, and nothing else.
+     */
+    private String vitalsFor(Visit visit, UUID clinicId) {
         com.medmate.clinic.vital.Vitals reading =
                 vitalsRepository
                         .findFirstByClinicIdAndVisitIdOrderByRecordedAtDesc(clinicId, visit.getId())
@@ -121,33 +126,20 @@ public class QueueController {
         if (reading == null) {
             return null;
         }
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("id", reading.getId().toString());
-        body.put("visitId", reading.getVisitId().toString());
-        body.put(
-                "recordedAt",
-                reading.getRecordedAt() == null ? null : reading.getRecordedAt().toString());
-        body.put(
-                "tempF",
-                reading.getTempF() == null ? null : reading.getTempF().stripTrailingZeros().toPlainString());
-        body.put(
-                "bp",
-                reading.getBpSystolic() == null || reading.getBpDiastolic() == null
-                        ? null
-                        : reading.getBpSystolic() + "/" + reading.getBpDiastolic());
-        body.put("bpSystolic", reading.getBpSystolic());
-        body.put("bpDiastolic", reading.getBpDiastolic());
-        body.put("pulse", reading.getPulse());
-        body.put("spo2", reading.getSpo2());
-        body.put("breathRate", reading.getBreathRate());
-        body.put("weightKg", reading.getWeightKg());
-        body.put("heightCm", reading.getHeightCm());
-        body.put("sugarMg", reading.getSugarMg());
-        body.put("note", reading.getNote());
-        body.put("priority", reading.getPriority());
-        body.put("sentTo", reading.getSentTo() == null ? null : reading.getSentTo().toString());
-        body.put("recordedBy", reading.getRecordedBy() == null ? null : reading.getRecordedBy().toString());
-        return body;
+        StringBuilder line = new StringBuilder();
+        if (reading.getTempF() != null) {
+            line.append(
+                    "Temp "
+                            + reading.getTempF().stripTrailingZeros().toPlainString()
+                            + " °F");
+        }
+        if (reading.getSpo2() != null) {
+            if (line.length() > 0) {
+                line.append(" · ");
+            }
+            line.append("SpO₂ ").append(reading.getSpo2()).append("%");
+        }
+        return line.length() == 0 ? null : line.toString();
     }
 
     /** The start of the clinic's day. */

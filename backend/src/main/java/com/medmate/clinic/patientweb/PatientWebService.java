@@ -80,6 +80,7 @@ public class PatientWebService {
     private final PrescriptionMedicineRepository prescriptionMedicines;
     private final ClinicZoneService zones;
     private final ClinicProfileRepository profiles;
+    private final com.medmate.clinic.grant.RoleRepository roles;
 
     public PatientWebService(
             RegistryClinicRepository clinics,
@@ -93,9 +94,11 @@ public class PatientWebService {
             PrescriptionDiagnosisRepository prescriptionDiagnoses,
             PrescriptionMedicineRepository prescriptionMedicines,
             ClinicZoneService zones,
-            ClinicProfileRepository profiles) {
+            ClinicProfileRepository profiles,
+            com.medmate.clinic.grant.RoleRepository roles) {
         this.clinics = clinics;
         this.profiles = profiles;
+        this.roles = roles;
         this.links = links;
         this.visits = visits;
         this.intakes = intakes;
@@ -115,8 +118,21 @@ public class PatientWebService {
         UUID clinicId = clinic.getId();
         ZoneId zone = zones.zoneOf(clinicId);
 
+        // Only the doctors: the patient books a doctor, not the front desk.
+        java.util.Set<UUID> doctorRoles = new java.util.HashSet<>();
+        for (com.medmate.clinic.grant.Role role : roles.findAll()) {
+            if (clinicId.equals(role.getClinicId())
+                    && ("doctor".equalsIgnoreCase(role.getName())
+                            || "owner".equalsIgnoreCase(role.getName()))) {
+                doctorRoles.add(role.getId());
+            }
+        }
+
         List<Map<String, Object>> list = new ArrayList<>();
         for (Staff person : staff.findByClinicId(clinicId)) {
+            if (!doctorRoles.contains(person.getRoleId())) {
+                continue;
+            }
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("id", person.getId().toString());
             body.put("name", person.getFullName());
@@ -487,7 +503,10 @@ public class PatientWebService {
         for (String hour : HOURS) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("label", hour);
-            body.put("startsAt", day + "T" + hour + ":00Z");
+            // The slot is a time in the clinic's own zone, so the patient picks
+            // the hour the clinic opens, not the hour it is in Greenwich.
+            LocalTime time = LocalTime.parse(hour);
+            body.put("startsAt", day.atTime(time).atZone(zone).toInstant().toString());
             body.put("free", !taken.contains(hour));
             list.add(body);
         }

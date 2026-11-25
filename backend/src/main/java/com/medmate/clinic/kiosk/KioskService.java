@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The patient kiosk.
@@ -84,7 +83,6 @@ public class KioskService {
     }
 
     /** The kiosk as it is now. */
-    @Transactional(readOnly = true)
     public Map<String, Object> session() {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -94,7 +92,6 @@ public class KioskService {
     }
 
     /** Open the kiosk on this device. */
-    @Transactional
     public Map<String, Object> openKiosk() {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -106,7 +103,6 @@ public class KioskService {
     }
 
     /** Close the kiosk. The front desk does this with their PIN. */
-    @Transactional
     public Map<String, Object> closeKiosk(ClinicPrincipal principal, String pin) {
         if (pin == null || pin.isBlank()) {
             throw new UnauthorizedException("That PIN is not right.");
@@ -136,7 +132,6 @@ public class KioskService {
     }
 
     /** Send the code to the patient's phone. */
-    @Transactional
     public Map<String, Object> sendCode(String phoneNumber) {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -156,7 +151,6 @@ public class KioskService {
     }
 
     /** Check the code and move the patient on. */
-    @Transactional
     public Map<String, Object> verifyCode(String phoneNumber, String given) {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -182,7 +176,6 @@ public class KioskService {
     }
 
     /** Say who the patient is. */
-    @Transactional
     public Map<String, Object> setPatient(String name) {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -197,7 +190,6 @@ public class KioskService {
     }
 
     /** Choose the doctor. */
-    @Transactional
     public Map<String, Object> setDoctor(String doctorId) {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -219,7 +211,6 @@ public class KioskService {
     }
 
     /** Pay, if there is anything to pay. */
-    @Transactional
     public Map<String, Object> pay(String method) {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -232,7 +223,6 @@ public class KioskService {
     }
 
     /** Take the token. */
-    @Transactional
     public Map<String, Object> takeToken() {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -244,7 +234,6 @@ public class KioskService {
     }
 
     /** Go back to the start. */
-    @Transactional
     public Map<String, Object> resetKiosk() {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
@@ -255,7 +244,6 @@ public class KioskService {
     }
 
     /** Change the language the kiosk speaks. */
-    @Transactional
     public Map<String, Object> setLanguage(String wanted) {
         RegistryClinic clinic = routing.routeBySlug(clinicSlug);
         UUID clinicId = clinic.getId();
