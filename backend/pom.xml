@@ -70,6 +70,27 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
+      <!--
+        The contract test is an integration test: it boots the API against a
+        real PostgreSQL server and calls every route the SPA calls. It needs a
+        database, so it runs in the integration-test phase and not with the
+        unit tests. Point it at a server with TEST_DB_URL, TEST_DB_USER and
+        TEST_DB_PASSWORD.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.5.4</version>
+        <executions>
+          <execution>
+            <id>contract</id>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>
