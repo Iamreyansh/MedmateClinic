@@ -6,6 +6,16 @@ export class ApiError extends Error {
     message: string,
     /** The machine-readable code, when the server sent one. */
     readonly code?: string,
+    /**
+     * What kind of failure this is.
+     *
+     * `api` is the service answering — including a 404 from a route it does
+     * not have. `service` is the service **not** answering: the request never
+     * reached it, and the body that came back was something else entirely (a
+     * proxy's page, a dev server's fallback). The two are different problems
+     * and a harness reports them differently.
+     */
+    readonly kind: "api" | "service" = "api",
   ) {
     super(message);
     this.name = "ApiError";
@@ -112,6 +122,16 @@ const FRIENDLY: Record<number, string> = {
 const UNKNOWN = "Something went wrong. Try again.";
 
 /**
+ * What to say when the body that came back is not the API's own.
+ *
+ * It means the request never reached the service — the path is not an API
+ * route, the origin is wrong, or the service is not running. That is an
+ * environment problem, not a screen, and it is written so it reads as one.
+ */
+const SERVICE_MISSING =
+  "Could not reach the clinic service. The address the app asked for is not an API route.";
+
+/**
  * Is this string the server's internals rather than a message for a person?
  *
  * A `detail` is meant for people, but a stack trace or a framework message
@@ -121,6 +141,22 @@ function looksLikeServerText(text: string): boolean {
   const lower = text.toLowerCase();
   // the framework's own words, and its class names
   if (lower.includes("no static resource")) return true;
+  // the framework's own titles — a title the service writes for a person is
+  // kept, but "Not Found" and "Bad Request" are the container's
+  if (
+    [
+      "not found",
+      "bad request",
+      "internal server error",
+      "unauthorized",
+      "forbidden",
+      "method not allowed",
+      "conflict",
+      "unsupported media type",
+    ].includes(lower.trim())
+  ) {
+    return true;
+  }
   if (lower.includes("java.lang") || lower.includes("javax.")) return true;
   if (lower.includes("org.springframework") || lower.includes("com.fasterxml.")) return true;
   // a stack trace
@@ -167,15 +203,37 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     // A cancelled request is not a failure to report — the caller moved on.
     if (reason instanceof DOMException && reason.name === "AbortError") throw reason;
     if (reason instanceof Error && reason.name === "AbortError") throw reason;
-    throw new ApiError(0, "Could not reach the clinic service. Check the connection and try again.");
+    throw new ApiError(
+      0,
+      "Could not reach the clinic service. Check the connection and try again.",
+      undefined,
+      "service",
+    );
   }
 
+  /**
+   * Whether the body is the API's own.
+   *
+   * A dev server or a proxy answers a request it does not have with an HTML
+   * page, and parsing that as JSON throws a parser's complaint. The body is
+   * checked first, so the failure is the one a person can read.
+   */
+  const contentType = response.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("json");
+
   if (!response.ok) {
-    const problem = await response.json().catch(() => null);
+    const problem = isJson ? await response.json().catch(() => null) : null;
+    if (!isJson) {
+      throw new ApiError(response.status, SERVICE_MISSING, undefined, "service");
+    }
     throw new ApiError(response.status, safeMessage(response.status, problem), safeCode(problem));
   }
 
   if (response.status === 204) return undefined as T;
+
+  if (!isJson) {
+    throw new ApiError(response.status, SERVICE_MISSING, undefined, "service");
+  }
   return (await response.json()) as T;
 }
 

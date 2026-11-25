@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/services/api";
 import { TemplateEditorDialog } from "@/features/templates/components/TemplateEditorDialog";
 import { CATALOGUE } from "@/lib/medicines";
+import { Chip } from "@/components/ui/Chip";
+import { SearchInput } from "@/components/ui/Input";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/ScreenStates";
 
 /** One prescription template. */
@@ -27,6 +29,10 @@ export function TemplatesView() {
   // the template being written, or null when the list is showing
   const [editing, setEditing] = useState<Template | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  /** Whose templates are shown — yours, or a colleague's. */
+  const [scope, setScope] = useState<"mine" | "colleagues">("mine");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("Most used");
 
   // a retry asks again — the counter is what changes
   const [attempt, setAttempt] = useState(0);
@@ -55,7 +61,13 @@ export function TemplatesView() {
     };
   }, [attempt]);
 
-  const templates = payload?.items ?? [];
+  const templates = (payload?.items ?? []).filter((template) =>
+    search.trim()
+      ? [template.name, template.code, template.condition].some((field) =>
+          field.toLowerCase().includes(search.trim().toLowerCase()),
+        )
+      : true,
+  );
 
   return (
     <>
@@ -72,6 +84,56 @@ export function TemplatesView() {
         <Button icon="plus" onClick={() => setEditorOpen(true)}>
           New template
         </Button>
+      </div>
+
+      {/* the three steps, so a new doctor knows what a template is for */}
+      <div className="tpl-quick" style={{ marginBottom: 14 }}>
+        {[
+          {
+            n: "1",
+            text: (
+              <>
+                <b>Build one here</b>, or in a consult tap <b>Save as template</b>.
+              </>
+            ),
+          },
+          {
+            n: "2",
+            text: (
+              <>
+                <b>Apply it in a consult.</b> It adds the medicines, tests and advice, and never
+                removes what is there.
+              </>
+            ),
+          },
+          {
+            n: "3",
+            text: (
+              <>
+                <b>Check every line before signing.</b> A dose that suits one patient may not suit the
+                next.
+              </>
+            ),
+          },
+        ].map((step) => (
+          <div key={step.n} className="card" style={{ padding: 14, display: "flex", gap: 10 }}>
+            <span className="tk" style={{ width: 26, height: 26, fontSize: 12 }}>
+              {step.n}
+            </span>
+            <p className="t-cap" style={{ margin: 0 }}>
+              {step.text}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="chips" style={{ marginBottom: 14 }}>
+        <Chip active={scope === "mine"} onClick={() => setScope("mine")}>
+          Mine <span className="count">{templates.length}</span>
+        </Chip>
+        <Chip active={scope === "colleagues"} onClick={() => setScope("colleagues")}>
+          From colleagues <span className="count">0</span>
+        </Chip>
       </div>
 
       {error ? (
@@ -93,6 +155,28 @@ export function TemplatesView() {
           icon="rx"
         />
       ) : null}
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "center" }}>
+        <div style={{ flex: 1 }}>
+          <SearchInput
+            value={search}
+            placeholder="Search name, diagnosis or medicine"
+            aria-label="Search the templates"
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+        <select
+          className="input"
+          style={{ width: 160 }}
+          value={sort}
+          aria-label="Sort the templates"
+          onChange={(event) => setSort(event.target.value)}
+        >
+          <option>Most used</option>
+          <option>Newest</option>
+          <option>A–Z</option>
+        </select>
+      </div>
 
       <div className="tpl-grid">
         {templates.map((template) => (

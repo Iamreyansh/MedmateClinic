@@ -20,6 +20,9 @@ import { SubscriptionScreen } from "@/features/subscription";
 import { SettingsScreen } from "@/features/settings";
 import { DevToolsScreen } from "@/features/dev-tools";
 import { MessagesScreen } from "@/features/messages";
+import { DoctorsScreen } from "@/features/doctors";
+import { StaffScreen } from "@/features/staff";
+import { LocationsScreen } from "@/features/locations";
 import { PlaceholderScreen } from "@/features/placeholders";
 import { NurseScreen } from "@/features/nurse";
 import { LabScreen } from "@/features/lab";
@@ -98,37 +101,10 @@ export const routes: RouteObject[] = [
     "/lab",
     <LabScreen />,
   ),
-  ...guard(
-    "/doctors",
-    <PlaceholderScreen
-      activeHref="/doctors"
-      title="Doctors"
-      icon="stetho"
-      purpose="The doctors in the clinic: their fees, their hours and where they work."
-      dependsOn="the doctors and HPR lookup"
-    />,
-  ),
-  ...guard(
-    "/staff",
-    <PlaceholderScreen
-      activeHref="/staff"
-      title="Staff & roles"
-      icon="users"
-      purpose="The team, what each person may open, and the activity log."
-      dependsOn="the staff and roles endpoints"
-    />,
-  ),
+  ...guard("/doctors", <DoctorsScreen />),
+  ...guard("/staff", <StaffScreen />),
   ...guard("/messages", <MessagesScreen />),
-  ...guard(
-    "/locations",
-    <PlaceholderScreen
-      activeHref="/locations"
-      title="Locations"
-      icon="pin"
-      purpose="The clinic's branches, their rooms and which doctors work where."
-      dependsOn="the branches endpoints"
-    />,
-  ),
+  ...guard("/locations", <LocationsScreen />),
   ...guard(
     "/subscription",
     <SubscriptionScreen />,

@@ -55,9 +55,56 @@ const SERVICES = [
   { id: "svc_home", name: "Home visit", durationMinutes: 45, price: 800 },
 ];
 
+/** The clinic's staff, with the role each person holds. */
+const STAFF = [
+  {
+    id: "stf_ananya",
+    name: "Dr. Ananya Rao",
+    initials: "AR",
+    role: "Doctor",
+    level: "use",
+    detail: "General Medicine",
+    email: "ananya@medmateclinic.in",
+  },
+  {
+    id: "stf_mary",
+    name: "Mary Joseph",
+    initials: "MJ",
+    role: "Nurse",
+    level: "use",
+    detail: "Nurse Station",
+    email: "mary@medmateclinic.in",
+  },
+  {
+    id: "stf_reception",
+    name: "Reception Desk",
+    initials: "RD",
+    role: "Front desk",
+    level: "use",
+    detail: "Reception, billing and the appointments",
+    email: "desk@medmateclinic.in",
+  },
+];
+
 export function registerSettingsRoutes() {
   mock.on("GET", "/clinic/settings", () => {
     requireSession();
     return { clinic: CLINIC, locations: LOCATIONS, services: SERVICES };
+  });
+
+  mock.on("GET", "/clinic/staff", () => {
+    requireSession();
+    return {
+      items: STAFF,
+      meta: `${STAFF.length} people · ${STAFF.filter((person) => person.role === "Doctor").length} doctor`,
+    };
+  });
+
+  mock.on("GET", "/clinic/locations", () => {
+    requireSession();
+    return {
+      items: LOCATIONS,
+      meta: `${LOCATIONS.length} ${LOCATIONS.length === 1 ? "branch" : "branches"}`,
+    };
   });
 }

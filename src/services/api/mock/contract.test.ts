@@ -19,6 +19,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock } from "@/services/api/mock/router";
@@ -66,6 +67,8 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "POST", path: "/clinic/subscription/enquiry" },
   { method: "POST", path: "/clinic/subscription/payments" },
   { method: "GET", path: "/clinic/settings" },
+  { method: "GET", path: "/clinic/staff" },
+  { method: "GET", path: "/clinic/locations" },
   { method: "GET", path: "/clinic/nurse" },
   { method: "GET", path: "/clinic/nurse/doctors" },
   { method: "POST", path: "/clinic/nurse/vitals" },
@@ -102,6 +105,7 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
  */
 const JAVA_CONTROLLERS = [
   "auth/AuthController.java",
+  "onboarding/SignupController.java",
   "me/MeController.java",
   "dashboard/DashboardController.java",
   "queue/QueueController.java",
@@ -110,6 +114,7 @@ const JAVA_CONTROLLERS = [
   "prescription/PrescriptionController.java",
   "audit/AuditController.java",
   "message/MessageController.java",
+  "inbox/InboxController.java",
   "billing/BillingController.java",
   "desk/DeskController.java",
   "lab/LabController.java",
@@ -118,6 +123,11 @@ const JAVA_CONTROLLERS = [
   "schedule/AppointmentController.java",
   "subscription/SubscriptionController.java",
   "patientweb/PatientWebController.java",
+  "patient/PatientDirectoryController.java",
+  "teleconsult/TeleconsultController.java",
+  "template/TemplateController.java",
+  "clinic/ClinicSettingsController.java",
+  "kiosk/KioskController.java",
 ];
 
 /**
@@ -128,23 +138,16 @@ const JAVA_CONTROLLERS = [
  * them.
  */
 const FRONTEND_ONLY: Array<{ method: string; path: string; why: string }> = [
-  { method: "GET", path: "/kiosk", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/open", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/close", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/code", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/verify", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/patient", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/doctor", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/pay", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/token", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/reset", why: "the kiosk has no controller in the service yet" },
-  { method: "POST", path: "/kiosk/language", why: "the kiosk has no controller in the service yet" },
-  { method: "GET", path: "/clinic/patients", why: "the service is building the patient list" },
-  { method: "GET", path: "/clinic/patients/:id", why: "the service is building the patient record" },
-  { method: "GET", path: "/clinic/inbox", why: "the inbox is assembled from referrals and handovers" },
-  { method: "GET", path: "/clinic/teleconsult", why: "there is no consent table in the service yet" },
-  { method: "GET", path: "/clinic/templates", why: "the templates table has no reader in the service yet" },
-  { method: "GET", path: "/clinic/nurse/patients", why: "the mock answers it for the nurse station" },
+  {
+    method: "GET",
+    path: "/clinic/staff",
+    why: "the service is adding the staff list, with the roles from the grants",
+  },
+  {
+    method: "GET",
+    path: "/clinic/locations",
+    why: "the service is adding the branch list, in the settings shape",
+  },
 ];
 
 /**
@@ -261,6 +264,24 @@ describe("the mock's paths", () => {
 });
 
 /**
+ * The controller's source.
+ *
+ * The service is built on its own branch, so the branch is read when it is
+ * there and the working tree is read when it is not. Either way the test
+ * checks the service the app will talk to.
+ */
+function controllerSource(file: string): string {
+  const branch = "origin/fix/backend";
+  const inBranch = spawnSync(
+    "git",
+    ["show", `${branch}:backend/src/main/java/com/medmate/clinic/${file}`],
+    { cwd: root, encoding: "utf8" },
+  );
+  if (inBranch.status === 0 && inBranch.stdout) return inBranch.stdout;
+  return readFileSync(path.join(root, "backend/src/main/java/com/medmate/clinic", file), "utf8");
+}
+
+/**
  * The Java service and the mock must answer the same paths.
  *
  * The mock is a stand-in for the service, so a path in one and not the other
@@ -276,10 +297,7 @@ describe("the mock and the Java service answer the same paths", () => {
    * a path, not the value in it.
    */
   function pathsOf(file: string): Array<{ method: string; path: string }> {
-    const source = readFileSync(
-      path.join(root, "backend/src/main/java/com/medmate/clinic", file),
-      "utf8",
-    );
+    const source = controllerSource(file);
     const base = source.match(/@RequestMapping\("([^"]+)"\)/)?.[1] ?? "";
     const paths: Array<{ method: string; path: string }> = [];
 
