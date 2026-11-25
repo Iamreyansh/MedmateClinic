@@ -1,8 +1,44 @@
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
-import { templates } from "@/services/api/mock/clinic";
+import { apiGet } from "@/services/api";
+
+/** One prescription template. */
+export type Template = {
+  id: string;
+  name: string;
+  code: string;
+  condition: string;
+  lines: string[];
+  used: number;
+};
+
+type TemplatesPayload = {
+  items: Template[];
+  meta: string;
+};
 
 export function TemplatesView() {
+  const [payload, setPayload] = useState<TemplatesPayload | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    apiGet<TemplatesPayload>("/clinic/templates")
+      .then((data) => {
+        if (alive) setPayload(data);
+      })
+      .catch((reason: unknown) => {
+        if (!alive) return;
+        setError(reason instanceof Error ? reason.message : "Could not load the templates");
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const templates = payload?.items ?? [];
+
   return (
     <>
       <div className="nq-bar">
@@ -11,11 +47,24 @@ export function TemplatesView() {
             My <em>templates</em>
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 4 }}>
-            Your reusable treatment protocols. Apply one in the console and adjust doses by weight.
+            {payload?.meta ??
+              "Your reusable treatment protocols. Apply one in the console and adjust doses by weight."}
           </p>
         </div>
         <Button icon="plus">New template</Button>
       </div>
+
+      {error ? <div className="note red">{error}</div> : null}
+
+      {templates.length === 0 && !error ? (
+        <section className="card" style={{ padding: 18 }}>
+          <b style={{ fontSize: 15 }}>No templates yet</b>
+          <p className="t-cap" style={{ marginTop: 4 }}>
+            Build one for the conditions you treat most, such as viral fever or acidity, or copy one from
+            a colleague.
+          </p>
+        </section>
+      ) : null}
 
       <div className="tpl-grid">
         {templates.map((template) => (
@@ -41,7 +90,9 @@ export function TemplatesView() {
 
             <div className="tpl-acts">
               <Button variant="secondary">Edit</Button>
-              <span style={{ color: "var(--green-700)", fontWeight: 700, fontSize: 13.5 }}>Share with colleagues</span>
+              <span style={{ color: "var(--green-700)", fontWeight: 700, fontSize: 13.5 }}>
+                Share with colleagues
+              </span>
             </div>
           </article>
         ))}

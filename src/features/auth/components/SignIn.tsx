@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { requestCode, verifyCode } from "@/features/auth/state/authSlice";
+import { codeCleared, requestCode, verifyCode } from "@/features/auth/state/authSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 export function SignIn() {
@@ -22,12 +22,21 @@ export function SignIn() {
   }, [status, navigate]);
 
   const sendCode = async () => {
-    await dispatch(requestCode(phone));
-    setStep("code");
+    // the screen moves to the code only when the code was actually sent
+    const result = await dispatch(requestCode(phone));
+    if (requestCode.fulfilled.match(result)) {
+      setStep("code");
+    }
   };
 
   const verify = async () => {
     await dispatch(verifyCode({ phone, code: code.join("") }));
+  };
+
+  const startOver = () => {
+    dispatch(codeCleared());
+    setCode(Array(6).fill(""));
+    setStep("phone");
   };
 
   const typeDigit = (index: number, value: string) => {
@@ -125,7 +134,7 @@ export function SignIn() {
           >
             Verify and sign in
           </Button>
-          <button type="button" className="su-link plain" onClick={() => setStep("phone")}>
+          <button type="button" className="su-link plain" onClick={startOver}>
             Use a different number
           </button>
           <div className="su-note neutral">

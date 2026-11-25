@@ -12,6 +12,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 export function DashboardScreen() {
   const dispatch = useAppDispatch();
   const { status, dashboard, error } = useAppSelector((state) => state.dashboard);
+  const session = useAppSelector((state) => state.session.session);
 
   useEffect(() => {
     void dispatch(loadDashboard());
@@ -20,12 +21,17 @@ export function DashboardScreen() {
   const stations = dashboard?.stations ?? [];
   const manage = dashboard?.manage ?? [];
 
+  // the greeting is the person who is signed in, and the time of day
+  const firstName = (session?.user.name ?? "there").replace(/^Dr\.?\s*/, "").split(" ")[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <AppShell activeHref="/dashboard">
       <div className="hello">
         <div>
           <h1 className="t-h1">
-            Good morning, Dr. <em>Ananya</em>
+            {greeting}, Dr. <em>{firstName}</em>
           </h1>
           <p>{dashboard?.meta ?? "Loading the dashboard…"}</p>
         </div>

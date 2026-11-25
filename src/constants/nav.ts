@@ -75,11 +75,42 @@ export const nav: NavGroup[] = [
 ];
 
 /**
- * Routes that exist today. A link to a route that is not built yet is not
- * prefetched — otherwise Next asks for it and the console fills with 404s.
- * Add a path here when its screen lands.
+ * The routes that exist today.
+ *
+ * Every path in the nav has a route, so a link never leads to a blank page:
+ * the screens that are not built yet have a placeholder that says so. This
+ * set is what the shell uses to know a link is safe to follow.
  */
-export const builtRoutes = new Set<string>(["/", "/fidelity"]);
+export const builtRoutes = new Set<string>([
+  "/",
+  "/login",
+  "/start",
+  "/lock",
+  "/dashboard",
+  "/queue",
+  "/visit/:id",
+  "/patients",
+  "/inbox",
+  "/teleconsult",
+  "/templates",
+  "/rx/:id",
+  "/certificate",
+  "/reports",
+  "/kiosk",
+  "/nurse",
+  "/desk",
+  "/billing",
+  "/lab",
+  "/schedule",
+  "/doctors",
+  "/staff",
+  "/messages",
+  "/locations",
+  "/subscription",
+  "/settings",
+  "/legal/:document",
+  "/fidelity",
+]);
 
 /** The sidebar footer, as the MVP has it. */
 export const sideActions: NavEntry[] = [

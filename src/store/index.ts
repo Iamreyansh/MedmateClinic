@@ -2,7 +2,9 @@ import { configureStore } from "@reduxjs/toolkit";
 import { sessionReducer } from "@/features/session";
 import { queueReducer } from "@/features/queue";
 import { dashboardReducer } from "@/features/dashboard";
+import { consultReducer } from "@/features/consult";
 import { authReducer } from "@/features/auth";
+import { reportsReducer } from "@/features/reports";
 
 /**
  * The store.
@@ -16,6 +18,8 @@ export const store = configureStore({
     session: sessionReducer,
     queue: queueReducer,
     dashboard: dashboardReducer,
+    consult: consultReducer,
+    reports: reportsReducer,
   },
 });
 

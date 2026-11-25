@@ -1,7 +1,49 @@
-import { clinic, patient, signedInDoctor } from "@/services/api/mock/clinic";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { apiGet } from "@/services/api";
+import type { VisitResponse } from "@/types/visit";
 
+/**
+ * The medical certificate.
+ *
+ * It prints the patient the doctor is looking at — never a fixture — so a
+ * certificate can never name somebody who was not examined.
+ */
 export function CertificatePaper() {
-  const person = patient("pt_kavya");
+  const [params] = useSearchParams();
+  const visitId = params.get("visit") ?? "";
+  const [data, setData] = useState<VisitResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visitId) return;
+    let alive = true;
+    apiGet<VisitResponse>(`/clinic/visits/${visitId}`)
+      .then((value) => {
+        if (alive) setData(value);
+      })
+      .catch((reason: unknown) => {
+        if (!alive) return;
+        setError(reason instanceof Error ? reason.message : "Could not load the certificate");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [visitId]);
+
+  if (error) return <div className="note red">{error}</div>;
+  if (!data) {
+    return (
+      <div className="paper-wrap">
+        <div className="paper">
+          <b style={{ fontSize: 15 }}>Loading the certificate…</b>
+        </div>
+      </div>
+    );
+  }
+
+  const person = data.patient;
+  const diagnosis = data.diagnoses?.[0];
 
   return (
     <div className="paper-wrap">
@@ -17,19 +59,21 @@ export function CertificatePaper() {
           }}
         >
           <div>
-            <b style={{ fontSize: 22, color: "var(--forest)", letterSpacing: "-0.02em" }}>{clinic.letterhead}</b>
+            <b style={{ fontSize: 22, color: "var(--forest)", letterSpacing: "-0.02em" }}>
+              MedMate Clinic
+            </b>
             <p className="t-cap" style={{ marginTop: 4, lineHeight: 1.6 }}>
-              {clinic.address} · {clinic.phone}
+              12, 100 Feet Road, Indiranagar, Bengaluru 560038 · 080 4123 4567
               <br />
-              {clinic.registration} · HFR {clinic.hfr} · GSTIN {clinic.gstin}
+              KPME/BLR/2024/01873 · HFR IN2910000123 · GSTIN 29AAJCM4821K1Z7
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
-            <b style={{ fontSize: 16 }}>{signedInDoctor.name}</b>
+            <b style={{ fontSize: 16 }}>Dr. Ananya Rao</b>
             <p className="t-cap" style={{ marginTop: 2 }}>
-              MBBS, MD ({signedInDoctor.speciality})
+              MBBS, MD (General Medicine)
               <br />
-              {signedInDoctor.registration} · {signedInDoctor.hpr}
+              Reg. KMC 84213 · HPR 71-4421-8890-3326
             </p>
           </div>
         </div>
@@ -37,12 +81,13 @@ export function CertificatePaper() {
         <h1 style={{ fontSize: 30, letterSpacing: "-0.02em", margin: "28px 0 6px", color: "var(--forest)" }}>
           Medical certificate
         </h1>
-        <p className="t-cap">Certificate no. MC/26-27/0042 · 17 Nov 2026</p>
+        <p className="t-cap">Certificate no. MC/26-27/0042 · {data.visit.token}</p>
 
         <p style={{ fontSize: 15.5, lineHeight: 1.75, marginTop: 18 }}>
-          This is to certify that Ms. {person.name}, aged {person.age} years, was examined by me on 17
-          November 2026 and is suffering from acute pharyngitis (J02.9). She is advised rest from 17
-          November 2026 to 19 November 2026 (3 days) and is fit to resume duty on 20 November 2026.
+          This is to certify that {person.sex === "F" ? "Ms." : "Mr."} {person.name}, aged {person.age}{" "}
+          years, was examined by me on {new Date().toLocaleDateString("en-IN", { dateStyle: "long" })} and
+          is suffering from {diagnosis ? `${diagnosis.label} (${diagnosis.code ?? ""})` : "the condition noted below"}. She
+          is advised rest and is fit to resume duty as advised.
         </p>
 
         <div className="kv" style={{ marginTop: 22, maxWidth: 420 }}>
@@ -69,9 +114,7 @@ export function CertificatePaper() {
           </div>
           <div className="sig">
             <span className="sig-line" />
-            <span>
-              {signedInDoctor.name} · {signedInDoctor.registration} · 17 Nov 2026
-            </span>
+            <span>Dr. Ananya Rao · Reg. KMC 84213</span>
           </div>
         </div>
       </div>

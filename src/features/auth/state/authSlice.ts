@@ -3,7 +3,7 @@ import { apiPost } from "@/services/api";
 import { auth } from "@/services/api/client";
 
 export type AuthState = {
-  status: "idle" | "sending" | "sent" | "verifying" | "signed-in" | "error";
+  status: "idle" | "sending" | "sent" | "verifying" | "unlocking" | "signed-in" | "error";
   /** The code the API returned in test mode, so a developer can sign in. */
   testCode: string | null;
   error: string | null;
@@ -37,6 +37,12 @@ export const unlockDevice = createAsyncThunk(
   },
 );
 
+/** The message the person sees when something goes wrong. */
+function messageFor(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -44,7 +50,14 @@ const authSlice = createSlice({
     signedOut: (state) => {
       state.status = "idle";
       state.error = null;
+      state.testCode = null;
       auth.set(null);
+    },
+    /** The person asked for a new code, so the old one is no longer useful. */
+    codeCleared: (state) => {
+      state.testCode = null;
+      state.error = null;
+      state.status = "idle";
     },
   },
   extraReducers: (builder) => {
@@ -59,7 +72,7 @@ const authSlice = createSlice({
       })
       .addCase(requestCode.rejected, (state, action) => {
         state.status = "error";
-        state.error = action.error.message ?? "Could not send the code";
+        state.error = messageFor(action.error, "Could not send the code");
       })
       .addCase(verifyCode.pending, (state) => {
         state.status = "verifying";
@@ -67,13 +80,26 @@ const authSlice = createSlice({
       })
       .addCase(verifyCode.fulfilled, (state) => {
         state.status = "signed-in";
+        state.error = null;
       })
       .addCase(verifyCode.rejected, (state, action) => {
         state.status = "error";
-        state.error = action.error.message ?? "That code is not right";
+        state.error = messageFor(action.error, "That code is not right");
+      })
+      .addCase(unlockDevice.pending, (state) => {
+        state.status = "unlocking";
+        state.error = null;
+      })
+      .addCase(unlockDevice.fulfilled, (state) => {
+        state.status = "signed-in";
+        state.error = null;
+      })
+      .addCase(unlockDevice.rejected, (state, action) => {
+        state.status = "error";
+        state.error = messageFor(action.error, "That PIN is not right");
       });
   },
 });
 
 export const authReducer = authSlice.reducer;
-export const { signedOut } = authSlice.actions;
+export const { signedOut, codeCleared } = authSlice.actions;
