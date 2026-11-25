@@ -45,6 +45,17 @@ export const fetchIntake = (token: string) => apiGet<IntakeForm>(`/intake/${enco
 export const submitIntake = (token: string, form: { symptoms: string[]; redFlags: string[]; notes: string; duration: string }) =>
   apiPost<IntakeResult>(`/intake/${encodeURIComponent(token)}`, form);
 
+/**
+ * Call the booking off.
+ *
+ * The service has no endpoint for it yet; the mock answers, and the name is
+ * `POST /api/public/booking/{linkKey}/cancel`.
+ */
+export const cancelBooking = (token: string) =>
+  apiPost<{ cancelled: boolean; token: string }>(
+    `/public/booking/${encodeURIComponent(token)}/cancel`,
+  );
+
 /** The prescription, as the patient verifies it. */
 export const verifyPrescription = (id: string, hash: string) =>
   apiGet<VerifiedPrescription>(`/verify/${encodeURIComponent(id)}?h=${encodeURIComponent(hash)}`);

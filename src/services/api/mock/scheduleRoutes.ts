@@ -57,7 +57,49 @@ function summaryFor(list: DayItem[]) {
   };
 }
 
+/** How many slots a doctor has in a day. */
+const SLOTS_PER_DAY = 10;
+
+/** The days of a range, as yyyy-mm-dd. */
+function daysBetween(from: string, to: string): string[] {
+  const days: string[] = [];
+  const start = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  for (const day = new Date(start); day <= end; day.setUTCDate(day.getUTCDate() + 1)) {
+    days.push(day.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
 export function registerScheduleRoutes() {
+  /**
+   * The days ahead, and how free each doctor is on each of them.
+   *
+   * The strip of days at the top of the book reads this: a day, and what is
+   * still free in each doctor's diary.
+   */
+  mock.on("GET", "/clinic/appointments/summary", (_body, context) => {
+    requireSession();
+    const from = context.query.get("from") ?? "2026-11-25";
+    const to = context.query.get("to") ?? "2026-11-25";
+    const days = daysBetween(from, to).map((date) => {
+      const booked = appointments.filter((item) => item.startsAt.startsWith(date));
+      return {
+        date,
+        freeByDoctor: doctors.map((doctor) => {
+          const taken = booked.filter((item) => item.doctorId === doctor.id).length;
+          return {
+            doctorId: doctor.id,
+            name: doctor.name,
+            free: Math.max(0, SLOTS_PER_DAY - taken),
+            booked: taken,
+          };
+        }),
+      };
+    });
+    return { days };
+  });
+
   mock.on("GET", "/clinic/appointments", (_body, context) => {
     requireSession();
     const query = context.query;

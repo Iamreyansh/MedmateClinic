@@ -211,6 +211,11 @@ mock.on("GET", "/clinic/queue", () => {
     const person = patient(item.patientId);
     return {
       token: item.token,
+      /** The doctor the patient is waiting for, when one is named. */
+      doctorId: item.seenBy ?? null,
+      doctorName: item.seenBy ? doctors.find((entry) => entry.id === item.seenBy)?.name ?? null : null,
+      /** `waiting` or `seen`. */
+      status: item.status === "waiting" ? "waiting" : "seen",
       kind: item.token.startsWith("A") ? "A" : "B",
       patient: person,
       reason: item.reason,
@@ -223,10 +228,17 @@ mock.on("GET", "/clinic/queue", () => {
     };
   });
   const room = signedInUser.name.includes("Ananya") ? "Room 2" : "Room 1";
+  // how long a consult takes, on average — the console reads it
+  const seen = visits.filter((item) => item.consultMinutes !== null);
+  const averageConsultMinutes = seen.length
+    ? Math.round(seen.reduce((sum, item) => sum + (item.consultMinutes ?? 0), 0) / seen.length)
+    : 0;
+
   return {
     items,
     next: items[0] ?? null,
     room,
+    averageConsultMinutes,
     meta: `${room} · ${items.length} waiting · 9 seen today · average consult 8 min`,
   };
 });
@@ -235,11 +247,27 @@ mock.on("GET", "/clinic/queue", () => {
 
 mock.on("GET", "/clinic/doctors", () => {
   requireSession();
-  return doctors.map((person) => ({
+  return doctors.map((person, index) => ({
     id: person.id,
     name: person.name,
     speciality: person.speciality,
     room: person.room,
+    /** The registration the doctor signs with. */
+    registration: person.registration,
+    /** The consultation fee. */
+    fee: 500 - index * 50,
+    /** The video consultation fee. */
+    videoFee: 400 - index * 50,
+    /** The hours the doctor works in. */
+    hours: ["10:00–13:00", "16:00–19:00"],
+    /** How many patients the doctor has seen today. */
+    bookedToday: index + 1,
+    /** How many slots are still free today. */
+    freeToday: 6 - index,
+    /** The next free slot today. */
+    nextFree: index === 0 ? "Tomorrow 10:00 am" : "Today 4:30 pm",
+    /** How many patients are in consult with the doctor. */
+    waiting: index,
   }));
 });
 

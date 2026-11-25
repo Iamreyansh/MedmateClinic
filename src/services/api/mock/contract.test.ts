@@ -61,6 +61,7 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "POST", path: "/clinic/billing" },
   { method: "POST", path: "/clinic/billing/close-day" },
   { method: "GET", path: "/clinic/appointments" },
+  { method: "GET", path: "/clinic/appointments/summary" },
   { method: "POST", path: "/clinic/appointments" },
   { method: "GET", path: "/clinic/subscription" },
   { method: "POST", path: "/clinic/subscription/checkout" },
@@ -94,6 +95,7 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "GET", path: "/intake/A-014" },
   { method: "POST", path: "/intake/A-014" },
   { method: "GET", path: "/verify/rx_vs_kavya" },
+  { method: "POST", path: "/public/booking/A-014/cancel" },
 ];
 
 /**
@@ -140,6 +142,16 @@ const JAVA_CONTROLLERS = [
 const FRONTEND_ONLY: Array<{ method: string; path: string; why: string }> = [
   {
     method: "GET",
+    path: "/clinic/appointments/summary",
+    why: "the service is adding the days-ahead summary, for the strip",
+  },
+  {
+    method: "POST",
+    path: "/public/booking/:token/cancel",
+    why: "the service has no way to call a booking off yet",
+  },
+  {
+    method: "GET",
     path: "/clinic/staff",
     why: "the service is adding the staff list, with the roles from the grants",
   },
@@ -177,6 +189,8 @@ const NAMED_ARRAYS: Array<{ method: string; path: string; key: string }> = [
   { method: "GET", path: "/clinic/templates", key: "items" },
   { method: "GET", path: "/clinic/teleconsult", key: "waiting" },
   { method: "GET", path: "/clinic/lab", key: "open" },
+  { method: "GET", path: "/clinic/appointments/summary", key: "days" },
+  { method: "GET", path: "/clinic/billing", key: "bills" },
   { method: "GET", path: "/clinic/queue", key: "items" },
   { method: "GET", path: "/clinic/appointments", key: "appointments" },
   { method: "GET", path: "/clinic/reports", key: "tabs" },
@@ -217,6 +231,9 @@ const FIELDS: Array<{
   { method: "GET", path: "/clinic/visits/vs_kavya", keys: ["visit", "patient", "vitals", "consultation", "prescriptions"] },
   { method: "GET", path: "/me", keys: ["clinic", "user", "location", "capabilities", "navCounts"] },
   { method: "GET", path: "/clinic/dashboard", keys: ["meta", "trial", "stations", "manage"] },
+  { method: "GET", path: "/clinic/appointments/summary", keys: ["days"] },
+  { method: "GET", path: "/clinic/billing", keys: ["bills"] },
+  { method: "GET", path: "/clinic/queue", keys: ["averageConsultMinutes"] },
 ];
 
 /** Sign in, so the endpoints behind the session answer. */
@@ -417,6 +434,79 @@ describe("the fields in the payload", () => {
       usage: Array<{ label: string }>;
     };
     expect(plan.usage.map((entry) => entry.label)).toEqual(["Doctors", "Locations", "Staff"]);
+  });
+
+  it("the days ahead carry a free count for each doctor", async () => {
+    const summary = (await mock.handle(
+      "GET",
+      "/clinic/appointments/summary?from=2026-11-25&to=2026-11-28",
+      undefined,
+    )) as {
+      days: Array<{
+        date: string;
+        freeByDoctor: Array<{ doctorId: string; name: string; free: number; booked: number }>;
+      }>;
+    };
+
+    expect(summary.days.length).toBe(4);
+    expect(summary.days[0].date).toBe("2026-11-25");
+    for (const day of summary.days) {
+      expect(day.freeByDoctor.length).toBeGreaterThan(0);
+      for (const doctor of day.freeByDoctor) {
+        expect(typeof doctor.free).toBe("number");
+        expect(typeof doctor.booked).toBe("number");
+        expect(doctor.name).toBeTruthy();
+      }
+    }
+  });
+
+  it("the doctors carry what the reference's card shows", async () => {
+    const doctors = (await mock.handle("GET", "/clinic/doctors", undefined)) as Array<{
+      id: string;
+      registration: string;
+      fee: number;
+      videoFee: number;
+      hours: string[];
+      bookedToday: number;
+      freeToday: number;
+      nextFree: string | null;
+      waiting: number;
+    }>;
+
+    expect(doctors.length).toBeGreaterThan(0);
+    for (const doctor of doctors) {
+      expect(doctor.registration).toBeTruthy();
+      expect(typeof doctor.fee).toBe("number");
+      expect(typeof doctor.videoFee).toBe("number");
+      expect(doctor.hours.length).toBeGreaterThan(0);
+      expect(typeof doctor.bookedToday).toBe("number");
+      expect(typeof doctor.freeToday).toBe("number");
+      expect(typeof doctor.waiting).toBe("number");
+    }
+  });
+
+  it("the till's bills carry what the tabs filter on", async () => {
+    const till = (await mock.handle("GET", "/clinic/billing", undefined)) as {
+      bills: Array<{
+        invoiceId: string;
+        number: string;
+        amount: number;
+        status: string;
+        patient: { name: string };
+      }>;
+    };
+    expect(till.bills.length).toBeGreaterThan(0);
+    for (const bill of till.bills) {
+      expect(["unpaid", "paid", "refunded"]).toContain(bill.status);
+      expect(bill.patient.name).toBeTruthy();
+    }
+  });
+
+  it("the queue says how long a consult takes", async () => {
+    const queue = (await mock.handle("GET", "/clinic/queue", undefined)) as {
+      averageConsultMinutes: number;
+    };
+    expect(typeof queue.averageConsultMinutes).toBe("number");
   });
 
   it("the till has four bars, the last one being what has not come in", async () => {

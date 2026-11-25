@@ -47,6 +47,28 @@ export function registerBillingRoutes() {
       bills: pending.length,
     });
 
+    // every bill of the day, so the tabs can filter them
+    const bills = [...paid, ...pending, ...refunded].map((bill) => {
+      const person = patientByVisit(bill.visitId);
+      return {
+        invoiceId: bill.id,
+        number: bill.number,
+        amount: bill.total,
+        status: bill.status,
+        payMode: bill.payMode,
+        paidAt: bill.paidAt,
+        createdAt: bill.createdAt ?? null,
+        description: "Consultation in-clinic",
+        patient: {
+          id: person.id,
+          name: person.name,
+          age: person.age,
+          sex: person.sex,
+          phone: person.phone,
+        },
+      };
+    });
+
     const pendingItems = pending.map((bill) => {
       const person = patientByVisit(bill.visitId);
       return {
@@ -80,6 +102,7 @@ export function registerBillingRoutes() {
       },
       byMode,
       pending: pendingItems,
+      bills,
       bill: billCard(invoices[0]),
       clinic: {
         name: "MedMate Clinic",

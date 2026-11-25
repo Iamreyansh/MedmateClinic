@@ -124,21 +124,34 @@ function slotsFor(doctorId: string): Array<{ label: string; startsAt: string; fr
 
   return hours.map((time, index) => ({
     label: time,
-    startsAt: `2026-11-26T${time}:00Z`,
+    // an instant in the clinic's own zone, not a UTC wall-clock — so the
+    // label, the comparison and the booking all agree
+    startsAt: clinicInstant("2026-11-26", time),
     // the first few are taken by the clinic's own bookings
     free: index >= taken,
   }));
+}
+
+/**
+ * An instant, in the clinic's own zone.
+ *
+ * The clinic books in its own time: 09:00 there is 09:00 on the wall, and
+ * the instant it is must be the one the service compares against.
+ */
+function clinicInstant(day: string, time: string): string {
+  const [hour, minute] = time.split(":").map(Number);
+  // Asia/Kolkata is +05:30
+  const date = new Date(`${day}T00:00:00+05:30`);
+  date.setUTCHours(hour - 5, minute - 30, 0, 0);
+  return date.toISOString();
 }
 
 /** The next free time, in the patient's words. */
 function nextFree(doctorId: string): string | null {
   const free = slotsFor(doctorId).find((slot) => slot.free);
   if (!free) return null;
-  const date = new Date(free.startsAt);
-  return `Tomorrow, ${date.getUTCHours().toString().padStart(2, "0")}:${date
-    .getUTCMinutes()
-    .toString()
-    .padStart(2, "0")}`;
+  // the label is the clinic's own clock
+  return `Tomorrow, ${free.label}`;
 }
 
 /**
@@ -200,10 +213,13 @@ export function registerPatientWebRoutes() {
   mock.on("GET", "/public/doctors", (_body, context) => {
     // The slug may be overridden here, and only here — this is the one page
     // that is reached by a link the clinic hands out.
-    // a link without a slug is the clinic's own page; a link with one must
-    // be the clinic's own link
+    // the slug always travels with the booking link, so a page without one
+    // has no clinic to book with — it is not a page at all
     const asked = context.query.get("clinic");
-    const slug = !asked ? SLUG : asked;
+    if (!asked) {
+      throw new ApiError(404, "Open your clinic's own booking link to book a visit.");
+    }
+    const slug = asked;
     if (slug !== SLUG) {
       throw new ApiError(
         404,
@@ -334,6 +350,23 @@ export function registerPatientWebRoutes() {
       doctor: doctor.name,
       clinic: PUBLIC_CLINIC.name,
     };
+  });
+
+  // Call the booking off.
+  mock.on("POST", "/public/booking/:token/cancel", (_body, context) => {
+    const linkKey = context.params.token;
+    const session = readSession();
+    const visitId = session.booked[linkKey];
+    if (!visitId) {
+      throw new ApiError(404, "This booking is no longer here. Ask the clinic for a new one.");
+    }
+    const visit = visits.find((entry) => entry.id === visitId);
+    if (visit) {
+      visit.status = "cancelled";
+    }
+    delete session.booked[linkKey];
+    writeSession(session);
+    return { cancelled: true, token: linkKey };
   });
 
   // The patient's place in the queue.
