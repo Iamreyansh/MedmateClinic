@@ -12,8 +12,17 @@ import { TemplatesScreen } from "@/features/templates";
 import { PrescriptionScreen } from "@/features/prescription";
 import { CertificateScreen } from "@/features/certificate";
 import { ReportsScreen } from "@/features/reports";
+import { DeskScreen } from "@/features/desk";
+import { BillingScreen, ReceiptScreen } from "@/features/billing";
+import { ScheduleScreen } from "@/features/schedule";
+import { SubscriptionScreen } from "@/features/subscription";
+import { SettingsScreen } from "@/features/settings";
 import { DevToolsScreen } from "@/features/dev-tools";
 import { PlaceholderScreen } from "@/features/placeholders";
+import { NurseScreen } from "@/features/nurse";
+import { LabScreen } from "@/features/lab";
+import { KioskScreen } from "@/features/kiosk";
+import { BookScreen, LiveTokenScreen, IntakeScreen, VerifyScreen } from "@/features/patient-web";
 import { RequireSession } from "@/app/routes/RequireSession";
 import { NotFoundScreen } from "@/app/routes/NotFoundScreen";
 
@@ -31,6 +40,14 @@ export const routes: RouteObject[] = [
   { path: "/login", element: <LoginScreen /> },
   { path: "/start", element: <StartScreen /> },
   { path: "/lock", element: <LockScreen /> },
+
+  // The patient-facing surfaces. A patient at the clinic's front door is not
+  // staff and has no session, so these sit outside the guard — a booking link
+  // that asked for a sign-in would be a link nobody could follow.
+  { path: "/book", element: <BookScreen /> },
+  { path: "/t/:token", element: <LiveTokenScreen /> },
+  { path: "/intake/:token", element: <IntakeScreen /> },
+  { path: "/verify/:id", element: <VerifyScreen /> },
   ...guard("/dashboard", <DashboardScreen />),
   ...guard("/queue", <QueueScreen />),
   ...guard("/visit/:id", <ConsultScreen />),
@@ -41,68 +58,24 @@ export const routes: RouteObject[] = [
   ...guard("/rx/:id", <PrescriptionScreen />),
   ...guard("/certificate", <CertificateScreen />),
   ...guard("/reports", <ReportsScreen />),
+  ...guard("/desk", <DeskScreen />),
+  ...guard("/billing", <BillingScreen />),
+  ...guard("/billing/receipt/:invoiceId", <ReceiptScreen />),
+  ...guard("/schedule", <ScheduleScreen />),
 
   // The screens the nav links to that are not built yet. They say so plainly
   // rather than leading to a blank page.
   ...guard(
-    "/kiosk",
-    <PlaceholderScreen
-      activeHref="/kiosk"
-      title="Patient Kiosk"
-      icon="kiosk"
-      purpose="Where a patient checks themselves in on a tablet and takes a token."
-      dependsOn="the kiosk's own flow on the tablet"
-    />,
-  ),
-  ...guard(
     "/nurse",
-    <PlaceholderScreen
-      activeHref="/nurse"
-      title="Nurse Station"
-      icon="nurse"
-      purpose="Where vitals are recorded and each patient is routed to the right doctor."
-      dependsOn="the vitals endpoint"
-    />,
-  ),
-  ...guard(
-    "/desk",
-    <PlaceholderScreen
-      activeHref="/desk"
-      title="Reception Desk"
-      icon="print"
-      purpose="Where each patient is handed over: the prescription, the bill and the follow-up."
-      dependsOn="the reception hand-over endpoint"
-    />,
-  ),
-  ...guard(
-    "/billing",
-    <PlaceholderScreen
-      activeHref="/billing"
-      title="Billing & POS"
-      icon="rupee"
-      purpose="Where fees are collected, receipts are printed and the day is closed."
-      dependsOn="the billing endpoints"
-    />,
+    <NurseScreen />,
   ),
   ...guard(
     "/lab",
-    <PlaceholderScreen
-      activeHref="/lab"
-      title="Lab & Diagnostics"
-      icon="lab"
-      purpose="Where samples are collected, tests are run and reports go back to the doctor."
-      dependsOn="the lab endpoints"
-    />,
+    <LabScreen />,
   ),
   ...guard(
-    "/schedule",
-    <PlaceholderScreen
-      activeHref="/schedule"
-      title="Appointments"
-      icon="cal"
-      purpose="The day's bookings, the working hours and the follow-ups."
-      dependsOn="the appointments endpoints"
-    />,
+    "/kiosk",
+    <KioskScreen />,
   ),
   ...guard(
     "/doctors",
@@ -146,23 +119,11 @@ export const routes: RouteObject[] = [
   ),
   ...guard(
     "/subscription",
-    <PlaceholderScreen
-      activeHref="/subscription"
-      title="Subscription"
-      icon="spark"
-      purpose="The plan, the trial, the usage and the payments."
-      dependsOn="the subscription endpoint"
-    />,
+    <SubscriptionScreen />,
   ),
   ...guard(
     "/settings",
-    <PlaceholderScreen
-      activeHref="/settings"
-      title="Settings"
-      icon="gear"
-      purpose="The PIN, the clinic profile, the letterhead and the readiness checklist."
-      dependsOn="the settings endpoints"
-    />,
+    <SettingsScreen />,
   ),
   ...guard(
     "/legal/:document",

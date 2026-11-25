@@ -83,6 +83,86 @@ public class AppointmentService {
         return body;
     }
 
+    /**
+     * Book a visit.
+     *
+     * <p>A booking often comes before the first visit, so the patient is created
+     * if the clinic has not met them yet. The token is issued when they arrive,
+     * not now — so the booking is a time, not a place in the queue.
+     */
+    @Transactional
+    public Map<String, Object> create(
+            ClinicPrincipal principal, AppointmentController.BookingRequest request) {
+        if (!principal.can("appointment")) {
+            throw new ForbiddenException("You cannot book an appointment.");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("A booking needs a patient, a doctor and a time.");
+        }
+        String name = request.patient() == null ? "" : request.patient().trim();
+        if (name.length() < 2) {
+            throw new IllegalArgumentException("A patient is needed to book a visit.");
+        }
+
+        UUID clinicId = principal.clinicIdAsUuid();
+        ZoneId zone = zones.zoneOf(clinicId);
+        LocalDate day = parseDate(request.date(), LocalDate.now(zone));
+        LocalTime time = parseTime(request.time());
+        Instant startsAt = day.atTime(time).atZone(zone).toInstant();
+
+        Patient patient =
+                patients.findByClinicIdOrderByCreatedAtAsc(clinicId).stream()
+                        .filter(candidate -> candidate.getFullName().equalsIgnoreCase(name))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            Patient created = new Patient();
+                            created.setId(UUID.randomUUID());
+                            created.setClinicId(clinicId);
+                            created.setFullName(name);
+                            created.setAge(0);
+                            created.setSex("F");
+                            created.setPhone("");
+                            created.setAbha("");
+                            created.setAllergies(new String[0]);
+                            created.setConditions(new String[0]);
+                            created.setCreatedAt(Instant.now());
+                            return patients.save(created);
+                        });
+
+        UUID doctorId = parseUuid(request.doctor());
+        if (doctorId == null) {
+            doctorId = doctors(clinicId).stream()
+                    .map(entry -> parseUuid(String.valueOf(entry.get("id"))))
+                    .filter(java.util.Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        Appointment appointment = new Appointment();
+        appointment.setId(UUID.randomUUID());
+        appointment.setClinicId(clinicId);
+        appointment.setPatientId(patient.getId());
+        appointment.setDoctorId(doctorId);
+        appointment.setVisitId(null);
+        appointment.setStartsAt(startsAt);
+        appointment.setEndsAt(startsAt.plusSeconds(20 * 60));
+        appointment.setMode(request.mode() == null ? "in_clinic" : request.mode());
+        appointment.setStatus("booked");
+        appointment.setReason(request.reason() == null ? "Booked visit" : request.reason());
+        appointment.setSource("booking");
+        appointment.setNotes(null);
+        appointment.setCreatedAt(Instant.now());
+        appointments.save(appointment);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", appointment.getId().toString());
+        body.put("status", appointment.getStatus());
+        body.put("startsAt", appointment.getStartsAt().toString());
+        body.put("patient", patient.getFullName());
+        body.put("doctor", doctorName(clinicId, doctorId));
+        return body;
+    }
+
     // ------------------------------------------------------------------ day
 
     private Map<String, Object> day(UUID clinicId, ZoneId zone, LocalDate day, UUID doctorId) {
@@ -253,6 +333,46 @@ public class AppointmentService {
 
     private static String statusOf(Appointment appointment) {
         return appointment.getStatus() == null ? "booked" : appointment.getStatus();
+    }
+
+    /** The time of day, as the desk typed it. */
+    private static LocalTime parseTime(String value) {
+        if (value == null || value.isBlank()) {
+            return DAY_START;
+        }
+        String text = value.trim();
+        // The desk sends "09:30"; some screens send "9:30 am".
+        String cleaned = text.replace("am", "").replace("pm", "").replace("AM", "").replace("PM", "").trim();
+        boolean afternoon = text.toLowerCase().contains("pm");
+        try {
+            String[] parts = cleaned.split(":");
+            int hour = Integer.parseInt(parts[0].trim());
+            int minute = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 0;
+            if (afternoon && hour < 12) {
+                hour += 12;
+            }
+            if (hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+                return LocalTime.of(hour, minute);
+            }
+        } catch (RuntimeException notATime) {
+            // fall through to the start of the day
+        }
+        return DAY_START;
+    }
+
+    /** The name of the doctor, for the booking that was made. */
+    private String doctorName(UUID clinicId, UUID doctorId) {
+        if (doctorId == null) {
+            return "Any doctor";
+        }
+        return jdbc.query(
+                "select full_name from staff where id = ? and clinic_id = ?",
+                (rs, row) -> rs.getString("full_name"),
+                doctorId,
+                clinicId)
+                .stream()
+                .findFirst()
+                .orElse("Any doctor");
     }
 
     static String initials(String name) {

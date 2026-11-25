@@ -24,6 +24,16 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
         "/api/auth/otp", "/api/auth/verify", "/api/auth/unlock", "/api/auth/signup", "/actuator/health"
     };
 
+    /**
+     * The patient's own surfaces. They have no session, so the path itself says
+     * which clinic they are in: the booking page carries the clinic's slug, and
+     * the token, the intake form and the verification carry the patient's own
+     * link.
+     */
+    private static final String[] PATIENT_PATHS = {
+        "/api/public/", "/api/token/", "/api/intake/", "/api/verify/"
+    };
+
     private final JwtService jwtService;
     private final ClinicRouting routing;
 
@@ -41,6 +51,22 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
         if (isPublic(path)) {
             try {
                 chain.doFilter(request, response);
+            } finally {
+                routing.clear();
+            }
+            return;
+        }
+
+        // The patient's own surfaces have no session, so the path says which
+        // clinic they are in. A link that cannot be placed is refused here,
+        // rather than reaching a controller that cannot answer.
+        if (isPatientPath(path)) {
+            try {
+                routePatient(request, path);
+                chain.doFilter(request, response);
+            } catch (IllegalArgumentException e) {
+                unauthorized(response, e.getMessage());
+                return;
             } finally {
                 routing.clear();
             }
@@ -85,5 +111,51 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
             }
         }
         return false;
+    }
+
+    private boolean isPatientPath(String path) {
+        for (String patientPath : PATIENT_PATHS) {
+            if (path.startsWith(patientPath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Point a patient's request at their clinic.
+     *
+     * <p>The booking page carries the clinic's slug. The token, the intake form
+     * and the verification carry the patient's own link, which the clinic
+     * recorded when it handed it out.
+     */
+    private void routePatient(HttpServletRequest request, String path) {
+        String slug = request.getParameter("clinic");
+        if (slug != null && !slug.isBlank()) {
+            routing.routeBySlug(slug);
+            return;
+        }
+
+        String linkKey = linkKeyOf(path);
+        if (linkKey == null) {
+            throw new IllegalArgumentException("This link is not valid.");
+        }
+        routing.routeByLink(linkKey);
+    }
+
+    /** The patient's own key, taken from the path. */
+    private String linkKeyOf(String path) {
+        for (String patientPath : PATIENT_PATHS) {
+            if (!path.startsWith(patientPath)) {
+                continue;
+            }
+            String rest = path.substring(patientPath.length());
+            int slash = rest.indexOf('/');
+            if (slash == -1) {
+                return rest.isEmpty() ? null : rest;
+            }
+            return rest.substring(0, slash).isEmpty() ? null : rest.substring(0, slash);
+        }
+        return null;
     }
 }

@@ -215,6 +215,142 @@ public class BillingService {
         return billCard(clinicId, invoice, zones.zoneOf(clinicId));
     }
 
+    /**
+     * Raise a new bill at the desk.
+     *
+     * <p>A bill raised at the counter is for a visit that has already happened,
+     * so it hangs off the patient's open visit when there is one. The charges
+     * are what the desk typed; the total is their sum less what the desk gave
+     * away.
+     */
+    @Transactional
+    public Map<String, Object> create(
+            ClinicPrincipal principal, BillingController.NewBillRequest request) {
+        if (!principal.can("billing")) {
+            throw new ForbiddenException("You cannot open billing.");
+        }
+        if (request == null) {
+            throw new IllegalArgumentException("A bill needs a patient and at least one charge.");
+        }
+        String name = request.patient() == null ? "" : request.patient().trim();
+        if (name.length() < 2) {
+            throw new IllegalArgumentException("A patient is needed to raise a bill.");
+        }
+        if (request.lines() == null || request.lines().isEmpty()) {
+            throw new IllegalArgumentException("A bill needs at least one charge.");
+        }
+
+        UUID clinicId = principal.clinicIdAsUuid();
+
+        // The patient is the one on the list — a bill cannot be raised for a
+        // stranger without them having been checked in.
+        Patient patient =
+                patients.findByClinicIdOrderByCreatedAtAsc(clinicId).stream()
+                        .filter(candidate -> candidate.getFullName().equalsIgnoreCase(name))
+                        .findFirst()
+                        .orElseThrow(() -> new NotFoundException("That patient is not on the list."));
+
+        Visit visit =
+                visits.findByClinicIdAndStatusOrderByCreatedAtAsc(clinicId, "waiting").stream()
+                        .findFirst()
+                        .orElse(null);
+
+        List<Map<String, Object>> lines = new ArrayList<>();
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (BillingController.NewBillRequest.Line line : request.lines()) {
+            if (line == null || line.name() == null || line.name().isBlank()) {
+                continue;
+            }
+            BigDecimal amount = toDecimal(line.amount());
+            if (amount.signum() <= 0) {
+                continue;
+            }
+            lines.add(Map.of("name", line.name(), "amount", amount));
+            subtotal = subtotal.add(amount);
+        }
+        if (lines.isEmpty()) {
+            throw new IllegalArgumentException("A bill needs at least one charge.");
+        }
+
+        BigDecimal discount = zero(request.discount());
+        if (discount.signum() < 0) {
+            discount = BigDecimal.ZERO;
+        }
+        BigDecimal total = subtotal.subtract(discount);
+        if (total.signum() < 0) {
+            total = BigDecimal.ZERO;
+        }
+
+        Invoice invoice = new Invoice();
+        invoice.setId(UUID.randomUUID());
+        invoice.setClinicId(clinicId);
+        invoice.setPatientId(patient.getId());
+        invoice.setVisitId(visit == null ? null : visit.getId());
+        invoice.setPrescriptionId(null);
+        invoice.setPrefix("MCI");
+        invoice.setNumber(String.format("%04d", invoices.count() + 1));
+        invoice.setFy("2026-27");
+        invoice.setLines(lines);
+        invoice.setSubtotal(subtotal);
+        invoice.setDiscount(discount);
+        invoice.setTotal(total);
+        invoice.setStatus("unpaid");
+        invoice.setCreatedAt(Instant.now());
+        invoices.save(invoice);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("invoiceId", invoice.getId().toString());
+        body.put("number", invoice.getNumber());
+        body.put("total", invoice.getTotal());
+        body.put("status", invoice.getStatus());
+        body.put("bill", billCard(clinicId, invoice, zones.zoneOf(clinicId)));
+        return body;
+    }
+
+    /**
+     * Close the day.
+     *
+     * <p>The day is closed against the cash that was counted. If the count and
+     * the till disagree, the difference is written down here — a shortfall that
+     * is not recorded cannot be explained later.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> closeDay(
+            ClinicPrincipal principal, BillingController.CloseDayRequest request) {
+        if (!principal.can("billing")) {
+            throw new ForbiddenException("You cannot open billing.");
+        }
+        UUID clinicId = principal.clinicIdAsUuid();
+        ZoneId zone = zones.zoneOf(clinicId);
+        LocalDate day = LocalDate.now(zone);
+        Instant from = day.atStartOfDay(zone).toInstant();
+        Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+
+        List<Invoice> todays =
+                invoices.findByClinicIdAndCreatedAtBetweenOrderByCreatedAtDesc(clinicId, from, to);
+
+        BigDecimal expected = BigDecimal.ZERO;
+        int bills = 0;
+        for (Invoice invoice : todays) {
+            if ("paid".equals(invoice.getStatus())) {
+                expected = expected.add(zero(invoice.getTotal()));
+                bills++;
+            }
+        }
+
+        BigDecimal counted = request == null ? BigDecimal.ZERO : zero(request.cash());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("day", day.toString());
+        body.put("expected", expected);
+        body.put("counted", counted);
+        body.put("difference", counted.subtract(expected));
+        body.put("collected", expected);
+        body.put("bills", bills);
+        body.put("closedAt", Instant.now().toString());
+        return body;
+    }
+
     // ------------------------------------------------------------------ bill
 
     private Map<String, Object> billCard(UUID clinicId, Invoice invoice, ZoneId zone) {

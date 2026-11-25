@@ -1,8 +1,12 @@
 package com.medmate.clinic.schedule;
 
 import com.medmate.clinic.security.CurrentClinic;
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,4 +32,19 @@ public class AppointmentController {
             @RequestParam(required = false) String doctor) {
         return appointments.book(current.get(), view, date, doctor);
     }
+
+    /** Book a visit. */
+    @PostMapping
+    public Map<String, Object> create(@RequestBody(required = false) BookingRequest request) {
+        return appointments.create(current.get(), request);
+    }
+
+    /** What the desk types to book a visit. */
+    public record BookingRequest(
+            String patient,
+            String doctor,
+            String date,
+            String time,
+            String reason,
+            String mode) {}
 }

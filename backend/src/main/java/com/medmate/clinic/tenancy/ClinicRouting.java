@@ -16,14 +16,17 @@ public class ClinicRouting {
 
     private final ClinicDirectoryRepository directory;
     private final RegistryClinicRepository clinics;
+    private final PublicLinkRepository links;
     private final ClinicSchemaResolver resolver;
 
     public ClinicRouting(
             ClinicDirectoryRepository directory,
             RegistryClinicRepository clinics,
+            PublicLinkRepository links,
             ClinicSchemaResolver resolver) {
         this.directory = directory;
         this.clinics = clinics;
+        this.links = links;
         this.resolver = resolver;
     }
 
@@ -37,11 +40,45 @@ public class ClinicRouting {
         return route(entry.getClinicId());
     }
 
+    /**
+     * Point the request at the clinic behind a patient's own link.
+     *
+     * <p>The link is the only thing that says which clinic the patient is in —
+     * they have no session — so the service looks it up in the registry.
+     */
+    public RegistryClinic routeByLink(String linkKey) {
+        PublicLink link =
+                links.findByLinkKey(linkKey)
+                        .orElseThrow(
+                                () ->
+                                        new UnauthorizedException(
+                                                "This link is not valid. Ask the clinic for a new one."));
+        return route(link.getClinicId());
+    }
+
     /** Point the request at a clinic's schema. */
     public RegistryClinic route(UUID clinicId) {
         RegistryClinic clinic =
                 clinics.findById(clinicId)
                         .orElseThrow(() -> new UnauthorizedException("That clinic is not set up."));
+        resolver.use(clinic.getSchemaName());
+        return clinic;
+    }
+
+    /**
+     * Point the request at the clinic behind a public booking slug.
+     *
+     * <p>The patient's booking page is public, so the slug is the only thing
+     * that says which clinic they are in. Nothing else about the clinic is
+     * exposed by the slug.
+     */
+    public RegistryClinic routeBySlug(String slug) {
+        RegistryClinic clinic =
+                clinics.findByBookingSlug(slug)
+                        .orElseThrow(
+                                () ->
+                                        new UnauthorizedException(
+                                                "Please use your clinic's own booking link. Ask the clinic, or find it on their WhatsApp or Google page."));
         resolver.use(clinic.getSchemaName());
         return clinic;
     }

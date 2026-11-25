@@ -11,7 +11,16 @@
 
 import { mock } from "@/services/api/mock/router";
 import { auth } from "@/services/api/client";
+import { requireSession } from "@/services/api/mock/guard";
 import { buildReport } from "@/services/api/mock/reports";
+import { registerDeskRoutes } from "@/services/api/mock/deskRoutes";
+import { registerBillingRoutes } from "@/services/api/mock/billingRoutes";
+import { registerScheduleRoutes } from "@/services/api/mock/scheduleRoutes";
+import { registerSubscriptionRoutes } from "@/services/api/mock/subscriptionRoutes";
+import { registerNurseRoutes } from "@/services/api/mock/nurseRoutes";
+import { registerLabRoutes } from "@/services/api/mock/labRoutes";
+import { registerKioskRoutes } from "@/services/api/mock/kioskRoutes";
+import { registerPatientWebRoutes } from "@/services/api/mock/patientWebRoutes";
 import {
   appointments,
   capabilities,
@@ -58,11 +67,6 @@ const MOCK_PIN = "1234";
  * that forgets to guard itself fails here first, and a refresh keeps the
  * session the way it does against the real service.
  */
-function requireSession(): void {
-  if (!auth.get()) {
-    throw new Error("Please sign in again.");
-  }
-}
 
 // ------------------------------------------------------------------ the auth
 
@@ -505,7 +509,17 @@ mock.on("POST", "/clinic/prescriptions/:id/sign", (body, context) => {
     prescriptionId: prescription.id,
     patientId: prescription.patientId,
     testName: test.name,
-    status: "ordered",
+    status: "to_collect",
+    sampleNo: null,
+    partner: null,
+    orderedBy: "dr_ananya",
+    collectedAt: null,
+    reportedAt: null,
+    value: null,
+    reference: null,
+    abnormal: false,
+    critical: false,
+    note: null,
   }));
   labOrders.push(...labOrderList);
 
@@ -613,3 +627,14 @@ mock.on("GET", "/clinic/teleconsult", () => {
       "Patients wait on their own page. Start the call when they are online, and switch to a phone call if video fails.",
   };
 });
+
+// The desk, the till and the appointment book are registered from their own
+// files — each is a screen's worth of endpoints.
+registerDeskRoutes();
+registerBillingRoutes();
+registerScheduleRoutes();
+registerSubscriptionRoutes();
+registerNurseRoutes();
+registerLabRoutes();
+registerKioskRoutes();
+registerPatientWebRoutes();

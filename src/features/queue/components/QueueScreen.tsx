@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Icon } from "@/components/ui/Icon";
 import { loadQueue, loadDoctors, checkIn } from "@/features/queue/state/queueSlice";
-import { CheckInPatientDialog } from "@/features/queue/components/CheckInPatientDialog";
+import { CheckInPatientDialog } from "@/components/ui/CheckInPatientDialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 const FILTERS = [

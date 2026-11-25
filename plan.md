@@ -77,18 +77,47 @@ Each has a placeholder that says so plainly, so a link never leads to a blank pa
 
 | Screen | Route | Figma frame | Status |
 |---|---|---|---|
-| Patient Kiosk | `/kiosk` | `15:1439` | placeholder — the tablet flow |
-| Nurse Station | `/nurse` | `9:701` | placeholder — the vitals endpoint |
-| Reception Desk | `/desk` | `15:1513` | placeholder — the hand-over endpoint |
-| Billing & POS | `/billing` | `9:986` | placeholder — the billing endpoints |
-| Lab & Diagnostics | `/lab` | `20:2294` | placeholder — the lab endpoints |
-| Appointments | `/schedule` | `17:1592` | placeholder — the appointments endpoints |
-| Doctors | `/doctors` | `22:3106` | placeholder — the doctors and HPR lookup |
 | Staff & roles | `/staff` | `10:942` | placeholder — the staff and roles endpoints |
 | Patient messages | `/messages` | `21:3256` | placeholder — the messages endpoints |
+| Doctors | `/doctors` | `22:3106` | placeholder — the doctors and HPR lookup |
 | Locations | `/locations` | `22:3422` | placeholder — the branches endpoints |
-| Subscription | `/subscription` | `18:1895` | placeholder — the subscription endpoint |
-| Settings | `/settings` | `22:3701` | placeholder — the settings endpoints |
+
+### Built since
+
+- **The reception desk** (`/desk`) — who is waiting to be handed over, and what each
+  one still needs: the prescription, the bill, the follow-up, the lab sample. The
+  hand-over cannot happen while something is outstanding. `GET /api/clinic/desk`,
+  `POST /api/clinic/desk/{visitId}/checkout` and `GET /api/clinic/desk/booking-link`.
+- **Billing & POS** (`/billing`) — what came in today, what is still owed, and the
+  bill of supply that prints. Taking the payment, giving it back, raising a new
+  bill and closing the day against the counted cash.
+- **The receipt** (`/billing/receipt/:invoiceId`) — proof the patient paid, on a page
+  of its own, because a receipt is handed over.
+- **Appointments** (`/schedule`) — a day at a time for the front desk, a week for the
+  owner, and booking a visit that creates the patient if the clinic has not met them.
+- **The subscription** (`/subscription`) — the plan, the trial, the usage counted from
+  the clinic's own work, and the payment that moves it.
+- **Settings** (`/settings`) — the clinic's own details, and the payment keys that
+  send the money straight to the clinic.
+- **The nurse station** (`/nurse`) — the tally, the three tabs and the **take vitals**
+  dialog. Nine readings, each printing the range it is read against, with the number
+  marked as it is typed. Saving marks the patient ready for the doctor.
+  `GET /api/clinic/nurse`, `GET /api/clinic/nurse/doctors`, `POST /api/clinic/nurse/vitals`.
+- **The lab bench** (`/lab`) — the five numbers, the three tabs and the work on the
+  bench: collected, sent to a partner lab, or reported. A result out of range is
+  flagged before it is saved. `GET /api/clinic/lab`, `POST /api/clinic/lab/results`,
+  `POST /api/clinic/lab/orders/{id}`.
+- **The patient kiosk** (`/kiosk`) — the front desk's page, and the tablet flow the
+  patient sees: Mobile → Code → Patient → Doctor → Pay → Token, with the language
+  switcher, the idle reset and the PIN that closes it. `GET /api/kiosk` and ten more.
+- **The patient-facing web** — the four surfaces a patient opens on their phone, all
+  outside the session guard, because a patient at the clinic's front door is not staff:
+  **book** (`/book?clinic=<slug>` — the doctor, the time, the details, the
+  confirmation), **live token** (`/t/<token>` — the place in the queue), **symptoms form**
+  (`/intake/<token>`) and **verification** (`/verify/rx_<id>?h=<hash>`). The sign-up
+  flow's booking link, which pointed at a 404, now resolves.
+  `GET /api/public/doctors`, `POST /api/public/booking`, `GET /api/token/{token}`,
+  `GET|POST /api/intake/{token}`, `GET /api/verify/{id}`.
 
 ---
 

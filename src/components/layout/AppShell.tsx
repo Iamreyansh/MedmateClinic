@@ -172,7 +172,7 @@ export function AppShell({ children, activeHref, onAccount, onLock, onSignOut }:
         onAccount={onAccount}
         onLock={onLock}
       />
-      <div>
+      <main className="content">
         <Topbar
           clinic={
             session
@@ -198,7 +198,7 @@ export function AppShell({ children, activeHref, onAccount, onLock, onSignOut }:
           onSignOut={onSignOut}
         />
         <div className="page">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

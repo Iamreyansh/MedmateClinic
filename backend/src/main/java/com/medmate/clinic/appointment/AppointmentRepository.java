@@ -13,4 +13,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     long countByClinicIdAndStartsAtAfterAndStatus(UUID clinicId, Instant after, String status);
     long countByClinicIdAndStartsAtBetweenAndStatus(UUID clinicId, Instant from, Instant to, String status);
     Optional<Appointment> findByIdAndClinicId(UUID id, UUID clinicId);
+
+    List<Appointment> findByClinicIdOrderByStartsAtAsc(UUID clinicId);
 }

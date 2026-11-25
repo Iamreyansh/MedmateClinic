@@ -49,6 +49,15 @@ public class LabOrder {
     @Column(name = "critical")
     private boolean critical;
 
+    @Column(name = "sample_no")
+    private String sampleNo;
+
+    @Column(name = "partner")
+    private String partner;
+
+    @Column(name = "collected_at")
+    private Instant collectedAt;
+
     public UUID getId() {
         return id;
     }
@@ -153,5 +162,29 @@ public class LabOrder {
 
     public void setCritical(boolean critical) {
         this.critical = critical;
+    }
+
+    public String getSampleNo() {
+        return sampleNo;
+    }
+
+    public void setSampleNo(String sampleNo) {
+        this.sampleNo = sampleNo;
+    }
+
+    public String getPartner() {
+        return partner;
+    }
+
+    public void setPartner(String partner) {
+        this.partner = partner;
+    }
+
+    public Instant getCollectedAt() {
+        return collectedAt;
+    }
+
+    public void setCollectedAt(Instant collectedAt) {
+        this.collectedAt = collectedAt;
     }
 }

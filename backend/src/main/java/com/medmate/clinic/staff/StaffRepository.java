@@ -12,5 +12,7 @@ public interface StaffRepository extends JpaRepository<Staff, UUID> {
 
     List<Staff> findByClinicId(UUID clinicId);
 
+    Optional<Staff> findByIdAndClinicId(UUID id, UUID clinicId);
+
     long countByClinicId(UUID clinicId);
 }

@@ -10,5 +10,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     List<Prescription> findByClinicIdAndVisitIdOrderByCreatedAtDesc(UUID clinicId, UUID visitId);
     List<Prescription> findByClinicIdAndStatusOrderBySignedAtDesc(UUID clinicId, String status);
+    List<Prescription> findByClinicIdOrderByCreatedAtAsc(UUID clinicId);
     Optional<Prescription> findByIdAndClinicId(UUID id, UUID clinicId);
 }

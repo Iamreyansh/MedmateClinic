@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/Button";
 import { Input, TextArea } from "@/components/ui/Input";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
+import { reportLabResult } from "@/features/lab/api/lab";
+import type { LabOrder } from "@/features/lab/types";
 
 export type LabResultEntry = {
   /** The test the result belongs to. */
@@ -25,7 +27,7 @@ export type AddLabResultDialogProps = {
   /** Called with the result as the technician entered it. */
   onSave: (result: LabResultEntry) => void;
   /** The orders waiting for a result. */
-  orders: Array<{ id: string; test: string; patient: string }>;
+  orders: LabOrder[];
 };
 
 /**
@@ -37,13 +39,43 @@ export type AddLabResultDialogProps = {
  */
 export function AddLabResultDialog({ open, onClose, onSave, orders }: AddLabResultDialogProps) {
   const [orderId, setOrderId] = useState(orders[0]?.id ?? "");
-  const [finding, setFinding] = useState("");
   const [value, setValue] = useState("");
-  const [range, setRange] = useState("");
+  const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
+  const [abnormal, setAbnormal] = useState(false);
+  const [critical, setCritical] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const order = orders.find((entry) => entry.id === orderId);
-  const ready = finding.trim().length > 0 && value.trim().length > 0;
+  const order = orders.find((entry) => entry.id === orderId) ?? orders[0];
+  const ready = value.trim().length > 0 && order !== undefined;
+
+  const save = async () => {
+    if (!order) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await reportLabResult({ orderId: order.id, value, reference, abnormal, critical, note });
+      onSave({
+        test: order.test,
+        finding: order.test,
+        value,
+        range: reference,
+        normal: !abnormal,
+        note,
+      });
+      setValue("");
+      setReference("");
+      setNote("");
+      setAbnormal(false);
+      setCritical(false);
+      onClose();
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "Could not save the result");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Dialog
@@ -57,52 +89,36 @@ export function AddLabResultDialog({ open, onClose, onSave, orders }: AddLabResu
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            icon="check"
-            disabled={!ready}
-            onClick={() => {
-              onSave({
-                test: order?.test ?? "",
-                finding,
-                value,
-                range,
-                normal: true,
-                note,
-              });
-              onClose();
-            }}
-          >
-            Save the result
+          <Button icon="check" disabled={!ready || saving} onClick={() => void save()}>
+            {saving ? "Saving…" : "Save the result"}
           </Button>
         </>
       }
     >
-      <div className="field" style={{ marginBottom: 14 }}>
-        <label htmlFor="lab-order">Which order?</label>
-        <select
-          id="lab-order"
-          className="input"
-          value={orderId}
-          onChange={(event) => setOrderId(event.target.value)}
-        >
-          {orders.length === 0 ? <option value="">No orders waiting</option> : null}
-          {orders.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.test} · {entry.patient}
-            </option>
-          ))}
-        </select>
-      </div>
+      {error ? (
+        <div className="note red" style={{ marginBottom: 14 }}>
+          <Icon name="alert" size={18} />
+          <div>{error}</div>
+        </div>
+      ) : null}
 
-      <div className="field" style={{ marginBottom: 14 }}>
-        <label htmlFor="lab-finding">What was measured</label>
-        <Input
-          id="lab-finding"
-          value={finding}
-          placeholder="Haemoglobin"
-          onChange={(event) => setFinding(event.target.value)}
-        />
-      </div>
+      {orders.length > 1 ? (
+        <div className="field" style={{ marginBottom: 14 }}>
+          <label htmlFor="lab-order">Which order?</label>
+          <select
+            id="lab-order"
+            className="input"
+            value={orderId}
+            onChange={(event) => setOrderId(event.target.value)}
+          >
+            {orders.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.test} · {entry.patient.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       <div className="grid2" style={{ marginBottom: 14 }}>
         <div className="field">
@@ -118,14 +134,14 @@ export function AddLabResultDialog({ open, onClose, onSave, orders }: AddLabResu
           <label htmlFor="lab-range">Normal range</label>
           <Input
             id="lab-range"
-            value={range}
+            value={reference}
             placeholder="12.0 – 15.0 g/dL"
-            onChange={(event) => setRange(event.target.value)}
+            onChange={(event) => setReference(event.target.value)}
           />
         </div>
       </div>
 
-      <div className="field">
+      <div className="field" style={{ marginBottom: 14 }}>
         <label htmlFor="lab-note">Note for the doctor</label>
         <TextArea
           id="lab-note"
@@ -135,11 +151,48 @@ export function AddLabResultDialog({ open, onClose, onSave, orders }: AddLabResu
         />
       </div>
 
+      <div className="seg prio" role="group" aria-label="How the result reads" style={{ marginBottom: 14 }}>
+        <button
+          type="button"
+          aria-pressed={!abnormal}
+          className={cn(!abnormal && "on")}
+          onClick={() => {
+            setAbnormal(false);
+            setCritical(false);
+          }}
+        >
+          Normal
+        </button>
+        <button
+          type="button"
+          aria-pressed={abnormal && !critical}
+          className={cn(abnormal && !critical && "on", "prio-sel", "urgent")}
+          onClick={() => {
+            setAbnormal(true);
+            setCritical(false);
+          }}
+        >
+          Abnormal
+        </button>
+        <button
+          type="button"
+          aria-pressed={critical}
+          className={cn(critical && "on", "prio-sel", "emergency")}
+          onClick={() => {
+            setAbnormal(true);
+            setCritical(true);
+          }}
+        >
+          Critical
+        </button>
+      </div>
+
       {order ? (
-        <div className={cn("note", "mint")} style={{ marginTop: 12 }}>
+        <div className={cn("note", critical ? "red" : abnormal ? "gold" : "mint")}>
           <Icon name="lab" size={18} />
           <span>
-            The result is reported against <b>{order.test}</b> for {order.patient}.
+            The result is reported against <b>{order.test}</b> for {order.patient.name}.
+            {abnormal ? " The doctor sees it flagged." : ""}
           </span>
         </div>
       ) : null}

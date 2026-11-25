@@ -353,6 +353,14 @@ export type MockVitals = {
   sugarMg: number | null;
   note: string | null;
   priority: string | null;
+  /** The breathing rate, in breaths a minute. */
+  breathRate: number | null;
+  /** The height, in centimetres. */
+  heightCm: number | null;
+  /** The doctor the patient was sent to when the vitals were taken. */
+  sentTo: string | null;
+  /** The nurse who took the vitals. */
+  recordedBy: string | null;
 };
 
 export const vitals: MockVitals[] = [
@@ -368,6 +376,27 @@ export const vitals: MockVitals[] = [
     sugarMg: 164,
     note: "Fever with high pulse",
     priority: "urgent",
+    breathRate: 20,
+    heightCm: 158,
+    sentTo: "dr_ananya",
+    recordedBy: "Mary Joseph",
+  },
+  {
+    id: "vt_rohit",
+    visitId: "vs_rohit",
+    recordedAt: "2026-11-25T10:51:00Z",
+    tempF: 100.4,
+    bp: "110/70",
+    pulse: 88,
+    spo2: 97,
+    weightKg: 24,
+    sugarMg: 92,
+    note: "Parents say the cough is worse at night",
+    priority: null,
+    breathRate: 18,
+    heightCm: 124,
+    sentTo: "dr_vikram",
+    recordedBy: "Mary Joseph",
   },
 ];
 
@@ -497,9 +526,80 @@ export type MockInvoice = {
   status: string;
   payMode: string | null;
   paidAt: string | null;
+  createdAt?: string | null;
+  /** The charges on the bill, when it was made at the desk. */
+  lines?: Array<{ name: string; amount: number; description?: string }>;
+  discount?: number;
 };
 
-export const invoices: MockInvoice[] = [];
+export const invoices: MockInvoice[] = [
+  {
+    id: "inv_0148",
+    visitId: "vs_kavya",
+    prescriptionId: "rx_vs_kavya",
+    prefix: "MMC/26-27",
+    number: "0148",
+    total: 500,
+    status: "unpaid",
+    payMode: null,
+    paidAt: null,
+  },
+  {
+    id: "inv_0149",
+    visitId: "vs_rohit",
+    prescriptionId: "rx_vs_rohit",
+    prefix: "MMC/26-27",
+    number: "0149",
+    total: 750,
+    status: "unpaid",
+    payMode: null,
+    paidAt: null,
+  },
+  {
+    id: "inv_0150",
+    visitId: "vs_ishaan",
+    prescriptionId: "rx_vs_ishaan",
+    prefix: "MMC/26-27",
+    number: "0150",
+    total: 450,
+    status: "unpaid",
+    payMode: null,
+    paidAt: null,
+  },
+  {
+    id: "inv_0145",
+    visitId: "vs_meera",
+    prescriptionId: "rx_vs_meera",
+    prefix: "MMC/26-27",
+    number: "0145",
+    total: 500,
+    status: "paid",
+    payMode: "cash",
+    paidAt: "2026-11-25T09:12:00Z",
+  },
+  {
+    id: "inv_0146",
+    visitId: "vs_suresh",
+    prescriptionId: "rx_vs_suresh",
+    prefix: "MMC/26-27",
+    number: "0146",
+    total: 400,
+    status: "paid",
+    payMode: "upi",
+    paidAt: "2026-11-25T09:41:00Z",
+  },
+  {
+    id: "inv_0147",
+    visitId: "vs_lakshmi",
+    prescriptionId: "rx_vs_lakshmi",
+    prefix: "MMC/26-27",
+    number: "0147",
+    total: 500,
+    status: "paid",
+    payMode: "card",
+    paidAt: "2026-11-25T10:02:00Z",
+  },
+];
 
 export type MockLabOrder = {
   id: string;
@@ -508,9 +608,120 @@ export type MockLabOrder = {
   patientId: string;
   testName: string;
   status: string;
+  /** The number printed on the sample tube. */
+  sampleNo: string | null;
+  /** The partner lab the sample was sent to, when it went out. */
+  partner: string | null;
+  /** The doctor who ordered the test. */
+  orderedBy: string | null;
+  /** When the sample was collected. */
+  collectedAt: string | null;
+  /** When the result came back. */
+  reportedAt: string | null;
+  /** The result, as the lab reports it. */
+  value: string | null;
+  /** The range the value is read against. */
+  reference: string | null;
+  /** Whether the value fell outside the range. */
+  abnormal: boolean;
+  /** Whether the value was critical. */
+  critical: boolean;
+  /** The note that goes back to the doctor. */
+  note: string | null;
 };
 
-export const labOrders: MockLabOrder[] = [];
+export const labOrders: MockLabOrder[] = [
+  {
+    id: "lo_kavya_cbc",
+    visitId: "vs_kavya",
+    prescriptionId: "rx_vs_kavya",
+    patientId: "pt_kavya",
+    testName: "Complete blood count",
+    status: "to_collect",
+    sampleNo: null,
+    partner: null,
+    orderedBy: "dr_ananya",
+    collectedAt: null,
+    reportedAt: null,
+    value: null,
+    reference: null,
+    abnormal: false,
+    critical: false,
+    note: null,
+  },
+  {
+    id: "lo_rohit_dengue",
+    visitId: "vs_rohit",
+    prescriptionId: "rx_vs_rohit",
+    patientId: "pt_rohit",
+    testName: "Dengue NS1 antigen",
+    status: "in_lab",
+    sampleNo: "S-2041",
+    partner: null,
+    orderedBy: "dr_vikram",
+    collectedAt: "2026-11-25T10:58:00Z",
+    reportedAt: null,
+    value: null,
+    reference: null,
+    abnormal: false,
+    critical: false,
+    note: null,
+  },
+  {
+    id: "lo_aarav_tb",
+    visitId: "vs_aarav",
+    prescriptionId: "rx_vs_aarav",
+    patientId: "pt_aarav",
+    testName: "Mantoux test",
+    status: "sent_out",
+    sampleNo: "S-2039",
+    partner: "Tenet Diagnostics",
+    orderedBy: "dr_ananya",
+    collectedAt: "2026-11-25T10:44:00Z",
+    reportedAt: null,
+    value: null,
+    reference: null,
+    abnormal: false,
+    critical: false,
+    note: "Sent to Tenet Diagnostics. Reports by 6 pm.",
+  },
+  {
+    id: "lo_diya_tsh",
+    visitId: "vs_diya",
+    prescriptionId: "rx_vs_diya",
+    patientId: "pt_diya",
+    testName: "TSH",
+    status: "reported",
+    sampleNo: "S-2028",
+    partner: null,
+    orderedBy: "dr_ananya",
+    collectedAt: "2026-11-25T09:40:00Z",
+    reportedAt: "2026-11-25T11:20:00Z",
+    value: "6.8 mIU/L",
+    reference: "0.4 – 4.0 mIU/L",
+    abnormal: true,
+    critical: false,
+    note: "Above the range. Please review.",
+  },
+  {
+    id: "lo_fathima_cbc",
+    visitId: "vs_fathima",
+    prescriptionId: "rx_vs_fathima",
+    patientId: "pt_fathima",
+    testName: "Complete blood count",
+    status: "reported",
+    sampleNo: "S-2030",
+    partner: null,
+    orderedBy: "dr_ananya",
+    collectedAt: "2026-11-25T09:48:00Z",
+    reportedAt: "2026-11-25T11:02:00Z",
+    value: "11.2 g/dL",
+    reference: "12.0 – 15.0 g/dL",
+    abnormal: true,
+    critical: true,
+    note: "Haemoglobin is critically low. Please call the patient.",
+  },
+];
 
 export type MockAppointment = {
   id: string;
@@ -523,7 +734,98 @@ export type MockAppointment = {
   source: string;
 };
 
-export const appointments: MockAppointment[] = [];
+export const appointments: MockAppointment[] = [
+  {
+    id: "ap_1",
+    visitId: "vs_kavya",
+    patientId: "pt_kavya",
+    doctorId: "dr_ananya",
+    startsAt: "2026-11-25T10:00:00Z",
+    mode: "in_clinic",
+    status: "checked_in",
+    source: "booking",
+  },
+  {
+    id: "ap_2",
+    visitId: null,
+    patientId: "pt_rohit",
+    doctorId: "dr_ananya",
+    startsAt: "2026-11-25T10:30:00Z",
+    mode: "in_clinic",
+    status: "booked",
+    source: "booking",
+  },
+  {
+    id: "ap_3",
+    visitId: null,
+    patientId: "pt_ishaan",
+    doctorId: "dr_vikram",
+    startsAt: "2026-11-25T11:00:00Z",
+    mode: "in_clinic",
+    status: "booked",
+    source: "booking",
+  },
+  {
+    id: "ap_4",
+    visitId: null,
+    patientId: "pt_meera",
+    doctorId: "dr_meghana",
+    startsAt: "2026-11-25T11:30:00Z",
+    mode: "online",
+    status: "booked",
+    source: "booking",
+  },
+  {
+    id: "ap_5",
+    visitId: null,
+    patientId: "pt_suresh",
+    doctorId: "dr_ananya",
+    startsAt: "2026-11-25T12:00:00Z",
+    mode: "in_clinic",
+    status: "booked",
+    source: "booking",
+  },
+  {
+    id: "ap_6",
+    visitId: null,
+    patientId: "pt_lakshmi",
+    doctorId: "dr_ananya",
+    startsAt: "2026-11-25T17:00:00Z",
+    mode: "in_clinic",
+    status: "booked",
+    source: "booking",
+  },
+  {
+    id: "ap_7",
+    visitId: null,
+    patientId: "pt_arjun",
+    doctorId: "dr_vikram",
+    startsAt: "2026-11-26T10:00:00Z",
+    mode: "in_clinic",
+    status: "booked",
+    source: "booking",
+  },
+  {
+    id: "ap_8",
+    visitId: null,
+    patientId: "pt_kavya",
+    doctorId: "dr_meghana",
+    startsAt: "2026-11-27T16:00:00Z",
+    mode: "online",
+    status: "booked",
+    source: "booking",
+  },
+  {
+    id: "ap_9",
+    visitId: null,
+    patientId: "pt_ishaan",
+    doctorId: "dr_ananya",
+    startsAt: "2026-11-24T09:30:00Z",
+    mode: "in_clinic",
+    status: "no_show",
+    source: "booking",
+  },
+];
 
 // ------------------------------------------------------------------- billing
 

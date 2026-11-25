@@ -48,5 +48,30 @@ public class BillingController {
         return billing.refund(current.get(), invoiceId);
     }
 
+    /** Raise a new bill at the desk. */
+    @PostMapping
+    public Map<String, Object> create(@RequestBody(required = false) NewBillRequest request) {
+        return billing.create(current.get(), request);
+    }
+
+    /** Close the day against the cash that was counted. */
+    @PostMapping("/close-day")
+    public Map<String, Object> closeDay(@RequestBody(required = false) CloseDayRequest request) {
+        return billing.closeDay(current.get(), request);
+    }
+
     public record PaymentRequest(String payMode) {}
+
+    /** The bill the desk is raising. */
+    public record NewBillRequest(
+            String patient,
+            java.util.List<Line> lines,
+            java.math.BigDecimal discount) {
+
+        /** One charge on the bill. */
+        public record Line(String name, java.math.BigDecimal amount) {}
+    }
+
+    /** The cash the desk counted. */
+    public record CloseDayRequest(java.math.BigDecimal cash, java.math.BigDecimal expected) {}
 }

@@ -60,6 +60,7 @@ public class DeskService {
     private final AppointmentRepository appointments;
     private final LabOrderRepository labOrders;
     private final HandoverRepository handovers;
+    private final com.medmate.clinic.tenancy.RegistryClinicRepository clinics;
     private final ClinicZoneService zones;
 
     public DeskService(
@@ -71,6 +72,7 @@ public class DeskService {
             AppointmentRepository appointments,
             LabOrderRepository labOrders,
             HandoverRepository handovers,
+            com.medmate.clinic.tenancy.RegistryClinicRepository clinics,
             ClinicZoneService zones) {
         this.visits = visits;
         this.patients = patients;
@@ -80,6 +82,7 @@ public class DeskService {
         this.appointments = appointments;
         this.labOrders = labOrders;
         this.handovers = handovers;
+        this.clinics = clinics;
         this.zones = zones;
     }
 
@@ -209,6 +212,42 @@ public class DeskService {
         body.put("visitId", visit.getId().toString());
         body.put("checkedOut", true);
         return body;
+    }
+
+    /**
+     * The clinic's public booking link.
+     *
+     * <p>The address a patient books on. It is the clinic's own link, so the
+     * patient reaches the right clinic without the desk spelling it out.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> bookingLink(ClinicPrincipal principal) {
+        if (!principal.can("desk")) {
+            throw new ForbiddenException("You cannot open the reception desk.");
+        }
+        UUID clinicId = principal.clinicIdAsUuid();
+        String name = clinicName(clinicId);
+        String slug = slugOf(name);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("link", "https://medmate.in/book?clinic=" + slug);
+        body.put("slug", slug);
+        body.put("clinic", name);
+        body.put("channels", List.of("sms", "whatsapp", "copy"));
+        return body;
+    }
+
+    /** The clinic's name, for the link the patient is sent to. */
+    private String clinicName(UUID clinicId) {
+        return clinics.findById(clinicId)
+                .map(com.medmate.clinic.tenancy.RegistryClinic::getName)
+                .orElse("MedMate Clinic");
+    }
+
+    /** The clinic's slug, for the link the patient is sent to. */
+    private String slugOf(String name) {
+        String slug = name.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        return slug.isBlank() ? "medmate-clinic" : slug;
     }
 
     // ---------------------------------------------------------------- pieces

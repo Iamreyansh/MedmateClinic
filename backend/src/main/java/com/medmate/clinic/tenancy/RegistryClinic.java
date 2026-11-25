@@ -24,6 +24,16 @@ public class RegistryClinic {
     @Column(name = "schema_name", nullable = false)
     private String schemaName;
 
+    /**
+     * The clinic's public booking slug — the tail of its booking link.
+     *
+     * <p>A patient reaches the booking page through this slug, not through the
+     * clinic's id, so the link can be printed on a card and put on a WhatsApp
+     * profile without carrying anything about the clinic's schema.
+     */
+    @Column(name = "booking_slug")
+    private String bookingSlug;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -57,6 +67,14 @@ public class RegistryClinic {
 
     public void setSchemaName(String schemaName) {
         this.schemaName = schemaName;
+    }
+
+    public String getBookingSlug() {
+        return bookingSlug;
+    }
+
+    public void setBookingSlug(String bookingSlug) {
+        this.bookingSlug = bookingSlug;
     }
 
     public Instant getCreatedAt() {

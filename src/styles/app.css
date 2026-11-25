@@ -1752,3 +1752,48 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The nurse station, the lab and the kiosk.
+   ------------------------------------------------------------------------- */
+
+/*
+ * The priority picker.
+ *
+ * The stylesheet's segmented control lays out two options per row. Priority
+ * has three — Normal, Urgent, Emergency — so it needs a row of its own.
+ */
+.seg.prio {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.seg.prio button {
+  padding: 0 6px;
+}
+
+/* The nurse station's tabs carry their count in the label. */
+.nq-tabs button {
+  white-space: nowrap;
+}
+
+/*
+ * The kiosk's own fields are bigger than the staff ones — a tablet is read at
+ * arm's length by a person standing up.
+ */
+.kiosk-form .input,
+.kiosk-text {
+  height: 56px;
+  font-size: 17px;
+}
+
+/* The code the patient is typing, and the button under it. */
+.kiosk-in {
+  max-width: 320px;
+  margin-inline: auto;
+}
+
+.kiosk-card .kiosk-in,
+.kiosk-card .kiosk-go {
+  display: block;
+  margin-inline: auto;
+}

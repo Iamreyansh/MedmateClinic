@@ -47,6 +47,13 @@ public class Vitals {
     private BigDecimal heightCm;
     @Column(name = "sugar_mg")
     private Integer sugarMg;
+
+    @Column(name = "breath_rate")
+    private Integer breathRate;
+
+    @Column(name = "sent_to")
+    private UUID sentTo;
+
     @Column(name = "note")
     private String note;
     @Column(name = "priority")
@@ -150,6 +157,23 @@ public class Vitals {
     public void setSugarMg(Integer sugarMg) {
         this.sugarMg = sugarMg;
     }
+
+    public Integer getBreathRate() {
+        return breathRate;
+    }
+
+    public void setBreathRate(Integer breathRate) {
+        this.breathRate = breathRate;
+    }
+
+    public UUID getSentTo() {
+        return sentTo;
+    }
+
+    public void setSentTo(UUID sentTo) {
+        this.sentTo = sentTo;
+    }
+
     public String getNote() {
         return note;
     }

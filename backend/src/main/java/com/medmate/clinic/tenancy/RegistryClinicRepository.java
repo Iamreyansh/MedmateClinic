@@ -8,4 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface RegistryClinicRepository extends JpaRepository<RegistryClinic, UUID> {
 
     Optional<RegistryClinic> findBySchemaName(String schemaName);
+
+    /** The clinic behind a public booking slug. */
+    Optional<RegistryClinic> findByBookingSlug(String bookingSlug);
 }

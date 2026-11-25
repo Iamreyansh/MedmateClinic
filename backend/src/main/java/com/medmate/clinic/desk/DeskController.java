@@ -32,4 +32,10 @@ public class DeskController {
     public Map<String, Object> checkOut(@PathVariable String visitId) {
         return desk.checkOut(current.get(), visitId);
     }
+
+    /** The clinic's public booking link, to share with a patient. */
+    @GetMapping("/booking-link")
+    public Map<String, Object> bookingLink() {
+        return desk.bookingLink(current.get());
+    }
 }
