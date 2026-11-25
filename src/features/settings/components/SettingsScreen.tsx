@@ -6,13 +6,13 @@ import { cn } from "@/lib/cn";
 import { ConnectPaymentsDialog } from "@/features/settings/components/ConnectPaymentsDialog";
 import { connectPayments } from "@/features/settings/api/settings";
 
-/** The tabs the settings screen has. */
+/** The tabs the settings screen has — the ones the design names. */
 const TABS = [
+  { value: "account", label: "My account" },
+  { value: "device", label: "This device" },
   { value: "clinic", label: "Clinic & letterhead" },
-  { value: "pin", label: "My PIN & device" },
   { value: "pharmacies", label: "Pharmacies" },
-  { value: "agreements", label: "Agreements" },
-  { value: "readiness", label: "Readiness check" },
+  { value: "live", label: "Ready to go live" },
 ];
 
 /**
@@ -54,7 +54,40 @@ export function SettingsScreen() {
         </nav>
 
         <div className="se-body">
-          {tab === "clinic" ? (
+          {tab === "account" ? (
+            <section className="card se-card">
+              <div className="t-eyebrow">My account</div>
+              <div className="se-me">
+                <span className="tk" style={{ width: 52, height: 52 }}>
+                  AR
+                </span>
+                <div>
+                  <b style={{ fontSize: 16 }}>Dr. Naveen Kulkarni</b>
+                  <p className="t-cap">Owner · Psychiatry · signs in with ···· 43210</p>
+                </div>
+              </div>
+              <p className="t-cap" style={{ marginTop: 12 }}>
+                Your name, your registration and the mobile the clinic reaches you on. A one-time
+                code signs you in.
+              </p>
+            </section>
+          ) : tab === "device" ? (
+            <section className="card se-card">
+              <div className="t-eyebrow">This device</div>
+              <div className="se-check">
+                <span className="se-dot">
+                  <Icon name="check" size={15} />
+                </span>
+                <div>
+                  <b>The PIN is not set</b>
+                  <p>
+                    Four digits unlock this screen, so you do not need a new code each time. Set it
+                    in My account.
+                  </p>
+                </div>
+              </div>
+            </section>
+          ) : tab === "clinic" ? (
             <>
               <section className="card se-card">
                 <div className="t-eyebrow">The clinic</div>

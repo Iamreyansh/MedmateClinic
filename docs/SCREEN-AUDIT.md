@@ -400,3 +400,60 @@ Run against the working tree at the time of the audit:
 - Production build with `VITE_USE_MOCK=false`: **successful** (from the previous run)
 - Fidelity: **138 properties, 0 drift** (from the previous run)
 - Maven: **4/4 passing** (from the previous run)
+
+## 7. The manifest — a frame-by-frame status the harness can read
+
+Machine-readable: one line per frame, `node | route | status | where`. The
+status is **built** (the route exists and draws the frame's regions),
+**partial** (the route exists but a named region is missing), **placeholder**
+(the route says plainly it is not built) or **missing** (no route).
+
+```
+node          | route               | status    | where
+12:1139       | /                   | built     | src/features/landing
+13:1415..2562 | /start              | partial   | src/features/onboarding — no POST /api/auth/signup from the steps yet
+20:2600       | /teleconsult        | built     | src/features/teleconsult
+20:2854       | /inbox              | built     | src/features/inbox
+21:2670       | /patients           | built     | src/features/patients (the list; built in F5)
+21:2977       | /patients/:id       | built     | src/features/patients (the record)
+17:1913       | /reports            | built     | src/features/reports (nine ranges)
+15:1513       | /desk               | built     | src/features/desk (four tiles + the billing button)
+15:1439       | /kiosk              | partial   | src/features/kiosk — the service's kiosk answers 500 (no clinic schema)
+9:986         | /billing            | built     | src/features/billing
+17:1592       | /schedule           | built     | src/features/schedule
+9:701         | /nurse              | built     | src/features/nurse
+20:2294       | /lab                | built     | src/features/lab
+18:1895       | /subscription       | built     | src/features/subscription (doctors, locations, staff)
+22:3956       | /templates          | built     | src/features/templates (Mine | From colleagues)
+22:3701       | /settings           | built     | src/features/settings
+22:3106       | /doctors            | built     | src/features/doctors
+10:942        | /staff              | built     | src/features/staff
+22:3422       | /locations          | built     | src/features/locations
+21:3256       | /messages           | built     | src/features/messages
+7:480         | /visit/:id          | built     | src/features/consult (the safety checks)
+6:2           | /dashboard          | partial   | src/features/dashboard — the doctor's console section is not built
+36:195        | /queue              | built     | src/features/queue
+36:582        | /visit/:id          | built     | src/features/consult (after signing)
+37:492        | /rx/:id             | built     | src/features/prescription
+37:642        | /certificate       | built     | src/features/certificate
+42:1402       | /reports            | built     | src/features/reports (tab 2)
+42:1710       | /reports            | built     | src/features/reports (tab 3)
+42:2017       | /reports            | built     | src/features/reports (tab 4)
+54:1217..1488 | /book /t /intake    | partial   | src/features/patient-web — /appt is not built
+45:3069..3494 | /book /appt /t      | partial   | src/features/patient-web
+51:3069..3494 | /book /appt /t      | partial   | src/features/patient-web
+40:1190..1596 | /kiosk              | partial   | src/features/kiosk — the staff PIN screens are not built
+58:4013..4149 | /kiosk              | built     | src/features/kiosk (the five steps)
+39:501..9813  | overlays            | built     | src/components/ui/Dialog.tsx + the eight F1 overlays
+41:991..1267  | /staff              | built     | src/features/staff (Team | Activity log)
+30:670..1275  | mobile frames       | missing   | held for the second wave
+33:1163..1553 | patient phone       | missing   | held for the second wave
+24:3..1275    | mobile staff        | missing   | held for the second wave
+```
+
+The screens the design has and the app still does not: the **41 mobile
+frames** (held for the second wave), **`/appt`** (manage booking), the
+**kiosk's staff PIN screens**, and the **billing, schedule and queue tab sets**
+the reference shows — the billing tabs (Today / All / To collect / Paid /
+Refunded), the schedule's multi-day strip and the queue's six tabs are the
+reference's, and the app's own tabs still differ.

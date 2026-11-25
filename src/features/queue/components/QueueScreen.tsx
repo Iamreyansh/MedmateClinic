@@ -18,6 +18,21 @@ const FILTERS = [
   { label: "No-shows" },
 ];
 
+/**
+ * The readings, as a line.
+ *
+ * The contract says the service sends a line. When it sends the readings
+ * instead, they are written out here — never printed as "[object Object]".
+ */
+function vitalsLine(vitals: string | { tempF?: number; spo2?: number; pulse?: number }): string {
+  if (typeof vitals === "string") return vitals;
+  const parts: string[] = [];
+  if (vitals.tempF !== undefined) parts.push(`Temp ${vitals.tempF} °F`);
+  if (vitals.spo2 !== undefined) parts.push(`SpO₂ ${vitals.spo2}%`);
+  if (vitals.pulse !== undefined) parts.push(`Pulse ${vitals.pulse}`);
+  return parts.join(" · ");
+}
+
 export function QueueScreen() {
   const dispatch = useAppDispatch();
   const { status, queue, doctors, lastCheckedIn, error } = useAppSelector((state) => state.queue);
@@ -136,7 +151,7 @@ export function QueueScreen() {
                   <div>
                     <span className="now-tag">Vitals</span>
                     <p style={{ color: "var(--mint-200)", fontSize: 13.5, marginTop: 4 }}>
-                      {next.vitals}
+                      {vitalsLine(next.vitals)}
                     </p>
                   </div>
                 ) : null}

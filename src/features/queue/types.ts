@@ -29,7 +29,14 @@ export type QueueItem = {
   detail: string | null;
   wait: "Next for you" | "Waiting" | "Urgent" | "Online";
   waiting: number;
-  vitals?: string;
+  /**
+   * The readings, when the nurse has taken them.
+   *
+   * The contract says a line — "Temp 98.6 °F · SpO₂ 97%" — but a service that
+   * sends the readings themselves is still answering the question, so both are
+   * read and neither is printed raw.
+   */
+  vitals?: string | { tempF?: number; spo2?: number; pulse?: number };
   booked?: string;
 };
 
