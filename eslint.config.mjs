@@ -71,7 +71,7 @@ export default tseslint.config(
         { type: "shell", pattern: "src/components/layout/**" },
         { type: "feature", pattern: "src/features/*", mode: "folder", capture: ["feature"] },
         { type: "shared", pattern: "src/components/ui/**" },
-        { type: "shared", pattern: "src/{hooks,utils,constants,types,lib,styles,assets,config}/**" },
+        { type: "shared", pattern: "src/{constants,types,lib,styles,assets,config}/**" },
         { type: "infra", pattern: "src/services/**" },
         { type: "store", pattern: "src/store/**" },
       ],

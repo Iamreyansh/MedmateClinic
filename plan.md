@@ -6,7 +6,7 @@ prescription, reception hand-over, billing, lab, appointments, messaging.
 The design of record is the Figma file **MedMate Doctor — Clinic App**
 (`FS5TDn4nUCjWizoIkKBcVg`). The pixel reference is the deployed MVP
 (`medmate-doctor-clinic.netlify.app`). This repository rebuilds that product as one
-Next.js application, on `main`, with no monorepo.
+**Vite** application, on `main`, with no monorepo.
 
 ---
 
@@ -133,7 +133,7 @@ A screen is not done until:
 
 | Decision | Why |
 |---|---|
-| One Next.js app, no monorepo | One product, one deploy. The pieces that made a monorepo worth it — identity, API, infra — are services, not packages, and they live in their own repositories. |
+| One Vite app, no monorepo | One product, one deploy. The pieces that made a monorepo worth it — identity, API, infra — are services, not packages, and they live in their own repositories. |
 | The MVP's stylesheet is copied, not rewritten | Pixel-perfection is a copy problem, not a design problem. Rewriting 1,074 classes from scratch would produce the same result with weeks of drift risk. |
 | The stylesheet is not edited | `npm run fidelity` fails if it drifts from the deployed file. New rules go in `src/styles/app.css`. |
 | One icon set | The 38 glyphs are part of the texture, not an implementation detail. |
