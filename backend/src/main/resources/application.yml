@@ -27,7 +27,14 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
   error:
-    include-message: always
+    # The API answers every error in one envelope: {title, detail}. The
+    # container's own error page must not add the exception message or the
+    # stack trace on top of it — an unhandled failure used to leak the
+    # internals of the service to whoever called it.
+    include-message: never
+    include-stacktrace: never
+    include-exception: false
+    include-binding-errors: never
 
 management:
   endpoints:
@@ -38,7 +45,9 @@ management:
 medmate:
   # development | staging | production. Outside development the service refuses
   # to start with the test-mode sign-in turned on.
-  env: ${APP_ENV:development}
+  # The environment the service runs in. It must be set: a deployment that
+  # forgets it must not find itself running with the test-mode sign-in on.
+  env: ${APP_ENV:}
   demo:
     # the development clinic gets people, patients and a queue; production does not
     enabled: ${DEMO_ENABLED:false}
@@ -54,5 +63,9 @@ medmate:
     otp-ttl-minutes: ${AUTH_OTP_TTL_MINUTES:5}
     # Test mode returns the code so a developer can sign in without a phone.
     expose-code: ${AUTH_EXPOSE_CODE:true}
+  kiosk:
+    # The clinic the kiosk is installed in. The kiosk belongs to one clinic,
+    # and the caller cannot point it at another.
+    clinic-slug: ${KIOSK_CLINIC_SLUG:medmate-clinic}
   cors:
-    origins: ${CORS_ORIGINS:http://localhost:3100,http://127.0.0.1:3100}
+    origins: ${CORS_ALLOWED_ORIGINS:${CORS_ORIGINS:http://localhost:3100,http://127.0.0.1:3100}}

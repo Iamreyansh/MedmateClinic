@@ -33,6 +33,14 @@ public class AuthGuard {
 
     @PostConstruct
     public void check() {
+        if (environment == null || environment.isBlank()) {
+            // An unset environment must not be read as "development": a
+            // deployment that forgets APP_ENV would otherwise start with the
+            // one-time code in the response and the development secret.
+            throw new IllegalStateException(
+                    "APP_ENV is not set. Set APP_ENV=development for a local run, or"
+                            + " APP_ENV=staging or APP_ENV=production for a deployment.");
+        }
         if (isDevelopment()) {
             return;
         }
