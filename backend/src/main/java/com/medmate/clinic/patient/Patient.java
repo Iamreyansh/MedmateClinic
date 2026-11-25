@@ -32,6 +32,10 @@ public class Patient {
     @Column(columnDefinition = "text[]")
     private String[] conditions = new String[0];
 
+    /** The checker warns before prescribing anything that cannot be given. */
+    @Column(name = "pregnant")
+    private boolean pregnant;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -105,6 +109,14 @@ public class Patient {
 
     public void setConditions(String[] conditions) {
         this.conditions = conditions;
+    }
+
+    public boolean isPregnant() {
+        return pregnant;
+    }
+
+    public void setPregnant(boolean pregnant) {
+        this.pregnant = pregnant;
     }
 
     public Instant getCreatedAt() {

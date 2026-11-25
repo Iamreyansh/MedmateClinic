@@ -8,7 +8,6 @@
  */
 
 import {
-  clinic,
   doctors,
   invoices,
   labOrders,
@@ -375,6 +374,3 @@ function buildConsults(query: ReportQueryInput) {
     rows: page,
   };
 }
-
-/** The clinic, for the report's own footer. */
-export const reportClinic = clinic;

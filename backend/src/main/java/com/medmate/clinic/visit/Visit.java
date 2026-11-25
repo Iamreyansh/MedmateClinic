@@ -40,6 +40,21 @@ public class Visit {
     @Column(name = "seen_by")
     private UUID seenBy;
 
+    /** How long the patient waited before the doctor called them in. */
+    @Column(name = "waited_minutes")
+    private Integer waitedMinutes;
+
+    /** How long the consult itself took. */
+    @Column(name = "consult_minutes")
+    private Integer consultMinutes;
+
+    @Column(name = "consult_started_at")
+    private Instant consultStartedAt;
+
+    /** The patient did not turn up. */
+    @Column(name = "no_show")
+    private boolean noShow;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -129,6 +144,38 @@ public class Visit {
 
     public void setSeenBy(UUID seenBy) {
         this.seenBy = seenBy;
+    }
+
+    public Integer getWaitedMinutes() {
+        return waitedMinutes;
+    }
+
+    public void setWaitedMinutes(Integer waitedMinutes) {
+        this.waitedMinutes = waitedMinutes;
+    }
+
+    public Integer getConsultMinutes() {
+        return consultMinutes;
+    }
+
+    public void setConsultMinutes(Integer consultMinutes) {
+        this.consultMinutes = consultMinutes;
+    }
+
+    public Instant getConsultStartedAt() {
+        return consultStartedAt;
+    }
+
+    public void setConsultStartedAt(Instant consultStartedAt) {
+        this.consultStartedAt = consultStartedAt;
+    }
+
+    public boolean isNoShow() {
+        return noShow;
+    }
+
+    public void setNoShow(boolean noShow) {
+        this.noShow = noShow;
     }
 
     public Instant getCreatedAt() {

@@ -56,38 +56,67 @@ public class ClinicProvisioningService {
      *
      * <p>Not a migration: this is development data for one clinic, so it is
      * applied as a script rather than written into that clinic's history.
+     *
+     * <p>Two scripts, each with its own guard: the people and the queue, and
+     * then the three months of history the reports count.
      */
     public void seedDemo(RegistryClinic clinic) {
         String schema = clinic.getSchemaName();
         resolver.use(schema);
         try {
-            String clear =
-                    "delete from clinic_11111111.visits; delete from clinic_11111111.patients; "
-                            + "delete from clinic_11111111.staff; ";
-            String sql =
-                    new String(
-                                    new org.springframework.core.io.ClassPathResource(
-                                                    "db/demo/V300__demo_data.sql")
-                                            .getInputStream()
-                                            .readAllBytes(),
-                                    java.nio.charset.StandardCharsets.UTF_8)
-                            .replace("${clinic_id}", clinic.getId().toString());
-            try (java.sql.Connection connection = pool.getConnection()) {
-                org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
-                        connection,
-                        new org.springframework.core.io.ByteArrayResource(
-                                        clear.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
-                        connection,
-                        new org.springframework.core.io.ByteArrayResource(
-                                        sql.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            JdbcTemplate jdbc = new JdbcTemplate(pool);
+            Integer people =
+                    jdbc.queryForObject(
+                            "select count(*) from " + schema + ".patients", Integer.class);
+            if (people != null && people == 0) {
+                log.info("seeding the demo clinic's people");
+                runScript(clinic, schema, "db/demo/V300__demo_data.sql");
             }
-            log.info("demo data loaded into schema {}", schema);
+            Integer history =
+                    jdbc.queryForObject(
+                            "select count(*) from " + schema + ".visits where token like 'T-%'",
+                            Integer.class);
+            if (history != null && history == 0) {
+                log.info("seeding the demo clinic's history");
+                runScript(clinic, schema, "db/demo/V301__demo_history.sql");
+            }
+            Integer messages =
+                    jdbc.queryForObject("select count(*) from " + schema + ".messages", Integer.class);
+            if (messages != null && messages == 0) {
+                log.info("seeding the demo clinic's day");
+                runScript(clinic, schema, "db/demo/V302__demo_today.sql");
+            }
         } catch (java.io.IOException | java.sql.SQLException e) {
             throw new IllegalStateException("could not load the demo data", e);
         } finally {
             resolver.clear();
         }
+    }
+
+    /** Run one development script inside the clinic's own schema. */
+    private void runScript(RegistryClinic clinic, String schema, String location)
+            throws java.io.IOException, java.sql.SQLException {
+        String sql =
+                new String(
+                                new org.springframework.core.io.ClassPathResource(location)
+                                        .getInputStream()
+                                        .readAllBytes(),
+                                java.nio.charset.StandardCharsets.UTF_8)
+                        .replace("${clinic_id}", clinic.getId().toString());
+        try (java.sql.Connection connection = pool.getConnection()) {
+            connection.setAutoCommit(false);
+            try (java.sql.Statement statement = connection.createStatement()) {
+                statement.execute("set search_path to \"" + schema + "\"");
+            }
+            org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
+                    connection,
+                    new org.springframework.core.io.ByteArrayResource(
+                            sql.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            connection.commit();
+        } catch (java.sql.SQLException failure) {
+            throw failure;
+        }
+        log.info("demo script {} loaded into schema {}", location, schema);
     }
 
     private void migrate(String location, String schema, Map<String, String> placeholders) {

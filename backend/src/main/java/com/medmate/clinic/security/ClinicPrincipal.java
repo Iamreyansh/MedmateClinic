@@ -17,4 +17,13 @@ public record ClinicPrincipal(
     public boolean can(String resource) {
         return capabilities.contains(resource);
     }
+
+    public java.util.UUID clinicIdAsUuid() {
+        return java.util.UUID.fromString(clinicId);
+    }
+
+    /** The person asking, as a uuid. */
+    public java.util.UUID staffIdAsUuid() {
+        return java.util.UUID.fromString(staffId);
+    }
 }

@@ -11,6 +11,10 @@ next-env.d.ts
 # production
 /build
 
+# the build output — never committed
+/dist
+/backend/target
+
 # misc
 .DS_Store
 *.pem
@@ -20,7 +24,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# env
+# env — the example file is committed, the real one never is
 .env*.local
 .env
 

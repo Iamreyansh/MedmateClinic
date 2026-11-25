@@ -13,33 +13,34 @@ import { mock } from "@/services/api/mock/router";
 import { auth } from "@/services/api/client";
 import { buildReport } from "@/services/api/mock/reports";
 import {
-  advice,
   appointments,
-  brief,
   capabilities,
   clinic,
   consultations,
+  consent,
   dashboardMeta,
   doctors,
-  examination,
-  followUp,
   inbox,
   invoices,
   labOrders,
+  labResults,
   location,
-  medicines,
+  manage,
   navCounts,
   patient,
   patients,
   prescriptions,
+  readings,
+  recordAccess,
   signedInUser,
   stations,
-  tests,
+  templates,
+  timeline,
   trial,
-  manage,
   visit as findVisit,
   visits,
   vitalsFor,
+  waitingOnline,
   type MockConsultation,
   type MockPrescription,
 } from "@/services/api/mock/state";
@@ -454,28 +455,73 @@ mock.on("POST", "/clinic/prescriptions/:id/sign", (body, context) => {
 mock.on("GET", "/clinic/patients", () => {
   requireSession();
   return {
-  items: patients.map((person) => ({
-    id: person.id,
-    name: person.name,
-    initials: person.initials,
-    age: person.age,
-    sex: person.sex,
-    phone: person.phone,
-    abha: person.abha,
-    allergies: person.allergies,
-    conditions: person.conditions,
-    visits: person.visits,
-    since: person.since,
-    lastSeen: "Today",
-    doctor: "Dr. Ananya Rao",
-    dues: 0,
-  })),
-  meta: `${patients.length} patients`,
+    items: patients.map((person) => ({
+      id: person.id,
+      name: person.name,
+      initials: person.initials,
+      age: person.age,
+      sex: person.sex,
+      phone: person.phone,
+      abha: person.abha,
+      allergies: person.allergies,
+      conditions: person.conditions,
+      visits: person.visits,
+      since: person.since,
+      lastSeen: "Today",
+      doctor: "Dr. Ananya Rao",
+      dues: 0,
+    })),
+    meta: `${patients.length} patients`,
   };
 });
 
-/**
- * The default advice, complaints and history a fresh consult starts with, so
- * the screen has something to draw before the doctor types.
- */
-export const defaultConsult = { brief, examination, advice, followUp, medicines, tests };
+mock.on("GET", "/clinic/patients/:id", (_body, context) => {
+  requireSession();
+  const person = patient(context.params.id);
+  return {
+    patient: {
+      id: person.id,
+      name: person.name,
+      initials: person.initials,
+      age: person.age,
+      sex: person.sex,
+      phone: person.phone,
+      abha: person.abha,
+      allergies: person.allergies,
+      conditions: person.conditions,
+      visits: person.visits,
+      since: person.since,
+    },
+    visits: timeline,
+    readings,
+    labResults,
+    recordAccess,
+  };
+});
+
+// --------------------------------------------------------------- the templates
+
+mock.on("GET", "/clinic/templates", () => {
+  requireSession();
+  return {
+    items: templates,
+    meta: "Your reusable treatment protocols. Apply one in the console and adjust doses by weight.",
+  };
+});
+
+// -------------------------------------------------------------- the teleconsult
+
+mock.on("GET", "/clinic/teleconsult", () => {
+  requireSession();
+  return {
+    waiting: waitingOnline.map((entry) => ({
+      patient: patient(entry.patientId),
+      booked: entry.booked,
+      reason: entry.reason,
+      state: entry.state,
+    })),
+    consent,
+    meta:
+      "Patients wait on their own page. Start the call when they are online, and switch to a phone call if video fails.",
+  };
+});
