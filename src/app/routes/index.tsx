@@ -28,6 +28,7 @@ import { NurseScreen } from "@/features/nurse";
 import { LabScreen } from "@/features/lab";
 import { RequireSession } from "@/app/routes/RequireSession";
 import { NotFoundScreen } from "@/app/routes/NotFoundScreen";
+import { patientRoutes } from "@/app/routes/patient";
 
 /**
  * The surfaces a clinic tablet never opens.
@@ -133,6 +134,10 @@ export const routes: RouteObject[] = [
 
   { path: "/fidelity", element: <DevToolsScreen /> },
   { path: "*", element: <NotFoundScreen /> },
+
+  // The patient-facing public web, in one block: the paths the clinic's own
+  // link carries and the aliases the app uses.
+  ...patientRoutes,
 ];
 
 /** One route, behind the session. */

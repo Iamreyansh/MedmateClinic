@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Icon } from "@/components/ui/Icon";
+import { ErrorState, LoadingState } from "@/components/ui/ScreenStates";
 import { verifyPrescription } from "@/features/patient-web/api/patientWeb";
+import { InvalidLinkCard } from "@/features/patient-web/components/InvalidLinkCard";
+import { patientFailure, type PatientFailure } from "@/features/patient-web/lib/errors";
 import type { VerifiedPrescription } from "@/features/patient-web/types";
 
 /**
@@ -10,6 +13,10 @@ import type { VerifiedPrescription } from "@/features/patient-web/types";
  * A patient — or anyone — checks that a prescription is genuine and has not
  * been changed since the doctor signed it. The link carries the prescription's
  * id and a hash, so a document that has been altered does not verify.
+ *
+ * A document that does not verify shows nothing of itself: not the doctor,
+ * not the patient, not the medicines. A tampered link is not a way to read
+ * somebody else's prescription.
  */
 export function VerifyScreen() {
   const { id = "" } = useParams();
@@ -17,22 +24,37 @@ export function VerifyScreen() {
   const hash = params.get("h") ?? "";
 
   const [document, setDocument] = useState<VerifiedPrescription | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<PatientFailure | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    if (!id || !hash) return;
     let alive = true;
     verifyPrescription(id, hash)
       .then((data) => {
-        if (alive) setDocument(data);
+        if (!alive) return;
+        setDocument(data);
+        setFailure(null);
       })
       .catch((reason: unknown) => {
         if (!alive) return;
-        setError(reason instanceof Error ? reason.message : "Could not verify this document");
+        const failed = patientFailure(reason, "Could not verify this document");
+        setFailure(failed);
+        if (failed.invalidLink) {
+          // A link the clinic has to replace leaves nothing behind: the
+          // document is cleared, not only hidden.
+          setDocument(null);
+        }
       });
     return () => {
       alive = false;
     };
-  }, [id, hash]);
+  }, [id, hash, attempt]);
+
+  // The link is only a link when it carries both parts of it.
+  const noLink = !id || !hash;
+  /** The check is on its way, and there is nothing to show yet. */
+  const loading = !noLink && !document && !failure;
 
   return (
     <div className="intake-page">
@@ -47,28 +69,34 @@ export function VerifyScreen() {
       </div>
 
       <div className="intake-wrap">
-        {error ? (
-          <div className="card">
-            <p className="err">{error}</p>
-          </div>
+        {noLink ? <InvalidLinkCard /> : null}
+
+        {!noLink && failure?.invalidLink ? (
+          <InvalidLinkCard onRetry={() => setAttempt((count) => count + 1)} />
         ) : null}
 
-        {!error && !document ? (
-          <div className="card">
-            <span className="spinner" />
-          </div>
+        {!noLink && !failure?.invalidLink && failure ? (
+          <ErrorState
+            message={failure.message}
+            title={failure.unreachable ? "The clinic is not answering" : "Something went wrong"}
+            onRetry={() => setAttempt((count) => count + 1)}
+          />
         ) : null}
 
-        {!error && document ? (
+        {!noLink && !failure?.invalidLink && loading && !document ? (
+          <LoadingState title="Checking the document…" />
+        ) : null}
+
+        {!noLink && !failure?.invalidLink && document && !document.genuine ? (
+          <InvalidLinkCard />
+        ) : null}
+
+        {!noLink && !failure?.invalidLink && document && document.genuine ? (
           <>
             <div className="card">
               <div className="note mint">
                 <Icon name="shield" size={18} />
-                <div>
-                  {document.genuine
-                    ? "Genuine and unchanged."
-                    : "This document has been changed since it was signed."}
-                </div>
+                <div>Genuine and unchanged.</div>
               </div>
 
               <div className="live-row" style={{ marginTop: 12 }}>
@@ -122,13 +150,15 @@ export function VerifyScreen() {
               </div>
             ) : null}
 
-            <div className="note gold" style={{ marginTop: 12 }}>
-              <Icon name="alert" size={18} />
-              <div>
-                Signed in test mode: not a legal signature. Check with the doctor before you take
-                anything.
+            {document.signatureMode === "test" || document.signatureMode === "demo" ? (
+              <div className="note gold" style={{ marginTop: 12 }}>
+                <Icon name="alert" size={18} />
+                <div>
+                  Signed in test mode: not a legal signature. Check with the doctor before you take
+                  anything.
+                </div>
               </div>
-            </div>
+            ) : null}
           </>
         ) : null}
       </div>
