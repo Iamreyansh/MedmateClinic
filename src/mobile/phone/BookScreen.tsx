@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchPublicBooking } from "@/features/patient-web/api/patientWeb";
+import { fetchPublicBookingFor } from "@/mobile/api";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useAction, useRemote } from "@/mobile/hooks";
@@ -21,14 +21,24 @@ export function MobileBookScreen() {
   const slug = params.get("clinic") ?? "";
   const action = useAction();
 
-  const load = useCallback(
-    () => (slug ? fetchPublicBooking(slug) : Promise.reject(new Error("Open your clinic's own booking link to book a visit."))),
-    [slug],
-  );
-  const { status, data, error, reload, unreachable } = useRemote(load, slug);
-
   const [doctorId, setDoctorId] = useState("");
   const [startsAt, setStartsAt] = useState("");
+
+  /**
+   * The times on show are the times of the doctor on show.
+   *
+   * Naming a doctor asks the service for that doctor's free times; naming
+   * none leaves the service's default. Either way the patient books the
+   * doctor whose times they were shown.
+   */
+  const load = useCallback(
+    () =>
+      slug
+        ? fetchPublicBookingFor(slug, doctorId || undefined)
+        : Promise.reject(new Error("Open your clinic's own booking link to book a visit.")),
+    [slug, doctorId],
+  );
+  const { status, data, error, reload, unreachable } = useRemote(load, `${slug}|${doctorId}`);
 
   const chosen = data?.doctors.find((doctor) => doctor.id === doctorId) ?? null;
   const slots = data?.slots ?? [];
@@ -36,10 +46,9 @@ export function MobileBookScreen() {
   /**
    * The doctor the booking goes to.
    *
-   * "Any available doctor" means the doctor whose free times the service is
-   * offering: the booking page sends one list of times, for the first
-   * doctor it lists. The service insists on a doctor, so that is the one
-   * the booking is made with.
+   * It is the doctor whose free times are on show: the one the patient
+   * named, or the service's default when they named none. The service
+   * insists on a doctor, so one is always sent.
    */
   const bookedDoctor = doctorId || data?.doctors[0]?.id || "";
 
@@ -91,7 +100,10 @@ export function MobileBookScreen() {
                     type="button"
                     className="mob-row"
                     aria-pressed={doctorId === doctor.id}
-                    onClick={() => setDoctorId(doctor.id)}
+                    onClick={() => {
+                      setDoctorId(doctor.id);
+                      setStartsAt("");
+                    }}
                   >
                     <span className="ico">
                       <span style={{ fontWeight: 800, fontSize: 12 }}>

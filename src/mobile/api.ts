@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from "@/services/api";
+import type { PublicBookingPage } from "@/features/patient-web/types";
 import type {
   ClinicSettingsPayload,
   InboxPayload,
@@ -23,6 +24,25 @@ import type {
 
 /** The doctor's inbox. */
 export const fetchInbox = () => apiGet<InboxPayload>("/clinic/inbox");
+
+/**
+ * The booking page: the clinic, its doctors and the free times.
+ *
+ * With no doctor named, the service answers with its default doctor's times.
+ * With a doctor named, it answers with that doctor's times and their `free`
+ * flags, so the times a patient is shown are always the times of the doctor
+ * they are about to book.
+ *
+ * The patient-web module's `fetchPublicBooking` does not take a doctor yet,
+ * so the call is written here with the same URL and query string. When the
+ * two meet on the merged tree this can be collapsed into one function.
+ */
+export const fetchPublicBookingFor = (slug: string, doctorId?: string) =>
+  apiGet<PublicBookingPage>(
+    `/public/doctors?clinic=${encodeURIComponent(slug)}${
+      doctorId ? `&doctorId=${encodeURIComponent(doctorId)}` : ""
+    }`,
+  );
 
 /** The teleconsult waiting room. */
 export const fetchTeleconsult = () => apiGet<TeleconsultPayload>("/clinic/teleconsult");
