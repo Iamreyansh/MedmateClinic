@@ -363,6 +363,32 @@ function Bars({
   );
 }
 
+/**
+ * The busiest hours, as tracked horizontal bars.
+ *
+ * The stylesheet already carries the rules for this shape — the row, the
+ * track, and the fill inside it — and the design draws the hours this way:
+ * a label, the track the booking fills, and the count at the end. The
+ * columns were the wrong shape, and the rules for the right one were
+ * already there.
+ */
+function HourRows({ rows }: { rows: Array<{ label: string; count: number }> }) {
+  const max = Math.max(...rows.map((row) => row.count), 1);
+  return (
+    <div className="bars">
+      {rows.map((row) => (
+        <div className="barrow" key={row.label}>
+          <span>{row.label}</span>
+          <div className="track">
+            <i style={{ width: `${Math.max(2, Math.round((row.count / max) * 100))}%` }} />
+          </div>
+          <span>{row.count}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** One labelled bar: a name, a number, and the bar between them. */
 function Bar({
   label,
@@ -536,10 +562,7 @@ function BookingsTab({
             <h2 className="t-h3">Busiest hours</h2>
           </div>
           {bookings.busiestHours.length ? (
-            <Bars
-              values={bookings.busiestHours.map((hour) => hour.count)}
-              labels={bookings.busiestHours.map((hour) => hour.label)}
-            />
+            <HourRows rows={bookings.busiestHours} />
           ) : (
             <p className="rp-note-empty">No bookings in this period.</p>
           )}
