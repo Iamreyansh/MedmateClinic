@@ -40,8 +40,15 @@ export type QueueItem = {
   /** The doctor the patient is waiting for, when one is named. */
   doctorId?: string | null;
   doctorName?: string | null;
-  /** `waiting` or `seen`. */
-  status?: string;
+  /**
+   * Where the visit stands, in the service's own words.
+   *
+   * The four values the service sends: the patient is waiting, the doctor is
+   * with them, the visit is done, or the patient did not come. The console's
+   * tabs slice on them, so they are named here rather than left as any
+   * string.
+   */
+  status?: "waiting" | "in_consult" | "done" | "no_show";
   booked?: string;
 };
 
