@@ -1,4 +1,4 @@
-import { apiGet } from "@/services/api";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/services/api";
 
 /**
  * The clinic's branches.
@@ -24,3 +24,52 @@ export type LocationsPayload = {
 };
 
 export const fetchLocations = () => apiGet<LocationsPayload>("/clinic/locations");
+
+/* ------------------------------------------------------------------ branches */
+
+/** A branch, as the locations screen reads it. */
+export type Branch = {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  phone: string;
+  rooms: number;
+  hfrId: string;
+  /** Whether this is the clinic's main branch. */
+  primary: boolean;
+  active: boolean;
+  /** How many people work at this branch. */
+  doctors: number;
+};
+
+export type BranchPayload = {
+  items: Branch[];
+  meta: { total: number };
+};
+
+/** What the clinic is adding a branch with. */
+export type BranchDraft = {
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  phone: string;
+  rooms: number;
+  hfrId: string;
+};
+
+export const fetchBranches = (search?: string) =>
+  apiGet<BranchPayload>(
+    `/clinic/admin/locations${search ? `?search=${encodeURIComponent(search)}` : ""}`,
+  );
+
+export const addBranch = (branch: BranchDraft) =>
+  apiPost<BranchPayload>("/clinic/admin/locations", branch);
+
+export const updateBranch = (branchId: string, branch: BranchDraft) =>
+  apiPut<BranchPayload>(`/clinic/admin/locations/${branchId}`, branch);
+
+export const removeBranch = (branchId: string) =>
+  apiDelete<BranchPayload>(`/clinic/admin/locations/${branchId}`);

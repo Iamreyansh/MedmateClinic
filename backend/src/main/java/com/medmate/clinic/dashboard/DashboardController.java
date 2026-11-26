@@ -29,6 +29,7 @@ public class DashboardController {
     private final PatientRepository patientRepository;
     private final StaffRepository staffRepository;
     private final GrantService grantService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public DashboardController(
             CurrentClinic current,
@@ -36,13 +37,15 @@ public class DashboardController {
             VisitRepository visitRepository,
             PatientRepository patientRepository,
             StaffRepository staffRepository,
-            GrantService grantService) {
+            GrantService grantService,
+            org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.current = current;
         this.catalogue = catalogue;
         this.visitRepository = visitRepository;
         this.patientRepository = patientRepository;
         this.staffRepository = staffRepository;
         this.grantService = grantService;
+        this.jdbc = jdbc;
     }
 
     @GetMapping("/dashboard")
@@ -88,6 +91,16 @@ public class DashboardController {
         }
 
         // The clinic's doctors: the dashboard shows the doctor consoles.
+        //
+        // The room is the doctor's own room — the column the staff table
+        // holds — and never the speciality: a doctor sees patients in a room,
+        // and a speciality is not a room. The number waiting is that doctor's
+        // own queue, counted for the whole list in one query, and the next
+        // appointment is theirs.
+        Map<UUID, String> rooms = rooms(clinicId);
+        Map<UUID, Integer> waitingCounts = waitingByDoctor(clinicId);
+        Map<UUID, Next> next = nextAppointments(clinicId);
+
         List<Map<String, Object>> doctors = new ArrayList<>();
         for (Staff person : staffRepository.findByClinicId(clinicId)) {
             Map<String, Object> doctor = new LinkedHashMap<>();
@@ -95,10 +108,14 @@ public class DashboardController {
             doctor.put("name", person.getFullName());
             doctor.put("initials", initials(person.getFullName()));
             doctor.put("speciality", person.getSpeciality() == null ? "" : person.getSpeciality());
-            doctor.put("room", person.getSpeciality() == null ? "" : person.getSpeciality());
-            doctor.put("waiting", 0);
+            doctor.put("room", rooms.getOrDefault(person.getId(), ""));
+            doctor.put("waiting", waitingCounts.getOrDefault(person.getId(), 0));
+            Next upcoming = next.get(person.getId());
+            doctor.put("nextAppointmentAt", upcoming == null ? null : upcoming.at());
+            doctor.put("nextAppointmentPatient", upcoming == null ? null : upcoming.patient());
             doctors.add(doctor);
         }
+
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("doctors", doctors);
@@ -116,6 +133,74 @@ public class DashboardController {
         body.put("manage", manage);
         return body;
     }
+
+    /**
+     * The room each doctor works in.
+     *
+     * <p>The column is read through the row's own JSON, so the dashboard
+     * reads the room the doctors screen reads and never falls back to the
+     * speciality — which is the bug this replaced.
+     */
+    private Map<UUID, String> rooms(UUID clinicId) {
+        Map<UUID, String> rooms = new LinkedHashMap<>();
+        jdbc.query(
+                "select id, to_jsonb(s) ->> 'room' as room from staff s where clinic_id = ?",
+                (rs, row) -> {
+                    String room = rs.getString("room");
+                    rooms.put(rs.getObject("id", UUID.class), room == null ? "" : room);
+                    return null;
+                },
+                clinicId);
+        return rooms;
+    }
+
+    /**
+     * How many patients each doctor is seeing.
+     *
+     * <p>The same count the doctors screen shows: the visits that are in
+     * consult with that doctor. One query for the whole list.
+     */
+    private Map<UUID, Integer> waitingByDoctor(UUID clinicId) {
+        Map<UUID, Integer> waiting = new LinkedHashMap<>();
+        jdbc.query(
+                "select seen_by, count(*) as waiting from visits where clinic_id = ? and status = 'in_consult' "
+                        + "and seen_by is not null group by seen_by",
+                (rs, row) -> {
+                    waiting.put(rs.getObject("seen_by", UUID.class), rs.getInt("waiting"));
+                    return null;
+                },
+                clinicId);
+        return waiting;
+    }
+
+    /**
+     * The next appointment of each doctor, and the patient it is with.
+     *
+     * <p>One query for the whole list: the next booking of every doctor.
+     */
+    private Map<UUID, Next> nextAppointments(UUID clinicId) {
+        Map<UUID, Next> next = new LinkedHashMap<>();
+        jdbc.query(
+                "select distinct on (a.doctor_id) a.doctor_id as doctor_id, a.starts_at, p.full_name "
+                        + "from appointments a join patients p on p.id = a.patient_id and p.clinic_id = a.clinic_id "
+                        + "where a.clinic_id = ? and a.doctor_id is not null and a.status = 'booked' "
+                        + "and a.starts_at > ? order by a.doctor_id, a.starts_at asc",
+                (rs, row) -> {
+                    java.sql.Timestamp at = rs.getTimestamp("starts_at");
+                    next.put(
+                            rs.getObject("doctor_id", UUID.class),
+                            new Next(
+                                    at == null ? null : at.toInstant().toString(),
+                                    rs.getString("full_name")));
+                    return null;
+                },
+                clinicId,
+                java.sql.Timestamp.from(java.time.Instant.now()));
+        return next;
+    }
+
+    /** The next appointment of a doctor. */
+    private record Next(String at, String patient) {}
 
     /** The person's initials. */
     private String initials(String name) {

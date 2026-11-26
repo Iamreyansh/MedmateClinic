@@ -1,57 +1,81 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/ScreenStates";
-import { fetchLocations, type ClinicLocation } from "@/features/locations/api/locations";
+import { ConfirmDialog, MyAccountDialog } from "@/components/dialogs";
+import { fetchBranches, removeBranch, type Branch } from "@/features/locations/api/locations";
+import { AddBranchDialog } from "@/features/locations/components/AddBranchDialog";
+import { EditBranchDialog } from "@/features/locations/components/EditBranchDialog";
 
 /**
  * The clinic's branches.
  *
- * Where the clinic works from, and what each branch has — the rooms it can
+ * <p>Where the clinic works from, and what each branch has — the rooms it can
  * put a doctor in, and the registration that goes on its letterhead.
  */
 export function LocationsScreen() {
-  const [locations, setLocations] = useState<ClinicLocation[] | null>(null);
+  const [branches, setBranches] = useState<Branch[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => {
-    let alive = true;
-    fetchLocations()
-      .then((data) => {
-        if (!alive) return;
-        setLocations(data.items);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Branch | null>(null);
+  const [removing, setRemoving] = useState<Branch | null>(null);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [account, setAccount] = useState(false);
+
+  const load = useCallback(() => {
+    fetchBranches()
+      .then((payload) => {
+        setBranches(payload.items);
         setError(null);
       })
       .catch((reason: unknown) => {
-        if (!alive) return;
         setError(reason instanceof Error ? reason.message : "Could not load the branches");
       })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [attempt]);
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load, attempt]);
+
+  const refresh = () => {
+    setLoading(true);
+    setAttempt((value) => value + 1);
+  };
+
+  const remove = async (branch: Branch) => {
+    setRefusal(null);
+    try {
+      await removeBranch(branch.id);
+      refresh();
+    } catch (reason: unknown) {
+      setRefusal(reason instanceof Error ? reason.message : "That branch could not be removed.");
+    }
+  };
 
   return (
-    <AppShell activeHref="/locations">
+    <AppShell activeHref="/locations" onAccount={() => setAccount(true)}>
       <div className="nq-bar">
         <div>
-          <h1 className="t-h1">
-            Clinic <em>locations</em>
-          </h1>
+          <h1 className="t-h1">Locations</h1>
           <p style={{ color: "var(--muted)", marginTop: 4 }}>
-            Where the clinic works from, and what each branch has.
+            {branches
+              ? `${branches.length} ${branches.length === 1 ? "branch" : "branches"} · ${
+                  branches.reduce((sum, branch) => sum + branch.doctors, 0)
+                } ${branches.reduce((sum, branch) => sum + branch.doctors, 0) === 1 ? "doctor" : "doctors"}`
+              : "Where the clinic works from."}
           </p>
         </div>
         <div className="nq-btns">
-          <Button icon="plus">Add a branch</Button>
+          <Button icon="plus" onClick={() => setAdding(true)}>
+            Add a branch
+          </Button>
         </div>
       </div>
 
@@ -65,9 +89,9 @@ export function LocationsScreen() {
         />
       ) : null}
 
-      {loading && !locations ? <LoadingState title="Loading the branches…" /> : null}
+      {loading && !branches ? <LoadingState title="Loading the branches…" /> : null}
 
-      {!loading && !error && locations && locations.length === 0 ? (
+      {!loading && !error && branches && branches.length === 0 ? (
         <EmptyState
           title="One branch, so far"
           copy="Add the places the clinic works from, and each of them gets its own letterhead."
@@ -75,33 +99,95 @@ export function LocationsScreen() {
         />
       ) : null}
 
-      {(locations ?? []).map((location) => (
-        <section className="card" key={location.name} style={{ padding: 18, marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Icon name="pin" size={18} style={{ color: "var(--green-700)" }} />
-            <b style={{ fontSize: 16 }}>{location.name}</b>
-            <span className="badge plain">{location.rooms} rooms</span>
-          </div>
-          <p className="t-cap" style={{ marginTop: 6 }}>
-            {location.address}, {location.city}, {location.state}
-          </p>
-          <div className="plan-meta" style={{ marginTop: 12 }}>
-            <div>
-              <b>Phone</b>
-              {location.phone}
+      <div className="lc-grid" style={{ marginTop: 14 }}>
+        {(branches ?? []).map((branch) => (
+          <section className={`card lc-card${branch.primary ? " here" : ""}`} key={branch.id}>
+            <div className="lc-head">
+              <span className="lc-pin">
+                <Icon name="pin" size={18} />
+              </span>
+              <div className="lc-who">
+                <div className="t-h3">
+                  {branch.name}
+                  {branch.primary ? <span className="badge mint">Main branch</span> : null}
+                </div>
+                <p className="lc-addr">
+                  {branch.address}
+                  {branch.city ? `, ${branch.city}` : ""}
+                  {branch.state ? `, ${branch.state}` : ""}
+                </p>
+              </div>
             </div>
-            <div>
-              <b>HFR</b>
-              {location.hfrId}
+
+            <div className="lc-facts">
+              <span>
+                <Icon name="phone" size={13} /> {branch.phone || "—"}
+              </span>
+              <span className={branch.hfrId ? "ok" : "muted"}>
+                <Icon name="shield" size={13} /> {branch.hfrId ? `HFR ${branch.hfrId}` : "No HFR id"}
+              </span>
             </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <Button variant="secondary" icon="pen">
-              Edit
-            </Button>
-          </div>
-        </section>
-      ))}
+
+            <div className="lc-today">
+              <div>
+                <b>{branch.doctors}</b>
+                <span>doctors here</span>
+              </div>
+              <div>
+                <b>{branch.rooms}</b>
+                <span>rooms</span>
+              </div>
+            </div>
+
+            <div className="lc-docs">
+              <Button variant="secondary" size="sm" icon="pen" onClick={() => setEditing(branch)}>
+                Edit
+              </Button>
+              {branch.primary ? null : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="x"
+                  onClick={() => setRemoving(branch)}
+                  disabled={branch.doctors > 0}
+                  title={
+                    branch.doctors > 0
+                      ? "Doctors still work at this branch. Move them first."
+                      : "Remove this branch"
+                  }
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {refusal ? (
+        <p role="alert" className="t-cap" style={{ color: "var(--red)", marginTop: 12 }}>
+          {refusal}
+        </p>
+      ) : null}
+
+      <AddBranchDialog open={adding} onClose={() => setAdding(false)} onSaved={refresh} />
+      <EditBranchDialog
+        open={Boolean(editing)}
+        branch={editing}
+        onClose={() => setEditing(null)}
+        onSaved={refresh}
+      />
+      <ConfirmDialog
+        open={Boolean(removing)}
+        onClose={() => setRemoving(null)}
+        title="Remove this branch?"
+        subject={removing?.name ?? ""}
+        detail="The branch and its letterhead stop being used. Nobody's bookings are changed."
+        confirmLabel="Remove the branch"
+        onConfirm={() => (removing ? remove(removing) : undefined)}
+        onError={(message) => setRefusal(message)}
+      />
+      <MyAccountDialog open={account} onClose={() => setAccount(false)} />
     </AppShell>
   );
 }

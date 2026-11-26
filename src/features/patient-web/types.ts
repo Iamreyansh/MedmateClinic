@@ -17,6 +17,14 @@ export type PublicDoctor = {
   feeOnline: number;
   /** The room the doctor works in. */
   room: string;
+  /**
+   * The times this doctor is free, when the service sends them.
+   *
+   * The booking page's own `slots` are the ones for the doctor the page
+   * opened with; a doctor that carries its own list is the service's answer
+   * for that doctor.
+   */
+  slots?: PublicSlot[];
 };
 
 /** A time the patient can take. */
@@ -37,6 +45,14 @@ export type PublicClinic = {
   phone: string;
   /** The slug the booking link carries. */
   slug: string;
+  /**
+   * The clinic's own time zone.
+   *
+   * The service sends it, and the patient is shown the times in it — a slot
+   * labelled 09:00 is 09:00 at the clinic, whatever time the phone thinks it
+   * is.
+   */
+  timezone?: string;
 };
 
 /** What the booking page shows. */
@@ -129,6 +145,52 @@ export type IntakeResult = {
   token: string;
   filled: boolean;
   submittedAt: string;
+};
+
+/** What the patient writes on the symptoms form. */
+export type IntakeSubmission = {
+  /** The symptoms the patient chose. */
+  symptoms: string[];
+  /** The red flags — the things that need a doctor now. */
+  redFlags: string[];
+  /** What the patient wrote in their own words. */
+  notes: string;
+  /** How long the patient has had it. */
+  duration: string;
+};
+
+/** What the service answers with when a booking is called off. */
+export type CancelResult = {
+  /** Whether the booking is called off. */
+  cancelled: boolean;
+  /** The queue slip of the booking that was called off. */
+  token: string;
+};
+
+/** What the patient sends to move a booking to another time. */
+export type RebookRequest = {
+  /** The doctor, when the patient is changing it as well. */
+  doctorId?: string;
+  /** The day, as `YYYY-MM-DD`. */
+  date: string;
+  /** The time, as `HH:mm` in the clinic's own time. */
+  slot: string;
+};
+
+/** What the service answers with when a booking has moved. */
+export type RebookResult = {
+  /** Whether the old booking was called off. */
+  cancelled: boolean;
+  /** The link key — a rebook does not change it, and it is never shown. */
+  token: string;
+  /** The queue slip — the short number the desk reads out. */
+  queueToken: string;
+  /** When the new visit starts. */
+  startsAt: string;
+  /** The doctor the patient is seeing. */
+  doctor: string;
+  /** The clinic the visit is at. */
+  clinic: string;
 };
 
 /** A verified prescription, as the patient reads it. */

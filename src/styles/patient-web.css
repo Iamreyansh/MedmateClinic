@@ -1,0 +1,56 @@
+/*
+ * The patient-facing public web.
+ *
+ * These screens are the ones a patient opens on a phone, from the clinic's
+ * own booking link. They stand outside the staff shell, so the few classes
+ * they need live here rather than in the shared stylesheet.
+ */
+
+.pw-doc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.pw-doc.on {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--mint-200);
+}
+
+.pw-doc:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+/* A time the doctor is not free for cannot be picked. */
+.slots button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* The queue slip, on the manage-booking screen. */
+.pw-slip {
+  letter-spacing: -0.04em;
+  color: var(--forest);
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.pw-slip-l {
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

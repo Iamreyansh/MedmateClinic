@@ -24,6 +24,8 @@ import { registerPatientWebRoutes } from "@/services/api/mock/patientWebRoutes";
 import { registerMessageRoutes } from "@/services/api/mock/messageRoutes";
 import { registerActivityRoutes } from "@/services/api/mock/activityRoutes";
 import { registerSettingsRoutes } from "@/services/api/mock/settingsRoutes";
+import { registerAdminRoutes } from "@/services/api/mock/adminRoutes";
+import { registerPreSignupRoutes } from "@/services/api/mock/preSignupRoutes";
 import {
   appointments,
   capabilities,
@@ -192,6 +194,7 @@ mock.on("GET", "/clinic/dashboard", () => {
   trial,
   stations,
   doctors: doctors.map((person) => ({
+    id: person.id,
     initials: person.initials,
     name: person.name,
     speciality: person.speciality,
@@ -207,21 +210,24 @@ mock.on("GET", "/clinic/dashboard", () => {
 mock.on("GET", "/clinic/queue", () => {
   requireSession();
   const waiting = visits.filter((item) => item.status === "waiting");
-  const items = waiting.map((item) => {
+  // Every row the console's tabs read: the ones waiting, the ones in
+  // consult, the ones seen today and the ones who did not come.
+  const items = visits.map((item) => {
     const person = patient(item.patientId);
     return {
       token: item.token,
       /** The doctor the patient is waiting for, when one is named. */
       doctorId: item.seenBy ?? null,
       doctorName: item.seenBy ? doctors.find((entry) => entry.id === item.seenBy)?.name ?? null : null,
-      /** `waiting` or `seen`. */
-      status: item.status === "waiting" ? "waiting" : "seen",
+      /** The service's own vocabulary: waiting, in_consult, done, no_show. */
+      status: item.status,
       kind: item.token.startsWith("A") ? "A" : "B",
       patient: person,
       reason: item.reason,
       detail: item.detail,
       wait: item.priority === "urgent" ? "Urgent" : "Waiting",
-      waiting: waiting.findIndex((other) => other.id === item.id) + 1,
+      waiting:
+        item.status === "waiting" ? waiting.findIndex((other) => other.id === item.id) + 1 : null,
       vitals: vitalsFor(item.id)
         ? `Temp ${vitalsFor(item.id)?.tempF} °F · SpO₂ ${vitalsFor(item.id)?.spo2}%`
         : undefined,
@@ -236,10 +242,10 @@ mock.on("GET", "/clinic/queue", () => {
 
   return {
     items,
-    next: items[0] ?? null,
+    next: items.find((item) => item.status === "waiting") ?? null,
     room,
     averageConsultMinutes,
-    meta: `${room} · ${items.length} waiting · 9 seen today · average consult 8 min`,
+    meta: `${room} · ${waiting.length} waiting · ${items.length - waiting.length} seen today · average consult 8 min`,
   };
 });
 
@@ -514,6 +520,7 @@ mock.on("POST", "/clinic/visits/:id/consult", (body, context) => {
     safetyAlertKind: null,
     safetyOverridden: false,
     safetyOverrideReason: null,
+    verifyToken: `vt_${found.id}_${Math.random().toString(36).slice(2, 10)}`,
     diagnoses: [],
     medicines: [],
     tests: [],
@@ -762,3 +769,5 @@ registerPatientWebRoutes();
 registerMessageRoutes();
 registerActivityRoutes();
 registerSettingsRoutes();
+registerAdminRoutes();
+registerPreSignupRoutes();

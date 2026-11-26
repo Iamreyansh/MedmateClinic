@@ -1,8 +1,14 @@
 import { apiGet, apiPost } from "@/services/api";
 import type { Queue } from "@/features/queue/types";
 
-/** The doctor’s queue for today. */
-export const fetchQueue = () => apiGet<Queue>("/clinic/queue");
+/**
+ * The doctor’s queue for today.
+ *
+ * The console can be opened on one doctor: the service then answers with that
+ * doctor’s queue only.
+ */
+export const fetchQueue = (doctorId?: string) =>
+  apiGet<Queue>(doctorId ? `/clinic/queue?doctor=${encodeURIComponent(doctorId)}` : "/clinic/queue");
 
 /** The doctors a patient can be sent to. */
 export const fetchDoctors = () =>

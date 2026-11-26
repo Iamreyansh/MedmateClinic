@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { ErrorState } from "@/components/ui/ScreenStates";
 import { AGREEMENTS } from "@/features/onboarding/types";
 
 /** Step 5 — the three agreements, each agreed to on its own. */
@@ -11,12 +12,18 @@ export function AgreementsStep({
   onBack,
   onFinish,
   valid,
+  busy,
+  error,
 }: {
   agreed: string[];
   onToggle: (id: string) => void;
   onBack: () => void;
   onFinish: () => void;
   valid: boolean;
+  /** The clinic is being created. */
+  busy?: boolean;
+  /** Why the clinic was not created. */
+  error?: string | null;
 }) {
   return (
     <>
@@ -58,12 +65,15 @@ export function AgreementsStep({
           </span>
         </div>
       </div>
+      {error ? (
+        <ErrorState message={error} title="The clinic was not created" onRetry={onFinish} />
+      ) : null}
       <div className="su-foot">
         <Button variant="ghost" onClick={onBack}>
           Back
         </Button>
-        <Button icon="check" disabled={!valid} onClick={onFinish}>
-          Set up your clinic
+        <Button icon="check" disabled={!valid || busy} onClick={onFinish}>
+          {busy ? "Setting up…" : "Set up your clinic"}
         </Button>
       </div>
       <p className="su-fine">Free to try. Nothing is charged during set-up.</p>

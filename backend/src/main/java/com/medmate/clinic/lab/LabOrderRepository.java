@@ -18,6 +18,15 @@ public interface LabOrderRepository extends JpaRepository<LabOrder, UUID> {
     List<LabOrder> findByClinicIdAndStatusOrderByOrderedAtAsc(
             UUID clinicId, String status, Pageable pageable);
 
+    /**
+     * One page of the reported results, the newest first.
+     *
+     * <p>A report is read for what came back today, so today's results are at
+     * the top of the page rather than at the bottom of three months.
+     */
+    List<LabOrder> findByClinicIdAndStatusOrderByOrderedAtDesc(
+            UUID clinicId, String status, Pageable pageable);
+
     /** How many orders the clinic has in a state. */
     long countByClinicIdAndStatus(UUID clinicId, String status);
 

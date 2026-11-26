@@ -64,10 +64,10 @@
     },
     "frameCount": 138,
     "byStatus": {
-      "built": 6,
-      "partial": 8,
-      "placeholder": 12,
-      "missing": 112
+      "built": 74,
+      "partial": 5,
+      "missing": 58,
+      "placeholder": 1
     },
     "frames": [
       {
@@ -117,35 +117,35 @@
         "node": "7:480",
         "page": "Screens",
         "route": "/visit/:id",
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Screen / Dashboard (owner)",
         "node": "6:2",
         "page": "Screens",
         "route": "/dashboard",
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Screen / Clinic sign-up — step 1 of 5",
         "node": "13:1415",
         "page": "Screens",
         "route": "/start",
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Screen / Clinic sign-up — step 2 of 5",
         "node": "19:2185",
         "page": "Screens",
         "route": "/start",
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Screen / Clinic sign-up — step 3 of 5",
         "node": "19:2315",
         "page": "Screens",
         "route": "/start",
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Screen / Clinic sign-up — step 4 of 5",
@@ -159,882 +159,882 @@
         "node": "19:2562",
         "page": "Screens",
         "route": "/start",
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Screen / Patients (front desk)",
         "node": "21:2670",
         "page": "Screens",
         "route": "/patients",
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Screen / Patient Kiosk — check-in (patient)",
         "node": "15:1439",
         "page": "Screens",
         "route": "/kiosk",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Nurse Station (nurse)",
         "node": "9:701",
         "page": "Screens",
         "route": "/nurse",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Reception Desk (front desk)",
         "node": "15:1513",
         "page": "Screens",
         "route": "/desk",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Billing & POS (front desk)",
         "node": "9:986",
         "page": "Screens",
         "route": "/billing",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Lab & Diagnostics (lab technician)",
         "node": "20:2294",
         "page": "Screens",
         "route": "/lab",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Appointments — day view (front desk)",
         "node": "17:1592",
         "page": "Screens",
         "route": "/schedule",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Staff & roles — Roles & access",
         "node": "10:942",
         "page": "Screens",
         "route": "/staff",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Patient messages (front desk)",
         "node": "21:3256",
         "page": "Screens",
         "route": "/messages",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Doctors (clinic admin)",
         "node": "22:3106",
         "page": "Screens",
         "route": "/doctors",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Locations (clinic admin)",
         "node": "22:3422",
         "page": "Screens",
         "route": "/locations",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Subscription (owner)",
         "node": "18:1895",
         "page": "Screens",
         "route": "/subscription",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Screen / Settings — clinic & letterhead (owner)",
         "node": "22:3701",
         "page": "Screens",
         "route": "/settings",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Mobile / Dashboard (owner)",
         "node": "24:3",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Doctor Console — consult",
         "node": "24:136",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Inbox (doctor)",
         "node": "24:257",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Patient record (doctor)",
         "node": "24:350",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Teleconsult (doctor)",
         "node": "24:449",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / My templates (doctor)",
         "node": "24:538",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Reception Desk (front desk)",
         "node": "28:319",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Billing & POS (front desk)",
         "node": "28:449",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Appointments (front desk)",
         "node": "28:555",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Patients (front desk)",
         "node": "28:666",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Patient messages (front desk)",
         "node": "28:781",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Nurse Station (nurse)",
         "node": "28:874",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Lab & Diagnostics (lab technician)",
         "node": "28:986",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Reports (owner)",
         "node": "30:670",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Doctors (clinic admin)",
         "node": "30:775",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Locations (clinic admin)",
         "node": "30:894",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Staff & roles — Roles & access (clinic admin)",
         "node": "30:994",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Subscription (owner)",
         "node": "30:1142",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Settings (owner)",
         "node": "30:1275",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Landing page (visitor)",
         "node": "31:991",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 1 of 5",
         "node": "31:1201",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 2 of 5",
         "node": "31:1232",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 3 of 5",
         "node": "31:1274",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 4 of 5",
         "node": "31:1312",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 5 of 5",
         "node": "31:1353",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / 1 Welcome",
         "node": "33:1163",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / 2 Mobile number",
         "node": "33:1217",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / 3 Code",
         "node": "33:1263",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / 4 Patient",
         "node": "33:1317",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / 5 Doctor",
         "node": "33:1385",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / 6 Pay",
         "node": "33:1460",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / 7 Checked in",
         "node": "33:1532",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Book 1 — Doctor & time",
         "node": "54:1217",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Book 2 — Your details",
         "node": "54:1318",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Book 3 — Confirmed",
         "node": "54:1383",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Manage booking",
         "node": "54:1437",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Live token",
         "node": "54:1488",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Symptoms form",
         "node": "55:1287",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Legal document",
         "node": "55:1350",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Verify prescription",
         "node": "55:1393",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Patient phone / Verify certificate",
         "node": "55:1427",
-        "page": "Screens",
+        "page": "Mobile",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Book online — 1 Doctor & time",
         "node": "51:3069",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": "/book?clinic=<slug>",
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Book online — 2 Your details",
         "node": "51:3182",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Book online — 3 Confirmed",
         "node": "51:3250",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Manage booking",
         "node": "51:3315",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": "/appt",
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Live token",
         "node": "51:3376",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": "/t/<token>",
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Symptoms form",
         "node": "51:3424",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": "/intake/<token>",
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Legal document",
         "node": "51:3494",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": "/legal",
-        "status": "missing"
+        "status": "placeholder"
       },
       {
         "frame": "Verify prescription (public)",
         "node": "37:739",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": "/verify/rx_<id>?h=<hash>",
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Verify certificate (public)",
         "node": "37:773",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Check in a patient",
         "node": "39:501",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Book a visit",
         "node": "39:571",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Check out",
         "node": "39:651",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — New bill",
         "node": "39:715",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Refund",
         "node": "39:771",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Close the day",
         "node": "39:813",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Add someone",
         "node": "41:1541",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Edit member",
         "node": "41:1595",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Person access",
         "node": "41:1649",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — New profile",
         "node": "41:1725",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Add a doctor",
         "node": "41:1768",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Hours & leave",
         "node": "41:1835",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Add a branch",
         "node": "41:1906",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Write a certificate",
         "node": "45:2926",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Safety check before signing",
         "node": "45:2988",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Send to a pharmacy",
         "node": "45:3028",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Add a lab result",
         "node": "45:3082",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Refer to a colleague",
         "node": "45:3136",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Template editor",
         "node": "45:3179",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Add a pharmacy",
         "node": "45:3242",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Checkout",
         "node": "45:3289",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Enterprise enquiry",
         "node": "45:3324",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — My account",
         "node": "58:3661",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Edit doctor",
         "node": "58:3710",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Edit branch",
         "node": "58:3770",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dialog — Send a message",
         "node": "58:3813",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Share booking link",
         "node": "58:3858",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Call the patient",
         "node": "58:3946",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Connect payments",
         "node": "58:3971",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Drawer — Patient history",
         "node": "45:2882",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Settings — clinic & letterhead",
         "node": "22:3701",
         "page": "Screens",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Settings — My PIN & device",
         "node": "43:1942",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "partial"
       },
       {
         "frame": "Settings — Letterhead",
         "node": "43:2193",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Settings — Pharmacies",
         "node": "43:2454",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "partial"
       },
       {
         "frame": "Settings — Agreements",
         "node": "43:2708",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Settings — Readiness check",
         "node": "43:2952",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "partial"
       },
       {
         "frame": "Kiosk — open on this device (staff)",
         "node": "40:1190",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Kiosk — welcome (tablet)",
         "node": "40:1399",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Kiosk — token (tablet)",
         "node": "40:1500",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Kiosk — close (staff PIN)",
         "node": "40:1596",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Kiosk — code (tablet)",
         "node": "58:4013",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Kiosk — patient (tablet)",
         "node": "58:4050",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Kiosk — doctor (tablet)",
         "node": "58:4092",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Kiosk — pay (tablet)",
         "node": "58:4149",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Lab tube label — 50×25 mm",
         "node": "40:1652",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Staff & roles — Team tab",
         "node": "41:991",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Staff & roles — Activity log tab",
         "node": "41:1267",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Billing — receipt (bill page)",
         "node": "40:631",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Appointments — week view",
         "node": "40:869",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Subscription — payment successful",
         "node": "58:3463",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Dashboard — new clinic welcome & setup guide",
         "node": "58:3190",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
         "status": "missing"
       },
       {
         "frame": "Doctor Console — queue (sub-page)",
         "node": "36:195",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Doctor Console — after signing",
         "node": "36:582",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Clinic sign-up — intro",
         "node": "36:157",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Sign in — mobile",
         "node": "36:5",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Sign in — code",
         "node": "36:54",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Lock screen (PIN)",
         "node": "36:112",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Prescription — A4 print",
         "node": "37:492",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Medical certificate — A4 print",
         "node": "37:642",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Reports — Bookings & waiting",
         "node": "42:1402",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "partial"
       },
       {
         "frame": "Reports — Clinical (doctors only)",
         "node": "42:1710",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Reports — Consult list",
         "node": "42:2017",
-        "page": "Screens",
+        "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       }
     ]
   },

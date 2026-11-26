@@ -245,6 +245,36 @@ export type MockVisit = {
 
 export const visits: MockVisit[] = [
   {
+    id: "vs_fathima",
+    token: "A-014",
+    patientId: "pt_fathima",
+    status: "in_consult",
+    mode: "in_clinic",
+    source: "walk_in",
+    reason: "Antenatal check · 28 weeks",
+    detail: "BP 128/84 · weight 62 kg",
+    priority: null,
+    seenBy: "dr_ananya",
+    waitedMinutes: 22,
+    consultMinutes: null,
+    createdAt: "2026-11-25T09:48:00Z",
+  },
+  {
+    id: "vs_diya",
+    token: "A-015",
+    patientId: "pt_diya",
+    status: "no_show",
+    mode: "in_clinic",
+    source: "appointment",
+    reason: "Follow-up · knee pain",
+    detail: "Did not come",
+    priority: null,
+    seenBy: null,
+    waitedMinutes: null,
+    consultMinutes: null,
+    createdAt: "2026-11-25T11:30:00Z",
+  },
+  {
     id: "vs_kavya",
     token: "A-014",
     patientId: "pt_kavya",
@@ -308,7 +338,7 @@ export const visits: MockVisit[] = [
     id: "vs_diya",
     token: "T-104",
     patientId: "pt_diya",
-    status: "seen",
+    status: "done",
     mode: "in_clinic",
     source: "walk_in",
     reason: "Viral fever",
@@ -323,7 +353,7 @@ export const visits: MockVisit[] = [
     id: "vs_fathima",
     token: "T-101",
     patientId: "pt_fathima",
-    status: "seen",
+    status: "done",
     mode: "in_clinic",
     source: "walk_in",
     reason: "Child's cough",
@@ -508,6 +538,15 @@ export type MockPrescription = {
   safetyAlertKind: string | null;
   safetyOverridden: boolean;
   safetyOverrideReason: string | null;
+  /**
+   * The secret the verification link carries.
+   *
+   * The service stores one on the prescription and compares the hash the link
+   * holds against it, so a document that was changed after it was signed no
+   * longer verifies. The mock keeps one too, rather than deriving it from the
+   * id: a derivation is a formula anybody could work out.
+   */
+  verifyToken: string;
   /** The lines the doctor wrote. Kept on the prescription, as the API does. */
   diagnoses: Array<{ code: string; label: string; kind: string }>;
   medicines: Array<Record<string, string | undefined>>;

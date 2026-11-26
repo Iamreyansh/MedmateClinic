@@ -23,11 +23,14 @@ import { MessagesScreen } from "@/features/messages";
 import { DoctorsScreen } from "@/features/doctors";
 import { StaffScreen } from "@/features/staff";
 import { LocationsScreen } from "@/features/locations";
+import { AccountScreen } from "@/features/staff-admin";
 import { PlaceholderScreen } from "@/features/placeholders";
 import { NurseScreen } from "@/features/nurse";
 import { LabScreen } from "@/features/lab";
 import { RequireSession } from "@/app/routes/RequireSession";
 import { NotFoundScreen } from "@/app/routes/NotFoundScreen";
+import { mobileRoutes } from "@/app/routes/mobile";
+import { patientRoutes } from "@/app/routes/patient";
 
 /**
  * The surfaces a clinic tablet never opens.
@@ -133,6 +136,17 @@ export const routes: RouteObject[] = [
 
   { path: "/fidelity", element: <DevToolsScreen /> },
   { path: "*", element: <NotFoundScreen /> },
+
+  // The phone app: the staff app, the patient's own screens and the
+  // sign-up. It is appended, not woven in, so the desktop routes keep the
+  // order they had.
+  ...mobileRoutes,
+  // The patient-facing public web, in one block: the paths the clinic's own
+  // link carries and the aliases the app uses.
+  ...patientRoutes,
+  // The account of the person signed in, on a page of its own so it can be
+  // linked to. It is the same account the sidebar's My account dialog opens.
+  ...guard("/account", <AccountScreen />),
 ];
 
 /** One route, behind the session. */

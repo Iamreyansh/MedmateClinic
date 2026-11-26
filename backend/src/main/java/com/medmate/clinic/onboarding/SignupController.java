@@ -3,6 +3,7 @@ package com.medmate.clinic.onboarding;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,15 +16,21 @@ import org.springframework.web.bind.annotation.RestController;
  * schema of its own, and a session for the owner. The answer carries the
  * clinic's booking link, so the last step can hand the patient a link that
  * works.
+ *
+ * <p>Before any of that, the owner's number is proved with a code: the
+ * number is not attached to a clinic yet, so the code is kept in the registry
+ * rather than in a clinic's schema.
  */
 @RestController
 @RequestMapping("/api/auth")
 public class SignupController {
 
     private final SignupService signup;
+    private final PreSignupService preSignup;
 
-    public SignupController(SignupService signup) {
+    public SignupController(SignupService signup, PreSignupService preSignup) {
         this.signup = signup;
+        this.preSignup = preSignup;
     }
 
     /** Sign the clinic up, and sign the owner in. */
@@ -39,6 +46,21 @@ public class SignupController {
                         request.hfr(), request.role(), request.hpr(), request.doctorName(),
                         request.doctorQual(), request.doctorReg(), request.speciality(),
                         request.fee(), request.videoFee(), request.signing()));
+    }
+
+    /** Send a code to a number that has no clinic yet. */
+    @PostMapping("/otp/pre-signup")
+    public ResponseEntity<Map<String, Object>> requestPreSignupCode(
+            @Valid @RequestBody PreSignupPhoneRequest request) {
+        return ResponseEntity.ok(preSignup.requestCode(request.mobile()));
+    }
+
+    /** Check the code and keep the proof. */
+    @PostMapping("/pre-signup/verify")
+    public ResponseEntity<Map<String, Object>> verifyPreSignupCode(
+            @Valid @RequestBody PreSignupCodeRequest request) {
+        preSignup.verify(request.mobile(), request.code());
+        return ResponseEntity.ok(Map.of("verified", true));
     }
 
     /**
@@ -77,4 +99,10 @@ public class SignupController {
             String fee,
             String videoFee,
             String signing) {}
+
+    /** The number the sign-up's code is sent to. */
+    public record PreSignupPhoneRequest(@NotBlank String mobile) {}
+
+    /** The number, and the code that was sent to it. */
+    public record PreSignupCodeRequest(@NotBlank String mobile, @NotBlank String code) {}
 }

@@ -24,13 +24,22 @@ public class AppointmentController {
         this.current = current;
     }
 
-    /** The book, as the screen asked for it: a day, or a week. */
+    /**
+     * The book, as the screen asked for it: a day, or a week.
+     *
+     * <p>With a range of days, the book is a page of the appointments in
+     * those days.
+     */
     @GetMapping
     public Map<String, Object> book(
             @RequestParam(required = false) String view,
             @RequestParam(required = false) String date,
-            @RequestParam(required = false) String doctor) {
-        return appointments.book(current.get(), view, date, doctor);
+            @RequestParam(required = false) String doctor,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false, defaultValue = "50") int limit,
+            @RequestParam(required = false, defaultValue = "0") int offset) {
+        return appointments.book(current.get(), view, date, doctor, from, to, limit, offset);
     }
 
     /** The strip: a day at a time, and what is free for each doctor. */

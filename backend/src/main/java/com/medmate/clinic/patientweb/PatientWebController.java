@@ -37,10 +37,17 @@ public class PatientWebController {
         this.routing = routing;
     }
 
-    /** The booking page: the clinic, its doctors and the times. */
+    /**
+     * The booking page: the clinic, its doctors and the times.
+     *
+     * <p>The times are the first doctor's, unless a doctor is named — then
+     * they are that doctor's.
+     */
     @GetMapping("/public/doctors")
-    public Map<String, Object> doctors(@RequestParam("clinic") String slug) {
-        return patientWeb.bookingPage(slug);
+    public Map<String, Object> doctors(
+            @RequestParam("clinic") String slug,
+            @RequestParam(value = "doctorId", required = false) String doctorId) {
+        return patientWeb.bookingPage(slug, doctorId);
     }
 
     /** Book the visit. The patient gets a token and two links to keep. */
@@ -67,8 +74,29 @@ public class PatientWebController {
 
     /** The patient calls the booking off. */
     @PostMapping("/public/booking/{linkKey}/cancel")
-    public Map<String, Object> cancel(@PathVariable String linkKey) {
-        return patientWeb.cancel(linkKey);
+    public Map<String, Object> cancel(
+            @PathVariable String linkKey,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyHeader) {
+        return patientWeb.cancel(linkKey, idempotencyHeader);
+    }
+
+    /**
+     * The patient moves the booking to another time.
+     *
+     * <p>The link says which clinic the patient is in, so the request carries
+     * no clinic of its own.
+     *
+     * <p>The answer carries the queue slip as its token, and never the link
+     * key: the key is the patient's credential, it does not change when the
+     * booking moves, and it must not be drawn. The call-off answers the same
+     * way.
+     */
+    @PostMapping("/public/booking/{linkKey}/rebook")
+    public Map<String, Object> rebook(
+            @PathVariable String linkKey,
+            @Valid @RequestBody PatientWebService.RebookRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyHeader) {
+        return patientWeb.rebook(linkKey, request, idempotencyHeader);
     }
 
     /** The patient's place in the queue. */

@@ -18,8 +18,15 @@ function patientByVisit(visitId: string) {
 }
 
 export function registerBillingRoutes() {
-  mock.on("GET", "/clinic/billing", () => {
+  mock.on("GET", "/clinic/billing", (_body, context) => {
     requireSession();
+    const from = context.query.get("from");
+    const to = context.query.get("to");
+    const status = context.query.get("status");
+    const mode = context.query.get("mode");
+    const limit = Math.min(200, Math.max(1, Number(context.query.get("limit") ?? 50)));
+    const offset = Math.max(0, Number(context.query.get("offset") ?? 0));
+
     const paid = invoices.filter((bill) => bill.status === "paid");
     const pending = invoices.filter((bill) => bill.status !== "paid" && bill.status !== "refunded");
     const refunded = invoices.filter((bill) => bill.status === "refunded");
@@ -47,8 +54,22 @@ export function registerBillingRoutes() {
       bills: pending.length,
     });
 
-    // every bill of the day, so the tabs can filter them
-    const bills = [...paid, ...pending, ...refunded].map((bill) => {
+    // The service filters and pages the bills: a range of days, a status, a
+    // payment mode. No range at all means every bill the clinic has.
+    const statusOf = (bill: (typeof invoices)[number]) =>
+      bill.status === "paid" ? "paid" : bill.status === "refunded" ? "refunded" : "to_collect";
+    const inRange = (bill: (typeof invoices)[number]) => {
+      const created = bill.createdAt ?? "";
+      if (from && !created.startsWith(from)) return false;
+      if (to && !created.startsWith(to)) return false;
+      return true;
+    };
+    const everyBill = [...paid, ...pending, ...refunded]
+      .filter(inRange)
+      .filter((bill) => (status ? statusOf(bill) === status : true))
+      .filter((bill) => (mode ? bill.payMode === mode : true));
+    const page = everyBill.slice(offset, offset + limit);
+    const bills = page.map((bill) => {
       const person = patientByVisit(bill.visitId);
       return {
         invoiceId: bill.id,
@@ -103,6 +124,7 @@ export function registerBillingRoutes() {
       byMode,
       pending: pendingItems,
       bills,
+      meta: { total: everyBill.length, limit, offset },
       bill: billCard(invoices[0]),
       clinic: {
         name: "MedMate Clinic",
@@ -130,7 +152,13 @@ export function registerBillingRoutes() {
     bill.status = "paid";
     bill.payMode = request.payMode ?? "cash";
     bill.paidAt = new Date().toISOString();
-    return { invoiceId: bill.id, status: bill.status, paidAt: bill.paidAt, payMode: bill.payMode };
+    return {
+      invoiceId: bill.id,
+      status: bill.status,
+      paidAt: bill.paidAt,
+      payMode: bill.payMode,
+      amount: bill.total,
+    };
   });
 
   mock.on("POST", "/clinic/billing/:id/refund", (_body, context) => {

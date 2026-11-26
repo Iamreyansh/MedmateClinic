@@ -34,6 +34,13 @@ export type Session = {
     initials: string;
     detail: string;
     tone: "doctor";
+    /**
+     * The role the person signed up with.
+     *
+     * The service sends it on the session. It is absent for anyone the
+     * service did not sign up, so nothing may be assumed from it.
+     */
+    profileRole?: "doctor" | "manager";
   };
   location: string;
   /** What the signed-in person may open, and how far. */
