@@ -69,7 +69,8 @@ type KioskState = {
 };
 
 const state: KioskState = {
-  open: false,
+  // a device at the front desk is in kiosk mode
+  open: true,
   step: "mobile",
   language: "en",
   phone: null,
@@ -89,7 +90,8 @@ function kioskDoctors(): KioskDoctor[] {
     speciality: doctor.speciality,
     room: doctor.room,
     fee: 500 - index * 50,
-    waiting: index + 1,
+    // the first doctor is free — nobody is waiting for them yet
+    waiting: index,
   }));
 }
 
@@ -133,7 +135,8 @@ function session(): KioskSession {
     token: state.token,
     position,
     waiting: position ? Math.max(0, position - 1) : 0,
-    qr: state.token ? `medmate://checkin/${state.token}` : null,
+    // The patient may scan the code with their phone instead of typing.
+    qr: "https://medmate.in/book?clinic=medmate-clinic",
   };
 }
 

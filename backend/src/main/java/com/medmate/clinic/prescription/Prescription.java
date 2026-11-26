@@ -41,6 +41,17 @@ public class Prescription {
     @Column(name = "created_at")
     private Instant createdAt;
 
+    /**
+     * The token that proves this document has not changed since it was signed.
+     *
+     * <p>The link the patient keeps carries the token, and the prescription
+     * carries it. The two are compared in constant time: a prescription that
+     * was changed after it was signed no longer holds the token that was
+     * handed out, so the old link stops verifying.
+     */
+    @Column(name = "verify_token")
+    private String verifyToken;
+
     /** An antibiotic was prescribed. */
     @Column(name = "antibiotic")
     private boolean antibiotic;
@@ -136,6 +147,13 @@ public class Prescription {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+    public String getVerifyToken() {
+        return verifyToken;
+    }
+
+    public void setVerifyToken(String verifyToken) {
+        this.verifyToken = verifyToken;
     }
 
     public boolean isAntibiotic() {

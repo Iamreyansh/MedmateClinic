@@ -148,7 +148,7 @@ export function ConsultView() {
   };
 
   if (signed) {
-    return <Signed person={person} />;
+    return <Signed person={person} visitId={visit?.id} />;
   }
 
   const errors = error ? <div className="note red">{error}</div> : null;
@@ -583,8 +583,11 @@ function followUpDate(option: string): string {
 
 function Signed({
   person,
+  visitId,
 }: {
   person: { name?: string; age?: number; sex?: string; abha?: string } | null;
+  /** The visit the certificate is written for. */
+  visitId?: string;
 }) {
   return (
     <>
@@ -644,9 +647,10 @@ function Signed({
           <Button variant="secondary" icon="pill">
             Send to a pharmacy
           </Button>
-          <Button variant="secondary" icon="cert">
+          <Link className="btn sec" to={`/certificate?visit=${visitId ?? ""}`}>
+            <Icon name="cert" size={16} />
             Certificate
-          </Button>
+          </Link>
           <div style={{ flex: 1 }} />
           <Link to="/queue" className="btn ghost">
             Amend (new version)

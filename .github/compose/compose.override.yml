@@ -1,0 +1,10 @@
+# The compose override CI uses.
+#
+# CI compiles the API jar on the runner, then builds the API image from that
+# jar instead of from source, so the image carries exactly the code the
+# integration test just passed.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: .github/workflows/api.Dockerfile

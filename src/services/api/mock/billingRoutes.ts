@@ -38,6 +38,37 @@ export function registerBillingRoutes() {
       };
     });
 
+    // The money still to collect is its own row — the till shows four bars,
+    // the last one being what has not come in yet.
+    byMode.push({
+      mode: "pending",
+      label: "Pending",
+      amount: pendingAmount,
+      bills: pending.length,
+    });
+
+    // every bill of the day, so the tabs can filter them
+    const bills = [...paid, ...pending, ...refunded].map((bill) => {
+      const person = patientByVisit(bill.visitId);
+      return {
+        invoiceId: bill.id,
+        number: bill.number,
+        amount: bill.total,
+        status: bill.status,
+        payMode: bill.payMode,
+        paidAt: bill.paidAt,
+        createdAt: bill.createdAt ?? null,
+        description: "Consultation in-clinic",
+        patient: {
+          id: person.id,
+          name: person.name,
+          age: person.age,
+          sex: person.sex,
+          phone: person.phone,
+        },
+      };
+    });
+
     const pendingItems = pending.map((bill) => {
       const person = patientByVisit(bill.visitId);
       return {
@@ -66,10 +97,12 @@ export function registerBillingRoutes() {
         pendingAmount,
         refundCount: refunded.length,
         refundAmount,
-        dayBills: invoices.length,
+        // The bills raised today — not every bill the clinic has ever raised.
+        dayBills: invoices.filter((bill) => (bill.createdAt ?? "").startsWith("2026-11-25")).length,
       },
       byMode,
       pending: pendingItems,
+      bills,
       bill: billCard(invoices[0]),
       clinic: {
         name: "MedMate Clinic",

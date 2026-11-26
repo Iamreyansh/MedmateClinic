@@ -19,10 +19,29 @@ import { requireSession } from "@/services/api/mock/guard";
 /** The partner labs the clinic sends samples to. */
 const PARTNERS = ["Tenet Diagnostics", "MediDocs"];
 
+/**
+ * Is the value out of range?
+ *
+ * The technician's flag is a clinical judgement and the range is arithmetic,
+ * so the range decides: a value outside it is abnormal whichever way the
+ * flag was ticked. A result with no range keeps the flag it was given.
+ */
+function isAbnormal(value: string | null, reference: string | null, flagged: boolean): boolean {
+  const reading = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  if (!Number.isFinite(reading)) return flagged;
+  const bounds = String(reference ?? "").match(/(-?\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(-?\d+(?:\.\d+)?)/i);
+  if (!bounds) return flagged;
+  const low = Number(bounds[1]);
+  const high = Number(bounds[2]);
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return flagged;
+  return reading < low || reading > high;
+}
+
 /** The order as the lab sends it. */
 function orderPayload(order: MockLabOrder) {
   const person = patient(order.patientId);
   const doctor = doctors.find((entry) => entry.id === order.orderedBy) ?? null;
+  const abnormal = isAbnormal(order.value, order.reference, order.abnormal);
 
   return {
     id: order.id,
@@ -46,7 +65,7 @@ function orderPayload(order: MockLabOrder) {
     reportedAt: order.reportedAt,
     value: order.value,
     reference: order.reference,
-    abnormal: order.abnormal,
+    abnormal,
     critical: order.critical,
     note: order.note,
   };
@@ -67,6 +86,8 @@ export function registerLabRoutes() {
 
     const open = labOrders.filter((order) => order.status !== "reported");
     const reported = labOrders.filter((order) => order.status === "reported");
+    const openPayload = open.map(orderPayload);
+    const reportedPayload = reported.map(orderPayload);
 
     return {
       counts: {
@@ -74,10 +95,12 @@ export function registerLabRoutes() {
         inLab: open.filter((order) => order.status === "in_lab").length,
         sentOut: open.filter((order) => order.status === "sent_out").length,
         reportedToday: reported.length,
-        abnormalToday: reported.filter((order) => order.abnormal).length,
+        abnormalToday: reportedPayload.filter((order) => order.abnormal).length,
       },
-      open: open.map(orderPayload),
-      reported: reported.map(orderPayload),
+      // An order that has been written but not collected is still on the
+      // bench — it must not vanish between the doctor and the technician.
+      open: openPayload,
+      reported: reportedPayload,
       partners: PARTNERS,
       meta: `${open.length} on the bench · ${reported.length} reported today`,
     };

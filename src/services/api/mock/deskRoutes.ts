@@ -90,8 +90,8 @@ export function billCard(bill: MockInvoice | undefined) {
     totalInWords: "Five hundred rupees only",
     exemptNote: "Healthcare services are exempt from GST.",
     timeline: [
-      { label: "Bill created", at: "2026-11-25T11:05:00Z" },
-      ...(bill.paidAt ? [{ label: "Paid", at: bill.paidAt }] : []),
+      { text: "Bill created", at: "2026-11-25T11:05:00Z" },
+      ...(bill.paidAt ? [{ text: "Paid", at: bill.paidAt }] : []),
     ],
   };
 }
@@ -100,7 +100,14 @@ export function billCard(bill: MockInvoice | undefined) {
 export function registerDeskRoutes() {
   mock.on("GET", "/clinic/desk", () => {
     requireSession();
-    const todays = visits.filter((item) => item.status === "waiting" || item.status === "in_consult");
+    // Every visit of today — including the ones already handed over, so the
+    // desk can say how many are done.
+    const todays = visits.filter(
+      (item) =>
+        item.status === "waiting" ||
+        item.status === "in_consult" ||
+        item.status === "done",
+    );
 
     const items = todays.map((item) => {
       const person = patientByVisit(item.id);
@@ -138,7 +145,15 @@ export function registerDeskRoutes() {
               payMode: invoice.payMode,
             }
           : { status: "none", amount: 0 },
-        followUp: null,
+        followUp: item.id === "vs_kavya"
+          ? {
+              id: `fu_${item.id}`,
+              startsAt: "2026-11-30T10:00:00Z",
+              mode: "in_clinic",
+              status: "booked",
+              label: "Mon, 30 Nov",
+            }
+          : null,
         lab: lab.length
           ? {
               id: lab[0].id,
@@ -157,8 +172,15 @@ export function registerDeskRoutes() {
         waiting: items.filter((item) => item.state === "waiting").length,
         doneToday: items.filter((item) => item.checkedOut).length,
       },
-      items,
-      meta: `${items.length} in the clinic · ${items.filter((item) => item.state === "toHandOver").length} to hand over`,
+      invoice: null,
+      lines: [],
+      gst: 0,
+      visits: items,
+      // the line under the title: a label to show, and the note itself
+      meta: {
+        label: `${items.length} in the clinic · ${items.filter((item) => item.state === "toHandOver").length} to hand over`,
+        note: "Oldest first. Each patient is handed over with the prescription, the bill and the follow-up.",
+      },
     };
   });
 

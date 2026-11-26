@@ -46,6 +46,14 @@ export default defineConfig(({ command }) => {
       environment: "jsdom",
       globals: true,
       setupFiles: ["./src/tests/setup.ts"],
+      // The unit tests run against the mock — it is the contract the screens
+      // are written against, and a test run with the mock off is talking to a
+      // service that is not there. The build's environment (VITE_USE_MOCK=false
+      // in CI) must not decide this, or the suite goes red on the runner and
+      // green on a laptop.
+      env: {
+        VITE_USE_MOCK: "true",
+      },
     },
   };
 });

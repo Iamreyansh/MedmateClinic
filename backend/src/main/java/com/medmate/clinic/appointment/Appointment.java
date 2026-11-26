@@ -42,8 +42,16 @@ public class Appointment {
     private String source;
     @Column(name = "notes")
     private String notes;
+    /**
+     * When the booking was made.
+     *
+     * <p>The column has a default, but the column is mapped, so Hibernate
+     * writes whatever the field holds — and a null here defeats the default
+     * and the insert fails. The field therefore carries the moment the
+     * appointment was made, so no caller can leave it out.
+     */
     @Column(name = "created_at")
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
 
     public UUID getId() {
         return id;

@@ -1,10 +1,12 @@
 package com.medmate.clinic.subscription;
 
-import com.medmate.clinic.appointment.AppointmentRepository;
+import com.medmate.clinic.clinic.ClinicProfile;
+import com.medmate.clinic.clinic.ClinicProfileRepository;
 import com.medmate.clinic.common.ClinicZoneService;
 import com.medmate.clinic.common.ForbiddenException;
 import com.medmate.clinic.prescription.PrescriptionRepository;
 import com.medmate.clinic.security.ClinicPrincipal;
+import com.medmate.clinic.staff.StaffRepository;
 import com.medmate.clinic.tenancy.RegistryClinicRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -22,26 +24,30 @@ import org.springframework.transaction.annotation.Transactional;
  * The subscription: the plan the clinic is on, the trial it is in, and what it
  * has used.
  *
- * <p>The usage is counted from the clinic's own work — the prescriptions it
- * signed and the appointments it took — so it moves with the clinic instead of
- * being a number somebody typed.
+ * <p>The usage is the clinic's entitlement: the doctors it has, the locations
+ * it runs and the people it employs. It is counted from the clinic's own
+ * staff and its own profile, so it moves with the clinic instead of being a
+ * number somebody typed.
  */
 @Service
 public class SubscriptionService {
 
     private final PrescriptionRepository prescriptions;
-    private final AppointmentRepository appointments;
     private final RegistryClinicRepository clinics;
+    private final StaffRepository staff;
+    private final ClinicProfileRepository profiles;
     private final ClinicZoneService zones;
 
     public SubscriptionService(
             PrescriptionRepository prescriptions,
-            AppointmentRepository appointments,
             RegistryClinicRepository clinics,
+            StaffRepository staff,
+            ClinicProfileRepository profiles,
             ClinicZoneService zones) {
         this.prescriptions = prescriptions;
-        this.appointments = appointments;
         this.clinics = clinics;
+        this.staff = staff;
+        this.profiles = profiles;
         this.zones = zones;
     }
 
@@ -66,18 +72,20 @@ public class SubscriptionService {
         int daysLeft = (int) java.time.temporal.ChronoUnit.DAYS.between(today, trialEnds);
         String state = daysLeft > 0 ? "trial" : "active";
 
-        Instant monthStart = today.withDayOfMonth(1).atStartOfDay(zone).toInstant();
-        long signed =
-                prescriptions.findByClinicIdOrderByCreatedAtAsc(clinicId).stream()
-                        .filter(row -> row.getCreatedAt() != null && row.getCreatedAt().isAfter(monthStart))
-                        .count();
-        long booked =
-                appointments.countByClinicIdAndStartsAtAfterAndStatus(clinicId, monthStart, "booked");
+        // The entitlement model: what the clinic's plan gives it. A clinic
+        // counts the doctors it has, the locations it runs and the people it
+        // employs — not the prescriptions it wrote last month.
+        long doctors = staff.findByClinicId(clinicId).stream()
+                .filter(person -> person.getSpeciality() != null && !person.getSpeciality().isBlank())
+                .count();
+        ClinicProfile profile = profiles.findById(clinicId).orElse(null);
+        long locations = Math.max(1, profile == null ? 1 : profile.getLocations());
+        long people = staff.findByClinicId(clinicId).size();
 
         List<Map<String, Object>> usage = new ArrayList<>();
-        usage.add(usageRow("Prescriptions this month", signed, 500));
-        usage.add(usageRow("Bookings this month", booked, 300));
-        usage.add(usageRow("SMS credits", 68, 200));
+        usage.add(usageRow("Doctors", doctors, 10));
+        usage.add(usageRow("Locations", locations, 5));
+        usage.add(usageRow("Staff", people, 50));
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("state", state);

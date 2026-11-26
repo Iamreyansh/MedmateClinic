@@ -19,8 +19,14 @@ import type {
 /** The state of the kiosk on this device. */
 export const fetchKiosk = () => apiGet<KioskSession>("/kiosk");
 
-/** Open the kiosk on this device. */
-export const openKiosk = () => apiPost<KioskSession>("/kiosk/open");
+/**
+ * Open the kiosk on this device.
+ *
+ * The staff's PIN goes with it: the same four digits that close the kiosk
+ * open it, so a patient cannot start a check-in on their own.
+ */
+export const openKiosk = (pin?: string) =>
+  apiPost<KioskSession>("/kiosk/open", pin ? { pin } : undefined);
 
 /** Close the kiosk. The front desk does this with their PIN. */
 export const closeKiosk = (pin: string) => apiPost<{ closed: boolean }>("/kiosk/close", { pin });

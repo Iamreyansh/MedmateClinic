@@ -1797,3 +1797,74 @@
   display: block;
   margin-inline: auto;
 }
+
+/* The till's seven numbers, and the schedule's strip of days. */
+.kpis.seven {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.kpis.seven .kpi {
+  padding: 12px;
+}
+
+.kpis.seven .kpi .v {
+  font-size: 22px;
+}
+
+@media (max-width: 1180px) {
+  .kpis.seven {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* The strip of days above the appointment book. */
+.bl-days {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+}
+
+.bl-days .bl-day {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  min-width: 86px;
+  padding: 10px 12px;
+  text-align: center;
+  display: grid;
+  gap: 2px;
+}
+
+.bl-days .bl-day b {
+  font-size: 14px;
+  display: block;
+}
+
+.bl-days .bl-day span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bl-days .bl-day.on {
+  border-color: var(--green);
+  background: var(--mint-50);
+  color: var(--forest);
+}
+
+.bl-book-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .bl-book-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

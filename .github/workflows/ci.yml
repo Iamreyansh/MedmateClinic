@@ -1,0 +1,315 @@
+name: CI
+
+on:
+  # Both triggers. A `pull_request` event reads the workflow file from the
+  # merge ref, so the PR's own workflow runs — but a branch that is not a pull
+  # request is only built by a push, so both are needed.
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_HOME: /usr/lib/jvm/java-21-openjdk-amd64
+  # The mock is off everywhere in CI. A bundle built with the mock on would
+  # answer with fixture patients and let anyone in.
+  VITE_USE_MOCK: "false"
+
+jobs:
+  frontend:
+    name: Frontend — typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+
+      - name: Assemble the large files
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        # The output is captured, because a step that fails without saying
+        # why is a step nobody can fix.
+        run: npm test 2>&1 | tee vitest-output.txt; exit ${PIPESTATUS[0]}
+
+      - name: Production build (the mock must be off)
+        run: npm run build
+        env:
+          VITE_USE_MOCK: "false"
+
+      - name: The production bundle must code-split
+        # The patient-web surfaces and the kiosk are loaded on demand, so the
+        # bundle is more than one chunk. A single 596 kB chunk means the lazy
+        # routes were inlined.
+        run: |
+          set -euo pipefail
+          chunks=$(find dist/assets -name '*.js' | wc -l)
+          echo "chunks: $chunks"
+          if [ "$chunks" -lt 2 ]; then
+            echo "::error::the production bundle is one chunk — the lazy routes were inlined"
+            exit 1
+          fi
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-bundle
+          path: dist
+          retention-days: 7
+
+      - name: Publish the test output
+        # The artifact is how a reviewer reads it from the Actions UI. The
+        # branch is how it can be read through the API, which is the only way
+        # to see why the step failed without the UI.
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -f vitest-output.txt ]; then
+            echo "the tests did not run" > vitest-output.txt
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-output
+          git add vitest-output.txt
+          git commit -m "ci: the frontend unit test output" || true
+          git push origin ci-output --force || echo "could not publish the output"
+
+  backend:
+    name: Backend — package, unit tests, integration test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # The integration test's own database. The job runs nothing but the
+          # test, so the service can carry the test's database.
+          POSTGRES_DB: medmate_clinic_api_test
+          POSTGRES_USER: medmate
+          POSTGRES_PASSWORD: medmate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medmate -d medmate_clinic_api_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Compile the API
+        run: mvn -B -ntp -f backend/pom.xml -DskipTests package
+
+      - name: Unit tests and the integration test
+        run: mvn -B -ntp -f backend/pom.xml verify
+        env:
+          TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/medmate_clinic_api_test
+          TEST_DB_USER: medmate
+          TEST_DB_PASSWORD: medmate
+          APP_ENV: development
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-reports
+          path: backend/target/surefire-reports
+          retention-days: 7
+
+  fidelity:
+    name: Fidelity — the pixel diff against the baselines
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+
+      - name: Materialise the delivery
+        # The branch carries the delivery as parts; the assembler puts the real
+        # files in the checkout before anything reads them.
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Assemble the large files and commit them
+        # A file that was too big to publish in one piece arrives as its parts.
+        # The assembler joins them and checks the result against the sha in
+        # scripts/assemble-manifest.txt.
+        run: |
+          set -euo pipefail
+          bash scripts/assemble-large-files.sh
+          branch="${{ github.head_ref || github.ref_name }}"
+          if git diff --quiet; then
+            echo "nothing to assemble"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore: assemble large files" || true
+            git push origin "HEAD:refs/heads/${branch}" || echo "could not publish the assembled files"
+          fi
+
+      - name: The deployed MVP must still answer
+        # The provenance check fails when the deployed app cannot be reached.
+        # It is a separate step so the reason a job went red is obvious.
+        run: node verify/check-fidelity.mjs --provenance-only
+
+      - name: The pixel diff
+        # The app under test is the real stack: Postgres, the API and the SPA
+        # with the mock off. Started here rather than in a service, because
+        # the app has to talk to the API on the same runner.
+        run: |
+          set -euo pipefail
+          ./verify/dev-stack.sh start
+          node verify/prepare-baselines.mjs
+          # The gate is the drift each route is declared to show, plus a point
+          # of tolerance; a route with no declaration is held to its budget, so
+          # an unexpected change still breaks the build. The table goes into the
+          # job summary and into an artifact, so the numbers are read by a human
+          # whatever the exit code is.
+          node verify/pixel-diff.mjs --baseline=reference --json=verify/baselines/diffs/report-ci.json | tee verify/baselines/diffs/drift.txt
+          cat verify/baselines/diffs/drift.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the diffs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-diffs
+          path: verify/baselines/diffs
+          retention-days: 7
+
+  e2e:
+    name: E2E — Playwright against the real stack
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # The integration test's own database. The job runs nothing but the
+          # test, so the service can carry the test's database.
+          POSTGRES_DB: medmate_clinic_api
+          POSTGRES_USER: medmate
+          POSTGRES_PASSWORD: medmate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medmate -d medmate_clinic_api"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Compile the API
+        run: mvn -B -f backend -DskipTests package
+
+      - name: Assemble the large files
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Materialise the delivery
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Install the web app
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the E2E suite
+        working-directory: e2e
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the browser
+        working-directory: e2e
+        # Two jobs install browser dependencies at the same time and fight over
+        # the apt lock, so this retries rather than failing on the lock.
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if npx playwright install chromium --with-deps; then
+              echo "the browser is installed"
+              exit 0
+            fi
+            echo "attempt ${attempt} failed — waiting for the apt lock"
+            sleep 90
+          done
+          echo "the browser could not be installed"
+          exit 1
+
+      - name: Start the API
+        run: |
+          set -euo pipefail
+          DATABASE_URL="jdbc:postgresql://127.0.0.1:5432/medmate_clinic_api" \
+          DATABASE_USER=medmate DATABASE_PASSWORD=medmate \
+          DEMO_ENABLED=true DEMO_CLINIC_ID=11111111-1111-4111-8111-111111111111 \
+          APP_ENV=development SERVER_PORT=8080 \
+          CORS_ORIGINS="http://localhost:3100,http://127.0.0.1:3100" \
+            java -jar backend/target/medmate-clinic-api-1.0.0.jar &
+          for _ in $(seq 1 120); do
+            if curl -sSf -m 2 http://127.0.0.1:8080/actuator/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sSf http://127.0.0.1:8080/actuator/health
+
+      - name: Start the web app
+        run: |
+          set -euo pipefail
+          VITE_USE_MOCK=false VITE_API_URL="http://127.0.0.1:8080/api" \
+            npx vite --host 127.0.0.1 --port 3100 --strictPort &
+          for _ in $(seq 1 90); do
+            if curl -sSf -m 2 http://127.0.0.1:3100/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sSf -o /dev/null -w "web: %{http_code}\n" http://127.0.0.1:3100/
+
+      - name: Run the suite
+        working-directory: e2e
+        env:
+          API_URL: http://127.0.0.1:8080
+          WEB_URL: http://127.0.0.1:3100
+        run: npx playwright test
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: e2e/.artifacts
+          retention-days: 7

@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
 import { LandingScreen } from "@/features/landing";
 import { LoginScreen, LockScreen } from "@/features/auth";
@@ -5,7 +6,7 @@ import { StartScreen } from "@/features/onboarding";
 import { DashboardScreen } from "@/features/dashboard";
 import { QueueScreen } from "@/features/queue";
 import { ConsultScreen } from "@/features/consult";
-import { PatientRecordScreen } from "@/features/patients";
+import { PatientListScreen, PatientRecordScreen } from "@/features/patients";
 import { InboxScreen } from "@/features/inbox";
 import { TeleconsultScreen } from "@/features/teleconsult";
 import { TemplatesScreen } from "@/features/templates";
@@ -18,13 +19,41 @@ import { ScheduleScreen } from "@/features/schedule";
 import { SubscriptionScreen } from "@/features/subscription";
 import { SettingsScreen } from "@/features/settings";
 import { DevToolsScreen } from "@/features/dev-tools";
+import { MessagesScreen } from "@/features/messages";
+import { DoctorsScreen } from "@/features/doctors";
+import { StaffScreen } from "@/features/staff";
+import { LocationsScreen } from "@/features/locations";
 import { PlaceholderScreen } from "@/features/placeholders";
 import { NurseScreen } from "@/features/nurse";
 import { LabScreen } from "@/features/lab";
-import { KioskScreen } from "@/features/kiosk";
-import { BookScreen, LiveTokenScreen, IntakeScreen, VerifyScreen } from "@/features/patient-web";
 import { RequireSession } from "@/app/routes/RequireSession";
 import { NotFoundScreen } from "@/app/routes/NotFoundScreen";
+
+/**
+ * The surfaces a clinic tablet never opens.
+ *
+ * The patient-facing web and the kiosk are fetched when they are asked for, so
+ * the first bundle a doctor opens does not carry them. Each lazy call names
+ * one screen, but they share one chunk — the feature is fetched once.
+ */
+const ApptScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.ApptScreen })),
+);
+const BookScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.BookScreen })),
+);
+const LiveTokenScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.LiveTokenScreen })),
+);
+const IntakeScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.IntakeScreen })),
+);
+const VerifyScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.VerifyScreen })),
+);
+const KioskScreen = lazy(() =>
+  import("@/features/kiosk").then((module) => ({ default: module.KioskScreen })),
+);
 
 /**
  * The routes.
@@ -45,13 +74,16 @@ export const routes: RouteObject[] = [
   // staff and has no session, so these sit outside the guard — a booking link
   // that asked for a sign-in would be a link nobody could follow.
   { path: "/book", element: <BookScreen /> },
+  { path: "/appt", element: <ApptScreen /> },
   { path: "/t/:token", element: <LiveTokenScreen /> },
   { path: "/intake/:token", element: <IntakeScreen /> },
   { path: "/verify/:id", element: <VerifyScreen /> },
   ...guard("/dashboard", <DashboardScreen />),
   ...guard("/queue", <QueueScreen />),
   ...guard("/visit/:id", <ConsultScreen />),
-  ...guard("/patients", <PatientRecordScreen />),
+  // The list is the front door; the record is one patient inside it.
+  ...guard("/patients", <PatientListScreen />),
+  ...guard("/patients/:id", <PatientRecordScreen />),
   ...guard("/inbox", <InboxScreen />),
   ...guard("/teleconsult", <TeleconsultScreen />),
   ...guard("/templates", <TemplatesScreen />),
@@ -73,50 +105,10 @@ export const routes: RouteObject[] = [
     "/lab",
     <LabScreen />,
   ),
-  ...guard(
-    "/kiosk",
-    <KioskScreen />,
-  ),
-  ...guard(
-    "/doctors",
-    <PlaceholderScreen
-      activeHref="/doctors"
-      title="Doctors"
-      icon="stetho"
-      purpose="The doctors in the clinic: their fees, their hours and where they work."
-      dependsOn="the doctors and HPR lookup"
-    />,
-  ),
-  ...guard(
-    "/staff",
-    <PlaceholderScreen
-      activeHref="/staff"
-      title="Staff & roles"
-      icon="users"
-      purpose="The team, what each person may open, and the activity log."
-      dependsOn="the staff and roles endpoints"
-    />,
-  ),
-  ...guard(
-    "/messages",
-    <PlaceholderScreen
-      activeHref="/messages"
-      title="Patient messages"
-      icon="send"
-      purpose="Every message to a patient, word for word, and the wording to register."
-      dependsOn="the messages endpoints"
-    />,
-  ),
-  ...guard(
-    "/locations",
-    <PlaceholderScreen
-      activeHref="/locations"
-      title="Locations"
-      icon="pin"
-      purpose="The clinic's branches, their rooms and which doctors work where."
-      dependsOn="the branches endpoints"
-    />,
-  ),
+  ...guard("/doctors", <DoctorsScreen />),
+  ...guard("/staff", <StaffScreen />),
+  ...guard("/messages", <MessagesScreen />),
+  ...guard("/locations", <LocationsScreen />),
   ...guard(
     "/subscription",
     <SubscriptionScreen />,
@@ -133,6 +125,11 @@ export const routes: RouteObject[] = [
       purpose="The terms of service, the data processing agreement and the clinic declaration."
     />,
   ),
+
+  // The kiosk is a device at the front of the clinic, not a screen in the
+  // staff app: a patient walks up to it and nobody is signed in. So it stands
+  // outside the shell and outside the session guard.
+  { path: "/kiosk", element: <KioskScreen /> },
 
   { path: "/fidelity", element: <DevToolsScreen /> },
   { path: "*", element: <NotFoundScreen /> },

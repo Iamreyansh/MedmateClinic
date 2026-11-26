@@ -25,3 +25,6 @@ yarn-error.log*
 
 # local screenshots — evidence, never shipped
 /screenshots/
+
+# the agent skills installed locally — tooling, never shipped
+/.agents/

@@ -136,8 +136,29 @@ public class NurseService {
             body.put("name", person.getFullName());
             body.put("speciality", person.getSpeciality());
             // The rooms belong to the branches, which the service does not have
-            // yet — the nurse names the doctor, and the room is on the consult.
-            body.put("room", null);
+            // yet — the doctor works in the room their speciality names.
+            body.put("room", person.getSpeciality());
+            list.add(body);
+        }
+        return list;
+    }
+
+    /**
+     * The patients the nurse can call in.
+     *
+     * <p>A bare array, like the doctors: the nurse screen reads it as one.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> patients(UUID clinicId) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Patient patient : patients.findByClinicIdOrderByCreatedAtAsc(clinicId)) {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("id", patient.getId().toString());
+            body.put("name", patient.getFullName());
+            body.put("age", patient.getAge());
+            body.put("sex", patient.getSex());
+            body.put("initials", initials(patient.getFullName()));
+            body.put("phone", patient.getPhone());
             list.add(body);
         }
         return list;
@@ -161,8 +182,14 @@ public class NurseService {
         Visit visit = visits.findByIdAndClinicId(UUID.fromString(visitId), clinicId)
                 .orElseThrow(() -> new NotFoundException("That patient is no longer waiting."));
 
-        Vitals reading = new Vitals();
-        reading.setId(UUID.randomUUID());
+        // One row per reading: a second set of vitals replaces the first, it
+        // does not sit beside it.
+        Vitals reading =
+                vitals.findFirstByClinicIdAndVisitIdOrderByRecordedAtDesc(clinicId, visit.getId())
+                        .orElseGet(Vitals::new);
+        if (reading.getId() == null) {
+            reading.setId(UUID.randomUUID());
+        }
         reading.setClinicId(clinicId);
         reading.setPatientId(visit.getPatientId());
         reading.setVisitId(visit.getId());
@@ -226,7 +253,7 @@ public class NurseService {
         body.put("note", reading.getNote());
         body.put("priority", priorityOf(reading.getPriority()));
         body.put("sentTo", reading.getSentTo());
-        body.put("recordedBy", null);
+        body.put("recordedBy", reading.getRecordedBy() == null ? null : reading.getRecordedBy().toString());
         return body;
     }
 

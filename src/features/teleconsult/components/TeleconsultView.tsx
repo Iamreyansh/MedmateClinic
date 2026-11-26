@@ -3,6 +3,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { apiGet } from "@/services/api";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/ScreenStates";
 
 /** One patient waiting on a video consult. */
 export type WaitingPatient = {
@@ -25,20 +26,32 @@ export function TeleconsultView() {
   const [payload, setPayload] = useState<TeleconsultPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // a retry asks again — the counter is what changes
+  const [attempt, setAttempt] = useState(0);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let alive = true;
-    apiGet<TeleconsultPayload>("/clinic/teleconsult")
+    const controller = new AbortController();
+    apiGet<TeleconsultPayload>("/clinic/teleconsult", { signal: controller.signal })
       .then((data) => {
-        if (alive) setPayload(data);
+        if (!alive) return;
+        setPayload(data);
+        setError(null);
       })
       .catch((reason: unknown) => {
         if (!alive) return;
+        if (reason instanceof Error && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Could not load the waiting room");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
+      controller.abort();
     };
-  }, []);
+  }, [attempt]);
 
   const waiting = payload?.waiting ?? [];
   const consent = payload?.consent ?? [];
@@ -61,7 +74,25 @@ export function TeleconsultView() {
         </Button>
       </div>
 
-      {error ? <div className="note red">{error}</div> : null}
+      {error ? (
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            setAttempt((value) => value + 1);
+          }}
+        />
+      ) : null}
+
+      {loading && !payload ? <LoadingState title="Loading the waiting room…" /> : null}
+
+      {payload && payload.waiting.length === 0 ? (
+        <EmptyState
+          title="Nobody is waiting"
+          copy="Patients booked for a video or phone consult appear here when they join."
+          icon="video"
+        />
+      ) : null}
 
       <div className="rx-grid stretch">
         <div className="call-panel">

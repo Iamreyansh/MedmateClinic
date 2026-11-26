@@ -15,4 +15,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     Optional<Appointment> findByIdAndClinicId(UUID id, UUID clinicId);
 
     List<Appointment> findByClinicIdOrderByStartsAtAsc(UUID clinicId);
+
+    /** One doctor's book for one day — the slots that are already taken. */
+    List<Appointment> findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
+            UUID clinicId, UUID doctorId, Instant from, Instant to);
+
+    /** The appointment a visit came from. */
+    List<Appointment> findByClinicIdAndVisitIdOrderByStartsAtAsc(UUID clinicId, UUID visitId);
 }

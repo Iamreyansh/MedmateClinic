@@ -38,8 +38,14 @@ public class AppointmentService {
     private static final DateTimeFormatter DAY_LABEL = DateTimeFormatter.ofPattern("EEEE, d MMM yyyy");
     private static final DateTimeFormatter COLUMN_LABEL = DateTimeFormatter.ofPattern("EEE d");
     private static final LocalTime DAY_START = LocalTime.of(9, 0);
-    private static final LocalTime DAY_END = LocalTime.of(19, 0);
+    private static final LocalTime DAY_END = LocalTime.of(20, 0);
     private static final int SLOT_MINUTES = 30;
+
+    /** The slots a doctor has in a day. */
+    private static final int SLOTS_PER_DAY = 20;
+
+    /** The most days the strip holds. */
+    private static final int MAX_SUMMARY_DAYS = 14;
 
     private final AppointmentRepository appointments;
     private final PatientRepository patients;
@@ -163,6 +169,66 @@ public class AppointmentService {
         return body;
     }
 
+    /**
+     * The strip: a day at a time, and what is free for each doctor.
+     *
+     * <p>The schedule shows several days ahead, and each day says how much of
+     * each doctor's day is still free. The range is capped, so the answer is a
+     * strip and not a book.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> summary(
+            ClinicPrincipal principal, String from, String to) {
+        if (!principal.can("appointment")) {
+            throw new ForbiddenException("You cannot open the appointments.");
+        }
+        UUID clinicId = principal.clinicIdAsUuid();
+        ZoneId zone = zones.zoneOf(clinicId);
+        LocalDate start = parseDate(from, LocalDate.now(zone));
+        LocalDate end = parseDate(to, start.plusDays(6));
+        if (end.isBefore(start)) {
+            end = start;
+        }
+        int days = (int) Math.min(java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1, MAX_SUMMARY_DAYS);
+
+        List<Map<String, Object>> doctorCards = doctors(clinicId);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (int offset = 0; offset < days; offset++) {
+            LocalDate day = start.plusDays(offset);
+            Instant dayFrom = day.atStartOfDay(zone).toInstant();
+            Instant dayTo = day.plusDays(1).atStartOfDay(zone).toInstant();
+
+            List<Map<String, Object>> freeByDoctor = new ArrayList<>();
+            for (Map<String, Object> doctor : doctorCards) {
+                UUID doctorId = parseUuid(String.valueOf(doctor.get("id")));
+                int booked = 0;
+                if (doctorId != null) {
+                    for (Appointment appointment :
+                            appointments.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
+                                    clinicId, doctorId, dayFrom, dayTo)) {
+                        booked++;
+                    }
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("doctorId", doctor.get("id"));
+                row.put("name", doctor.get("name"));
+                row.put("booked", booked);
+                row.put("free", Math.max(0, SLOTS_PER_DAY - booked));
+                freeByDoctor.add(row);
+            }
+            Map<String, Object> column = new LinkedHashMap<>();
+            column.put("date", day.toString());
+            column.put("freeByDoctor", freeByDoctor);
+            out.add(column);
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("from", start.toString());
+        body.put("to", start.plusDays(days - 1).toString());
+        body.put("days", out);
+        return body;
+    }
+
     // ------------------------------------------------------------------ day
 
     private Map<String, Object> day(UUID clinicId, ZoneId zone, LocalDate day, UUID doctorId) {
@@ -212,7 +278,10 @@ public class AppointmentService {
         body.put("dayEnd", DAY_END.format(CLOCK));
         body.put("slotMinutes", SLOT_MINUTES);
         body.put("slots", slots);
+        // The canonical key is appointments; items is kept as an alias so a
+        // screen that was written against the older name keeps working.
         body.put("appointments", items);
+        body.put("items", items);
         body.put("summary", summary);
         return body;
     }
@@ -259,6 +328,8 @@ public class AppointmentService {
             column.put("dayName", date.getDayOfWeek().getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH));
             column.put("booked", entry.getValue().size());
             column.put("isToday", date.equals(LocalDate.now(zone)));
+            // The canonical key is appointments; items is kept as an alias.
+            column.put("appointments", entry.getValue());
             column.put("items", entry.getValue());
             days.add(column);
         }
@@ -273,6 +344,9 @@ public class AppointmentService {
         body.put("from", monday.toString());
         body.put("to", saturday.toString());
         body.put("days", days);
+        // The canonical key is appointments; items is kept as an alias.
+        body.put("appointments", days);
+        body.put("items", days);
         body.put("summary", summary);
         return body;
     }
@@ -298,6 +372,11 @@ public class AppointmentService {
                                         - appointment.getStartsAt().getEpochSecond())
                                 / 60);
         item.put("doctorId", appointment.getDoctorId() == null ? null : appointment.getDoctorId().toString());
+        item.put("doctor", doctorName(clinicId, appointment.getDoctorId()));
+        item.put("visitId", appointment.getVisitId() == null ? null : appointment.getVisitId().toString());
+        item.put("patientId", appointment.getPatientId() == null ? null : appointment.getPatientId().toString());
+        item.put("source", appointment.getSource());
+        item.put("room", appointment.getDoctorId() == null ? null : doctorName(clinicId, appointment.getDoctorId()));
 
         Map<String, Object> patient = new LinkedHashMap<>();
         patients.findById(appointment.getPatientId()).ifPresent(person -> {

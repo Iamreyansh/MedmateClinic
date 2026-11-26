@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { cn } from "@/lib/cn";
 import { fetchTill, payBill, refundBill, createBill, closeTheDay } from "@/features/billing/api/billing";
 import { InvoicePaper } from "@/features/billing/components/InvoicePaper";
 import { NewBillDialog } from "@/features/billing/components/NewBillDialog";
@@ -37,6 +38,17 @@ const CHARGES = [
  * The left is what has been collected today and what is still to collect; the
  * right is the bill of supply, which prints for the patient.
  */
+/** The tabs the till offers. */
+type Tab = "today" | "all" | "collect" | "paid" | "refunded";
+
+const TABS: Array<{ value: Tab; label: string }> = [
+  { value: "today", label: "Today" },
+  { value: "all", label: "All" },
+  { value: "collect", label: "To collect" },
+  { value: "paid", label: "Paid" },
+  { value: "refunded", label: "Refunded" },
+];
+
 export function BillingScreen() {
   const [payload, setPayload] = useState<TillPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +58,8 @@ export function BillingScreen() {
   const [newBill, setNewBill] = useState(false);
   const [refunding, setRefunding] = useState(false);
   const [closing, setClosing] = useState(false);
+  /** Which bills the till is showing. */
+  const [tab, setTab] = useState<Tab>("today");
 
   useEffect(() => {
     let alive = true;
@@ -87,17 +101,36 @@ export function BillingScreen() {
     setBill(fresh.bill);
   };
 
+  const byMode = Object.fromEntries(
+    (payload?.byMode ?? []).map((mode) => [mode.mode, mode]),
+  ) as Record<string, { amount: number; bills: number }>;
+  const dayOpen = (summary?.dayBills ?? 0) > 0;
+
+  const shown = useMemo(() => {
+    const all = payload?.bills ?? [];
+    switch (tab) {
+      case "all":
+        return all;
+      case "collect":
+        return all.filter((bill) => bill.status !== "paid" && bill.status !== "refunded");
+      case "paid":
+        return all.filter((bill) => bill.status === "paid");
+      case "refunded":
+        return all.filter((bill) => bill.status === "refunded");
+      default:
+        return all;
+    }
+  }, [payload, tab]);
+
   return (
     <AppShell activeHref="/billing">
       <div className="nq-bar">
         <div>
           <h1 className="t-h1">
-            Billing &amp; <em>POS</em>
+            Billing &amp; <em>payments</em>
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 4 }}>
-            {payload
-              ? `Collected today ${money(summary?.collected ?? 0)} · ${summary?.pendingCount ?? 0} pending · ${summary?.refundCount ?? 0} refund`
-              : "Loading the till…"}
+            Bills, UPI, cash and card, refunds and the day close.
           </p>
         </div>
         <div className="nq-btns">
@@ -112,9 +145,85 @@ export function BillingScreen() {
 
       {error ? <div className="note red">{error}</div> : null}
 
+      {/* the day, in seven numbers */}
+      <div className="kpis seven">
+        <div className="kpi">
+          <div className="v">{money(summary?.collected ?? 0)}</div>
+          <div className="l">Collected today</div>
+        </div>
+        {(["upi", "cash", "card"] as const).map((mode) => (
+          <div className="kpi" key={mode}>
+            <div className="v">{money(byMode[mode]?.amount ?? 0)}</div>
+            <div className="l">{mode === "upi" ? "UPI" : mode === "cash" ? "Cash" : "Card"}</div>
+          </div>
+        ))}
+        <div className="kpi">
+          <div className="v">{money(summary?.pendingAmount ?? 0)}</div>
+          <div className="l">To collect</div>
+        </div>
+        <div className="kpi">
+          <div className="v">{money(summary?.refundAmount ?? 0)}</div>
+          <div className="l">Refunded</div>
+        </div>
+        <div className="kpi">
+          <div className="v">{dayOpen ? "Open" : "Closed"}</div>
+          <div className="l">Day</div>
+        </div>
+      </div>
+
+      <div className="seg tabs" role="tablist" style={{ marginBottom: 14 }}>
+        {TABS.map((entry) => (
+          <button
+            key={entry.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === entry.value}
+            className={cn(tab === entry.value && "on")}
+            onClick={() => setTab(entry.value)}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </div>
+
       <div className="rx-grid">
         <div>
           <div className="t-eyebrow" style={{ marginBottom: 8 }}>
+            {TABS.find((entry) => entry.value === tab)?.label}
+          </div>
+          {shown.length === 0 ? (
+            <section className="card" style={{ padding: 16 }}>
+              <p className="t-cap">There is nothing under this tab today.</p>
+            </section>
+          ) : (
+            <div className="qitem-list">
+              {shown.map((item) => (
+                <div className="card qitem desk-item" key={item.invoiceId}>
+                  <span className="tk">{item.number}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <b style={{ fontSize: 15 }}>
+                      {item.patient.name} · {item.patient.age} {item.patient.sex}
+                    </b>
+                    <p className="t-cap" style={{ marginTop: 2 }}>
+                      {item.description ?? "Consultation in-clinic"}
+                    </p>
+                    <p className="t-cap" style={{ marginTop: 2 }}>
+                      {item.status === "paid"
+                        ? `Paid by ${item.payMode ?? "cash"}`
+                        : item.status === "refunded"
+                          ? "Refunded"
+                          : "Not paid yet"}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <b style={{ fontSize: 17, color: "var(--forest)" }}>{money(item.amount)}</b>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="t-eyebrow" style={{ marginBottom: 8, marginTop: 18 }}>
             To collect
           </div>
           {pending.length === 0 ? (

@@ -29,7 +29,19 @@ export type QueueItem = {
   detail: string | null;
   wait: "Next for you" | "Waiting" | "Urgent" | "Online";
   waiting: number;
-  vitals?: string;
+  /**
+   * The readings, when the nurse has taken them.
+   *
+   * The contract says a line — "Temp 98.6 °F · SpO₂ 97%" — but a service that
+   * sends the readings themselves is still answering the question, so both are
+   * read and neither is printed raw.
+   */
+  vitals?: string | { tempF?: number; spo2?: number; pulse?: number };
+  /** The doctor the patient is waiting for, when one is named. */
+  doctorId?: string | null;
+  doctorName?: string | null;
+  /** `waiting` or `seen`. */
+  status?: string;
   booked?: string;
 };
 
@@ -38,6 +50,8 @@ export type Queue = {
   next: QueueItem | null;
   room: string;
   meta: string;
+  /** How long a consult takes, on average. */
+  averageConsultMinutes?: number;
 };
 
 /** The icon the queue card draws, by token. */

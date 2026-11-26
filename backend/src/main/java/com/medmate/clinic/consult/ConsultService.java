@@ -630,16 +630,47 @@ public class ConsultService {
     }
 
     private Map<String, Object> patient(Patient patient) {
+        UUID clinicId = patient.getClinicId();
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", patient.getId().toString());
         body.put("name", patient.getFullName());
+        body.put("initials", initials(patient.getFullName()));
         body.put("age", patient.getAge());
         body.put("sex", patient.getSex());
         body.put("phone", patient.getPhone());
         body.put("abha", patient.getAbha());
         body.put("allergies", patient.getAllergies());
         body.put("conditions", patient.getConditions());
+        // How many times the clinic has seen them, and since when: the record
+        // screen shows both beside the patient's name.
+        body.put("visits", visits.countByClinicIdAndPatientId(clinicId, patient.getId()));
+        body.put(
+                "since",
+                patient.getCreatedAt() == null
+                        ? ""
+                        : String.valueOf(
+                                patient.getCreatedAt()
+                                        .atZone(java.time.ZoneId.of("Asia/Kolkata"))
+                                        .getYear()));
         return body;
+    }
+
+    /** The person's initials. */
+    static String initials(String name) {
+        if (name == null) {
+            return "";
+        }
+        StringBuilder initials = new StringBuilder();
+        for (String part : name.split("\\s+")) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            initials.append(part.charAt(0));
+            if (initials.length() == 2) {
+                break;
+            }
+        }
+        return initials.toString().toUpperCase();
     }
 
     private Map<String, Object> vitals(Vitals reading) {

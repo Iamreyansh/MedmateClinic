@@ -400,3 +400,136 @@ Run against the working tree at the time of the audit:
 - Production build with `VITE_USE_MOCK=false`: **successful** (from the previous run)
 - Fidelity: **138 properties, 0 drift** (from the previous run)
 - Maven: **4/4 passing** (from the previous run)
+
+## 9. The routes against the real backend
+
+**This section measures the running product, not the Figma file.** It is the
+number the work is measured by: how many of the app's routes render real content
+when the app talks to the Java service and Postgres, instead of the local mock.
+
+> **Pre-merge baseline — measured on `main` @ `1d3d0292`**, the tree before the
+> backend and frontend fixes land. `main` carries neither the frontend's
+> error-sanitising client nor the backend's new endpoints, so the 404s and the
+> raw "No static resource …" text below are the *old* behaviour. The same matrix
+> is re-run on the merged branch; the after-numbers are in the pull request.
+
+Method: `e2e/` (Playwright) against Postgres + the Spring Boot service + the Vite
+app with `VITE_USE_MOCK=false`, signed in with the demo clinic's owner.
+
+| Route | HTTP | What the screen shows |
+|---|---|---|
+| `/dashboard` | 200 | **real content** — "3 in your queue · 2 awaiting vitals · 1 prescription to hand over" |
+| `/queue` | 200 | **real content** — "General Medicine · 3 waiting · 0 seen today" |
+| `/billing` | 200 | **real content** — "Collected today ₹0 · 0 pending · 0 refund" |
+| `/schedule` | 200 | **real content** — the day grid, "Wednesday, 25 Nov 2026" |
+| `/nurse` | 200 | **real content** — "3 Need vitals · 1 Urgent" |
+| `/lab` | 200 | **real content** — "0 To collect" |
+| `/subscription` | 200 | **real content** — "Clinic · active", the usage counters |
+| `/reports` | 200 | **real content** — four tabs, the KPIs, the doctor list |
+| `/settings` | 200 | **real content** — the settings tabs |
+| `/desk` | 200 | **stuck on "Loading the desk…"** — the service answers `items`, the screen reads `visits` |
+| `/patients` | **404** | raw **"No static resource api/clinic/patients/pt_kavya."** in the screen |
+| `/kiosk` | **404** | raw backend error in the screen — there is no kiosk endpoint at all |
+| `/inbox` | **404** | raw **"No static resource api/clinic/inbox"** in the screen |
+| `/teleconsult` | **404** | raw backend error in the screen |
+| `/templates` | **404** | raw backend error in the screen |
+
+**The baseline to move: of the 13 core staff routes, 7 render real content, 1 is
+stuck in a loading state, and 5 answer 404 with a raw backend error in the
+screen.** (`/reports` and `/settings` are outside that set and already render
+content.) `visits` is the canonical name for the desk rows — the mock called it
+that and the screen reads it; `items` may stay as an alias.
+
+## 10. The baselines
+
+| Set | Routes | Where it comes from |
+|---|---|---|
+| `verify/baselines/figma/` | — (138 frames inventoried, exports still to come) | the Figma file, by hand |
+| `verify/baselines/reference/` | **21 captured, 6 missing** | the deployed MVP, captured live |
+| `verify/baselines/history/` | 26 route primaries + 84 shots | `git archive 647ea0e^ _research` |
+
+The deployed MVP does **not** have six of the app's routes, and no image was
+fabricated for them: `certificate`, `visit/:id`, `rx/:id`, `billing/receipt/:id`,
+`lock` and `verify/:id`. The reference manifest records each one as `missing`.
+
+The Figma file's frame inventory is recovered from this repository's own history
+into `verify/baselines/figma/manifest.json` — 138 frames, each with its node id,
+page, route and status. **The frames still have to be exported**: drop a PNG named
+`<route>.png` at 1280×720, DPR 1 into `verify/baselines/figma/` and the same diff
+runs against the design.
+
+### The pixel diff, measured
+
+`node verify/pixel-diff.mjs --baseline=reference`, the local app with the mock
+off, against the deployed MVP's screens:
+
+| Route | % differing | Route | % differing |
+|---|---:|---|---:|
+| patients | 6.98 | templates | 8.46 |
+| nurse | 7.77 | queue | 8.63 |
+| desk | 9.84 | settings | 9.24 |
+| lab | 9.46 | dashboard | 10.75 |
+| reports | 11.18 | subscription | 11.06 |
+| schedule | 11.91 | billing | 12.93 |
+| **kiosk** | **26.60** | **landing** | **28.11** |
+
+The last two are over budget **on purpose**: there is no kiosk endpoint on the
+backend at all, and the local landing page is a different implementation of the
+deployed one.
+
+## 11. The manifest — a frame-by-frame status the harness can read
+
+Machine-readable: one line per frame, `node | route | status | where`. The
+status is **built** (the route exists and draws the frame's regions),
+**partial** (the route exists but a named region is missing), **placeholder**
+(the route says plainly it is not built) or **missing** (no route).
+
+```
+node          | route               | status    | where
+12:1139       | /                   | built     | src/features/landing
+13:1415..2562 | /start              | partial   | src/features/onboarding — no POST /api/auth/signup from the steps yet
+20:2600       | /teleconsult        | built     | src/features/teleconsult
+20:2854       | /inbox              | built     | src/features/inbox
+21:2670       | /patients           | built     | src/features/patients (the list; built in F5)
+21:2977       | /patients/:id       | built     | src/features/patients (the record)
+17:1913       | /reports            | built     | src/features/reports (nine ranges)
+15:1513       | /desk               | built     | src/features/desk (four tiles + the billing button)
+15:1439       | /kiosk              | partial   | src/features/kiosk — the service's kiosk answers 500 (no clinic schema)
+9:986         | /billing            | built     | src/features/billing
+17:1592       | /schedule           | built     | src/features/schedule
+9:701         | /nurse              | built     | src/features/nurse
+20:2294       | /lab                | built     | src/features/lab
+18:1895       | /subscription       | built     | src/features/subscription (doctors, locations, staff)
+22:3956       | /templates          | built     | src/features/templates (Mine | From colleagues)
+22:3701       | /settings           | built     | src/features/settings
+22:3106       | /doctors            | built     | src/features/doctors
+10:942        | /staff              | built     | src/features/staff
+22:3422       | /locations          | built     | src/features/locations
+21:3256       | /messages           | built     | src/features/messages
+7:480         | /visit/:id          | built     | src/features/consult (the safety checks)
+6:2           | /dashboard          | partial   | src/features/dashboard — the doctor's console section is not built
+36:195        | /queue              | built     | src/features/queue
+36:582        | /visit/:id          | built     | src/features/consult (after signing)
+37:492        | /rx/:id             | built     | src/features/prescription
+37:642        | /certificate       | built     | src/features/certificate
+42:1402       | /reports            | built     | src/features/reports (tab 2)
+42:1710       | /reports            | built     | src/features/reports (tab 3)
+42:2017       | /reports            | built     | src/features/reports (tab 4)
+54:1217..1488 | /book /t /intake    | partial   | src/features/patient-web — /appt is not built
+45:3069..3494 | /book /appt /t      | partial   | src/features/patient-web
+51:3069..3494 | /book /appt /t      | partial   | src/features/patient-web
+40:1190..1596 | /kiosk              | partial   | src/features/kiosk — the staff PIN screens are not built
+58:4013..4149 | /kiosk              | built     | src/features/kiosk (the five steps)
+39:501..9813  | overlays            | built     | src/components/ui/Dialog.tsx + the eight F1 overlays
+41:991..1267  | /staff              | built     | src/features/staff (Team | Activity log)
+30:670..1275  | mobile frames       | missing   | held for the second wave
+33:1163..1553 | patient phone       | missing   | held for the second wave
+24:3..1275    | mobile staff        | missing   | held for the second wave
+```
+
+The screens the design has and the app still does not: the **41 mobile
+frames** (held for the second wave), **`/appt`** (manage booking), the
+**kiosk's staff PIN screens**, and the **billing, schedule and queue tab sets**
+the reference shows — the billing tabs (Today / All / To collect / Paid /
+Refunded), the schedule's multi-day strip and the queue's six tabs are the
+reference's, and the app's own tabs still differ.

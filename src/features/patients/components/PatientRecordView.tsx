@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
@@ -69,9 +70,10 @@ export function PatientRecordView({ patientId }: { patientId?: string }) {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <Button variant="secondary" icon="cert">
+            <Link className="btn sec" to={`/certificate?patient=${person.id}`}>
+              <Icon name="cert" size={16} />
               Certificate
-            </Button>
+            </Link>
             <Button icon="cal">Book follow-up</Button>
           </div>
         </div>

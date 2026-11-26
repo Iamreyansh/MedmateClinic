@@ -58,6 +58,7 @@ public class DeskService {
     private final PrescriptionRepository prescriptions;
     private final InvoiceRepository invoices;
     private final AppointmentRepository appointments;
+    private final com.medmate.clinic.billing.BillingService billing;
     private final LabOrderRepository labOrders;
     private final HandoverRepository handovers;
     private final com.medmate.clinic.tenancy.RegistryClinicRepository clinics;
@@ -73,6 +74,7 @@ public class DeskService {
             LabOrderRepository labOrders,
             HandoverRepository handovers,
             com.medmate.clinic.tenancy.RegistryClinicRepository clinics,
+            com.medmate.clinic.billing.BillingService billing,
             ClinicZoneService zones) {
         this.visits = visits;
         this.patients = patients;
@@ -83,6 +85,7 @@ public class DeskService {
         this.labOrders = labOrders;
         this.handovers = handovers;
         this.clinics = clinics;
+        this.billing = billing;
         this.zones = zones;
     }
 
@@ -112,6 +115,7 @@ public class DeskService {
         int waiting = 0;
         int done = 0;
 
+        Invoice firstInvoice = null;
         for (Visit visit : todays) {
             Prescription prescription = latest(byVisit.get(visit.getId()));
             boolean signed = prescription != null && "signed".equals(prescription.getStatus());
@@ -132,6 +136,9 @@ public class DeskService {
                 waiting++;
             }
 
+            if (firstInvoice == null) {
+                firstInvoice = invoice;
+            }
             Patient patient = people.get(visit.getPatientId());
             Staff doctor = visit.getSeenBy() == null ? null : peopleOnStaff.get(visit.getSeenBy());
 
@@ -166,12 +173,33 @@ public class DeskService {
         counts.put("waiting", waiting);
         counts.put("doneToday", done);
 
+        // The bill of the day: the desk takes the money for it, so the card
+        // travels with the list.
+        Map<String, Object> bill = null;
+        if (firstInvoice != null) {
+            bill = billing.billCard(clinicId, firstInvoice, zone);
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("counts", counts);
-        body.put("items", items);
-        body.put(
+        // The canonical key is visits: the rows of the desk.
+        body.put("visits", items);
+        // The line under the title: what to show, and the note itself.
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put(
+                "label",
+                items.size()
+                        + " in the clinic · "
+                        + toHandOver
+                        + " to hand over");
+        meta.put(
                 "note",
                 "Patients also get the prescription by SMS. Print the paper copy at the hand-over.");
+        body.put("meta", meta);
+        body.put("invoice", bill);
+        body.put("lines", bill == null ? List.of() : bill.get("lines"));
+        body.put("gst", java.math.BigDecimal.ZERO);
+        body.put("total", bill == null ? java.math.BigDecimal.ZERO : bill.get("total"));
         return body;
     }
 

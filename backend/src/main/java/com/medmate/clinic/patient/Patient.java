@@ -26,6 +26,16 @@ public class Patient {
     private String phone;
     private String abha;
 
+    /**
+     * The mobile number as the digits it is made of.
+     *
+     * <p>A booking joins the visit to the patient who already has that number.
+     * The number as it was typed is kept for the screen; the digits are kept
+     * for the join, so the join is exact and is read from an index.
+     */
+    @Column(name = "phone_digits")
+    private String phoneDigits;
+
     @Column(columnDefinition = "text[]")
     private String[] allergies = new String[0];
 
@@ -93,6 +103,13 @@ public class Patient {
 
     public void setAbha(String abha) {
         this.abha = abha;
+    }
+    public String getPhoneDigits() {
+        return phoneDigits;
+    }
+
+    public void setPhoneDigits(String phoneDigits) {
+        this.phoneDigits = phoneDigits;
     }
 
     public String[] getAllergies() {

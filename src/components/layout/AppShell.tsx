@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Avatar, ClinicChip, UserChip, type AvatarTone } from "@/components/ui/Avatar";
 import { IconButton } from "@/components/ui/Button";
 import { nav, sideActions, type NavEntry, type Resource } from "@/constants/nav";
+import { TestModeBanner } from "@/components/ui/TestModeBanner";
 import { loadSession } from "@/features/session";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
@@ -164,8 +165,10 @@ export function AppShell({ children, activeHref, onAccount, onLock, onSignOut }:
   }, [dispatch, status]);
 
   return (
-    <div id="app">
-      <Sidebar
+    <>
+      <TestModeBanner />
+      <div id="app">
+        <Sidebar
         activeHref={activeHref}
         access={{ levels: session?.capabilities }}
         counts={session?.navCounts}
@@ -199,7 +202,8 @@ export function AppShell({ children, activeHref, onAccount, onLock, onSignOut }:
         />
         <div className="page">{children}</div>
       </main>
-    </div>
+      </div>
+    </>
   );
 }
 

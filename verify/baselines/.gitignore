@@ -1,0 +1,14 @@
+# The baselines are reproduced, not carried.
+#
+# `history/` is restored from this repository's own history by
+# `verify/extract-history-baselines.mjs` — the pixels are already in the object
+# store, so carrying a second copy of them would only add weight.
+#
+# `reference/` is captured from the deployed MVP by `verify/capture-baselines.mjs`.
+#
+# Both are rebuilt by `node verify/prepare-baselines.mjs`. Their manifests ARE
+# tracked: the manifest is the record of what the baseline set is.
+reference/*.png
+history/*.png
+history/shots/
+diffs/

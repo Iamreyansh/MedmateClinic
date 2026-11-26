@@ -80,7 +80,7 @@ backend/src/main/java/com/medmate/clinic/
   visit/       the queue
   catalogue/   the stations of the product
   me/ queue/ dashboard/   the screens' endpoints
-  common/      one shape for every error
+  common/      the errors the API knows how to answer
 backend/src/main/resources/db/migration/   the schema, and the seed
 ```
 
@@ -186,6 +186,78 @@ Simulated for now, deliberately:
 None of this blocks building the screens; it is the work to do before the service
 carries anyone's real patient data.
 
+### The envelope — the rule both sides pin
+
+Every 2xx body is a JSON **object**. The only bare top-level arrays are
+`GET /api/clinic/doctors`, `/api/clinic/nurse/doctors` and
+`/api/clinic/nurse/patients`. There is never a `list`, `data` or `success`
+wrapper. An error is always `{title, detail}` — never Spring's own message:
+`server.error.include-message: never`, plus a catch-all handler, so a stack
+trace cannot reach a screen.
+
+The rule is pinned twice: the frontend's contract test
+(`src/services/api/mock/contract.test.ts`) pins it from the app's side, and
+`ClinicApiIT` pins it from the service's. A shape that only one side knows
+about fails one of them.
+
+### The migrations — V4 and V204
+
+V4 (registry) and V204 (clinic) are **new** migrations introduced with this
+work, and they have never applied anywhere outside a disposable test database
+that was dropped and recreated. V1–V3 (registry) and V1–V15 / V200–V203
+(clinic) are untouched, so no applied-migration checksum can break. During
+development V204 was extended once, to add `staff.video_fee` — the doctor's
+video fee the doctors card needs — and that is the migration that ships.
+
+A fresh database applies **4 registry migrations to v4** and **20 clinic
+migrations to v204**.
+
+### The links — their lifecycle
+
+A public link is a row in `public_links` with a `kind` (`booking` or
+`verify`), an expiry, a revocation and the visit it belongs to. The **link key
+is random and high-entropy**; the **queue number** (`A-016`) is the human
+readable slip and is a different value. A link that is unknown, expired or
+revoked is a **404**, never a 500, and never an answer with a patient's
+details in it.
+
+`?clinic=` is honoured on `GET /api/public/doctors` only. `/api/token/`,
+`/api/intake/` and `/api/verify/` resolve the tenant from the link row alone,
+so clinic A's link cannot be read through clinic B's slug.
+
+### `/book` without a slug is a 404
+
+The slug always travels with the link the sign-up hands out, and the SPA keeps
+it from the URL the patient opened. A bare `/book` has no clinic to book with,
+and guessing one would be wrong in a multi-clinic product. This is a decision,
+not an oversight.
+
+### The errors — what is true now
+
+`common/ApiExceptionHandler` is the one place that shapes an error, and it is
+**not** one shape for every error. It answers with `{title, detail}` for the five
+exceptions it knows about — not found, not allowed, please sign in, check the form,
+that did not work — and it has **no catch-all**. Everything else falls through to
+Spring's default error body:
+
+```json
+{"timestamp":"2026-11-25T22:35:00.021+00:00","status":500,"error":"Internal Server Error","message":"…","path":"/api/…"}
+```
+
+with `server.error.include-message: always`. So today:
+
+- a **handled** error is `{title, detail}` with the right status;
+- an **unhandled** error is a 500 whose body carries the exception's message and the
+  request path — and the frontend's `ApiError` reads `problem.detail ?? problem.message`,
+  so **"This link is not valid. Ask the clinic for a new one." reaches the screen
+  verbatim**. The E2E suite asserts that no response body ever contains a Spring
+  message, and it fails today.
+
+What is needed: a catch-all handler that answers every unhandled error with
+`{title, detail}` and no message, `include-message: never`, and the unknown public
+link answered as a 404 rather than a 500. That is the backend task's work; the
+assertions are in `e2e/tests/api.spec.mjs`.
+
 ### The access rules
 
 One place decides what a role may open: `grant/GrantService`, reading the
@@ -194,6 +266,45 @@ and the menu the frontend renders — `/api/me` returns the capability set, and 
 shell hides what the person may not open. The owner always has full access; two
 rows are fixed by law rather than by configuration (diagnoses, notes and
 prescriptions belong to doctors, and a doctor sees only their own patients).
+
+**What is not true yet.** The access model is enforced on the *staff* paths: the
+clinic id travels in the token and the request's schema is set on the connection
+(`search_path`), so a caller never chooses its tenant. It is **not** enforced on the
+patient paths. `/api/token/`, `/api/intake/` and `/api/verify/` take a `?clinic=`
+override, and that override retargets the tenant — so a link handed out by clinic A
+can be read through clinic B's slug. The rule that is supposed to hold ("the tenant
+comes from the link row alone, never from the caller") does not hold today.
+`e2e/tests/flows.spec.mjs` has the test that proves it: it crosses the two and
+fails until the override is gone.
+
+Two more gaps in the same area, both asserted in `e2e/`: the PIN is hashed with
+SHA-256 over the staff id rather than with PBKDF2 or argon2, and the PIN path has
+neither attempt counting nor a lockout, while the one-time code has both.
+
+## The harness
+
+Two suites, and they check different things.
+
+**`verify/` — the pixel harness.** `npm run fidelity` is the whole check:
+the product stylesheet must still be byte-identical to the deployed MVP's, and every
+route in the diff set must still look like its baseline. The baselines are three
+sets — a Figma export (the design), a live capture of the deployed MVP, and the
+deployed MVP as it was when the product shipped, restored from this repository's
+own history. They are reproduced, not carried: `node verify/prepare-baselines.mjs`
+rebuilds them, and the manifests are what is tracked. A missing baseline fails the
+check; it is never skipped. The details are in `docs/FIDELITY.md`.
+
+**`e2e/` — the behaviour suite.** Playwright against the real stack: Postgres, the
+Spring Boot service, and the Vite app with `VITE_USE_MOCK=false`. It asserts the
+envelopes the frontend's own types expect, that no raw backend error reaches a
+screen, that every route reaches a state, and the flows that move money or a
+patient's data across a public link. It is written to **fail** on the defects that
+are still open: a route with no endpoint, an envelope that does not match, a
+tenant that can be crossed. Those failures are the specification for the work
+that is left.
+
+The stack is stood up by `verify/dev-stack.sh`, and by `docker-compose.yml` for the
+whole thing — Postgres, the API, the app.
 
 ## Local
 
@@ -216,19 +327,22 @@ Environment for the API:
 
 | Variable | Default |
 |---|---|
-| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/medmate` |
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/medmate_clinic_api` |
 | `DATABASE_USER` / `DATABASE_PASSWORD` | `medmate` |
 | `DATABASE_SCHEMA` | `medmate` |
 | `AUTH_SECRET` | a development secret — **change it in production** |
 | `AUTH_EXPOSE_CODE` | `true` — the OTP comes back in the response; set `false` in production |
-| `CORS_ORIGINS` | `http://localhost:3100` |
+| `CORS_ORIGINS` | `http://localhost:3100,http://127.0.0.1:3100` |
+
+The service's own fifteen variables are in `backend/.env.example`; the stack's are
+in the root `.env.example`.
 
 ## Before production
 
 - [ ] `AUTH_SECRET` set to a real secret, and `AUTH_EXPOSE_CODE=false`.
 - [ ] The audit trail still needs the prescription, payment, appointment and
       record-opened events — they are written as those endpoints are built.
-- [ ] The sign-up endpoint: the five-step flow on the frontend is not wired to
-      the service yet, so a new clinic cannot be created through the product.
+- [ ] The sign-up endpoint exists now — `POST /api/auth/signup` — and the
+      five-step flow is wired to it.
 - [ ] The SMS gateway for the OTP, and the DLT templates that go with it.
 - [ ] HTTPS, and the SPA served from the same origin as the API.

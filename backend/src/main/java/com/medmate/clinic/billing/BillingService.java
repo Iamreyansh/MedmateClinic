@@ -157,13 +157,40 @@ public class BillingService {
             pendingItems.add(item);
         }
 
+        // The bills raised today, each with its status, so the till's tabs
+        // (Today / All / To collect / Paid / Refunded) filter on something.
+        List<Map<String, Object>> bills = new ArrayList<>();
+        for (Invoice invoice : todays) {
+            if (bills.size() >= MAX_BILLS) {
+                break;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("invoiceId", invoice.getId().toString());
+            item.put("number", invoice.getNumber());
+            item.put("status", invoice.getStatus() == null ? "unpaid" : invoice.getStatus());
+            item.put("amount", invoice.getTotal());
+            item.put("payMode", invoice.getPayMode());
+            item.put(
+                    "paidAt",
+                    invoice.getPaidAt() == null ? null : invoice.getPaidAt().toString());
+            item.put(
+                    "createdAt",
+                    invoice.getCreatedAt() == null ? null : invoice.getCreatedAt().toString());
+            item.put("visitId", invoice.getVisitId() == null ? null : invoice.getVisitId().toString());
+            item.put("patient", patientCard(invoice.getPatientId()));
+            bills.add(item);
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("day", day.toString());
         body.put("dayLabel", day.format(DAY));
+        body.put("bills", bills);
         body.put("summary", summary);
         body.put("byMode", byMode);
         body.put("pending", pendingItems);
-        body.put("bill", null);
+        // The receipt card: the bill of the day. The screen shows the bill it
+        // is about to take the money for, and a null card left it empty.
+        body.put("bill", todays.isEmpty() ? null : billCard(clinicId, todays.get(0), zone));
         body.put("clinic", clinicCard(clinicId));
         return body;
     }
@@ -196,7 +223,16 @@ public class BillingService {
         invoice.setStatus("paid");
         invoice.setPaidAt(Instant.now());
         invoices.save(invoice);
-        return billCard(clinicId, invoice, zones.zoneOf(clinicId));
+        // The screen reads invoiceId, status, paidAt and payMode; the whole
+        // card travels with them so the receipt can be printed from the same
+        // answer.
+        Map<String, Object> body = new LinkedHashMap<>(billCard(clinicId, invoice, zones.zoneOf(clinicId)));
+        body.put("invoiceId", invoice.getId().toString());
+        body.put("status", invoice.getStatus());
+        body.put("paidAt", invoice.getPaidAt() == null ? null : invoice.getPaidAt().toString());
+        body.put("payMode", invoice.getPayMode());
+        body.put("amount", invoice.getTotal());
+        return body;
     }
 
     /** Give the money back. */
@@ -212,7 +248,12 @@ public class BillingService {
         invoice.setStatus("refunded");
         invoice.setPaidAt(null);
         invoices.save(invoice);
-        return billCard(clinicId, invoice, zones.zoneOf(clinicId));
+        // The screen reads invoiceId, status and amount.
+        Map<String, Object> body = new LinkedHashMap<>(billCard(clinicId, invoice, zones.zoneOf(clinicId)));
+        body.put("invoiceId", invoice.getId().toString());
+        body.put("status", invoice.getStatus());
+        body.put("amount", invoice.getTotal());
+        return body;
     }
 
     /**
@@ -353,7 +394,8 @@ public class BillingService {
 
     // ------------------------------------------------------------------ bill
 
-    private Map<String, Object> billCard(UUID clinicId, Invoice invoice, ZoneId zone) {
+    /** The bill, as it is printed. The desk shows the same card. */
+    public Map<String, Object> billCard(UUID clinicId, Invoice invoice, ZoneId zone) {
         Map<String, Object> bill = new LinkedHashMap<>();
         bill.put("id", invoice.getId().toString());
         bill.put("number", invoice.getNumber());
@@ -429,9 +471,15 @@ public class BillingService {
         }
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("at", at.atZone(zone).format(STAMP));
+        // The canonical name is label; text is kept as an alias for the one
+        // release in which the older screens are still in the wild.
+        event.put("label", text);
         event.put("text", text);
         events.add(event);
     }
+
+    /** The most bills one page of the till holds. */
+    private static final int MAX_BILLS = 200;
 
     private Map<String, Object> patientCard(UUID patientId) {
         Map<String, Object> card = new LinkedHashMap<>();
