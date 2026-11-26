@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T16:34:43.860086Z",
+  "generatedAt": "2026-11-26T16:58:02.730107Z",
   "app": "http://127.0.0.1:3100",
   "viewport": {
     "history": {
@@ -27,7 +27,7 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 8.632,
+          "percent": 8.633,
           "declared": null,
           "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
         },
@@ -49,13 +49,13 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 10.754,
+          "percent": 10.742,
           "declared": null,
           "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
         },
         "deployedToday": {
           "set": "reference",
-          "percent": 11.819,
+          "percent": 11.805,
           "declared": null,
           "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
         },
@@ -71,13 +71,13 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 9.771,
+          "percent": 9.751,
           "declared": null,
           "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
         },
         "deployedToday": {
           "set": "reference",
-          "percent": 11.929,
+          "percent": 11.94,
           "declared": null,
           "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
         },
@@ -160,7 +160,7 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 9.972,
+          "percent": 9.97,
           "declared": null,
           "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
         },
@@ -177,13 +177,13 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 9.349,
+          "percent": 9.339,
           "declared": null,
           "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
         },
         "deployedToday": {
           "set": "reference",
-          "percent": 10.241,
+          "percent": 10.131,
           "declared": null,
           "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
         },
@@ -194,7 +194,7 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 16.063,
+          "percent": 16.052,
           "declared": {
             "percent": 14.8,
             "tolerance": 4,
@@ -204,7 +204,7 @@
         },
         "deployedToday": {
           "set": "reference",
-          "percent": 21.338,
+          "percent": 21.286,
           "declared": {
             "percent": 21,
             "tolerance": 1,
@@ -224,7 +224,7 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 19.433,
+          "percent": 19.432,
           "declared": {
             "percent": 19.2,
             "tolerance": 4,
@@ -234,7 +234,7 @@
         },
         "deployedToday": {
           "set": "reference",
-          "percent": 21.214,
+          "percent": 21.213,
           "declared": {
             "percent": 21,
             "tolerance": 1,
@@ -249,13 +249,13 @@
       "comparedAgainst": {
         "design": {
           "set": "history",
-          "percent": 10.057,
+          "percent": 10.035,
           "declared": null,
           "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
         },
         "deployedToday": {
           "set": "reference",
-          "percent": 10.932,
+          "percent": 10.91,
           "declared": null,
           "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
         },

@@ -188,6 +188,15 @@ await browser.close();
 /* -------------------------------------------------------------- the readme */
 
 const when = new Date().toISOString();
+// The booking the patient web was photographed with is given back: the
+// clinic's book is the clinic's, and the run that took a time from it must
+// put the time back.
+await fetch(`${API_URL}/api/public/booking/${booking.linkKey}/cancel`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({}),
+});
+
 const lines = [];
 lines.push("# The proof");
 lines.push("");

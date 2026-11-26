@@ -207,13 +207,17 @@ test.describe("api contract", () => {
     expect(result.json.clinic?.phone, "the public booking page shows a blank clinic phone").toBeTruthy();
   });
 
-  test("every public slot is offered as free", async () => {
+  test("the booking page offers the times that are free", async () => {
     const result = await api(`/api/public/doctors?clinic=${DEMO_SLUG}`);
     expect(result.status).toBe(200);
     const slots = result.json?.slots ?? [];
     expect(slots.length, "the booking page offers no slots at all").toBeGreaterThan(0);
-    const taken = slots.filter((slot) => slot.free === false);
-    expect(taken.length, `all ${slots.length} slots read as taken — the patient cannot book`).toBe(0);
+    // The clinic's book is not empty: a time that is taken reads as taken,
+    // and the page must still offer the times that are free. Asking for
+    // every slot to be free was a claim about an empty clinic, and the demo
+    // clinic's book is not empty once anything has been booked on it.
+    const free = slots.filter((slot) => slot.free === true);
+    expect(free.length, `all ${slots.length} slots read as taken — the patient cannot book`).toBeGreaterThan(0);
   });
 
   test("an unknown clinic's booking page is a 404, not a 500", async () => {
