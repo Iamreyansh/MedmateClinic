@@ -23,6 +23,7 @@ import { MessagesScreen } from "@/features/messages";
 import { DoctorsScreen } from "@/features/doctors";
 import { StaffScreen } from "@/features/staff";
 import { LocationsScreen } from "@/features/locations";
+import { AccountScreen } from "@/features/staff-admin";
 import { PlaceholderScreen } from "@/features/placeholders";
 import { NurseScreen } from "@/features/nurse";
 import { LabScreen } from "@/features/lab";
@@ -133,6 +134,10 @@ export const routes: RouteObject[] = [
 
   { path: "/fidelity", element: <DevToolsScreen /> },
   { path: "*", element: <NotFoundScreen /> },
+
+  // The account of the person signed in, on a page of its own so it can be
+  // linked to. It is the same account the sidebar's My account dialog opens.
+  ...guard("/account", <AccountScreen />),
 ];
 
 /** One route, behind the session. */

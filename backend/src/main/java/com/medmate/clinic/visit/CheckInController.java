@@ -1,9 +1,7 @@
 package com.medmate.clinic.visit;
 
-import com.medmate.clinic.appointment.Appointment;
+import com.medmate.clinic.admin.doctor.AdminDoctorCards;
 import com.medmate.clinic.common.ForbiddenException;
-import com.medmate.clinic.grant.Role;
-import com.medmate.clinic.grant.RoleRepository;
 import com.medmate.clinic.patient.Patient;
 import com.medmate.clinic.patient.PatientRepository;
 import com.medmate.clinic.security.ClinicPrincipal;
@@ -13,10 +11,6 @@ import com.medmate.clinic.staff.StaffRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,102 +32,38 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/clinic")
 public class CheckInController {
 
-    /** The hours the clinic books into. */
-    private static final String[] BOOKING_HOURS = {
-        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
-        "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-        "17:00", "17:30", "18:00", "18:30"
-    };
-
-    /** The most doctors one page holds. */
-    private static final int MAX_DOCTORS = 100;
-
     private final CurrentClinic current;
     private final PatientRepository patientRepository;
     private final VisitRepository visitRepository;
     private final StaffRepository staffRepository;
-    private final RoleRepository roleRepository;
-    private final com.medmate.clinic.appointment.AppointmentRepository appointmentRepository;
+    private final AdminDoctorCards doctorCards;
 
     public CheckInController(
             CurrentClinic current,
             PatientRepository patientRepository,
             VisitRepository visitRepository,
             StaffRepository staffRepository,
-            RoleRepository roleRepository,
-            com.medmate.clinic.appointment.AppointmentRepository appointmentRepository) {
+            AdminDoctorCards doctorCards) {
         this.current = current;
         this.patientRepository = patientRepository;
         this.visitRepository = visitRepository;
         this.staffRepository = staffRepository;
-        this.roleRepository = roleRepository;
-        this.appointmentRepository = appointmentRepository;
+        this.doctorCards = doctorCards;
     }
 
-    /** The doctors a patient can be sent to. */
+    /**
+     * The doctors a patient can be sent to.
+     *
+     * <p>The card is built in one place, so this and the doctors screen
+     * cannot drift apart on what a doctor's day looks like.
+     */
     @GetMapping("/doctors")
     public List<Map<String, Object>> doctors() {
         ClinicPrincipal principal = current.get();
         if (!principal.can("console") && !principal.can("desk")) {
             throw new ForbiddenException("You cannot see the clinic's doctors.");
         }
-        UUID clinicId = UUID.fromString(principal.clinicId());
-
-        // A doctor is a member of the clinic whose role is "doctor".
-        java.util.Set<UUID> doctorRoles = roleRepository.findAll().stream()
-                .filter(role -> role.getClinicId() == null || role.getClinicId().equals(clinicId))
-                .filter(role -> "doctor".equalsIgnoreCase(role.getName()))
-                .map(Role::getId)
-                .collect(java.util.stream.Collectors.toSet());
-
-        List<Map<String, Object>> doctors = new ArrayList<>();
-        ZoneId zone = ZoneId.of("Asia/Kolkata");
-        LocalDate today = LocalDate.now(zone);
-        Instant from = today.atStartOfDay(zone).toInstant();
-        Instant to = today.plusDays(1).atStartOfDay(zone).toInstant();
-
-        for (Staff person : staffRepository.findByClinicId(clinicId)) {
-            if (!doctorRoles.contains(person.getRoleId())) {
-                continue;
-            }
-            if (doctors.size() >= MAX_DOCTORS) {
-                break;
-            }
-            // The day's book for this doctor: what is taken and what is free.
-            int booked = 0;
-            String nextFree = null;
-            for (Appointment appointment :
-                    appointmentRepository.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
-                            clinicId, person.getId(), from, to)) {
-                booked++;
-            }
-            for (String hour : BOOKING_HOURS) {
-                if (nextFree == null && !isBooked(clinicId, person.getId(), hour, zone, today)) {
-                    nextFree = hour;
-                }
-            }
-            long waiting =
-                    visitRepository.findByClinicIdAndStatusOrderByCreatedAtAsc(clinicId, "in_consult")
-                            .stream()
-                            .filter(visit -> visit.getSeenBy() != null && visit.getSeenBy().equals(person.getId()))
-                            .count();
-
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("id", person.getId().toString());
-            item.put("name", person.getFullName());
-            item.put("speciality", person.getSpeciality());
-            item.put("room", person.getSpeciality());
-            item.put("registration", person.getRegistration() == null ? "" : person.getRegistration());
-            item.put("fee", feeOf(person));
-            item.put("videoFee", videoFeeOf(person));
-            item.put("hours", BOOKING_HOURS[0] + " – " + BOOKING_HOURS[BOOKING_HOURS.length - 1]);
-            item.put("bookedToday", booked);
-            item.put("freeToday", BOOKING_HOURS.length - booked);
-            item.put("nextFree", nextFree);
-            item.put("waiting", waiting);
-            doctors.add(item);
-        }
-        return doctors;
+        return doctorCards.cards(principal);
     }
 
     /** Check a patient in. */
@@ -230,36 +160,6 @@ public class CheckInController {
         body.put("sex", patient.getSex());
         body.put("phone", patient.getPhone());
         return body;
-    }
-
-    /** Whether the doctor has an appointment in that hour today. */
-    private boolean isBooked(
-            UUID clinicId, UUID doctorId, String hour, ZoneId zone, LocalDate day) {
-        LocalTime time = LocalTime.parse(hour);
-        Instant start = day.atTime(time).atZone(zone).toInstant();
-        Instant end = start.plusSeconds(1800);
-        for (com.medmate.clinic.appointment.Appointment appointment :
-                appointmentRepository.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
-                        clinicId, doctorId, start, end)) {
-            return true;
-        }
-        return false;
-    }
-
-    /** What the doctor charges in the clinic. */
-    private static Object feeOf(Staff person) {
-        if (person.getConsultationFee() == null || person.getConsultationFee().signum() <= 0) {
-            return 500;
-        }
-        return person.getConsultationFee().stripTrailingZeros().toPlainString();
-    }
-
-    /** What the doctor charges for a video consultation. */
-    private static Object videoFeeOf(Staff person) {
-        if (person.getVideoFee() == null || person.getVideoFee().signum() <= 0) {
-            return 400;
-        }
-        return person.getVideoFee().stripTrailingZeros().toPlainString();
     }
 
     /** The person's initials. */

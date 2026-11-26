@@ -51,11 +51,13 @@ export type TillPayload = {
   dayLabel: string;
   summary: BillingSummary;
   byMode: PayMode[];
-  /** Every bill of the day, so the tabs can filter them. */
+  /** The bills of the range asked for, paged and filtered by the service. */
   bills: BillSummary[];
   pending: PendingBill[];
   bill: BillingBill | null;
   clinic: { name: string; address: string; phone: string; gstin: string; registration: string; hfr: string };
+  /** How many bills the range holds, and which page this is. */
+  meta: { total: number; limit: number; offset: number };
 };
 
 export type BillingLine = {

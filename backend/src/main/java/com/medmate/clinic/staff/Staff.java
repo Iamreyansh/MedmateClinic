@@ -32,6 +32,9 @@ public class Staff {
     private String hprId;
     private String speciality;
 
+    /** The room the doctor works in. */
+    private String room;
+
     /** What this doctor charges for a consultation. */
     @Column(name = "consultation_fee")
     private java.math.BigDecimal consultationFee = java.math.BigDecimal.ZERO;
@@ -120,6 +123,14 @@ public class Staff {
 
     public void setSpeciality(String speciality) {
         this.speciality = speciality;
+    }
+
+    public String getRoom() {
+        return room;
+    }
+
+    public void setRoom(String room) {
+        this.room = room;
     }
 
     public java.math.BigDecimal getConsultationFee() {

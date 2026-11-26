@@ -366,7 +366,7 @@ export function registerPatientWebRoutes() {
     }
     delete session.booked[linkKey];
     writeSession(session);
-    return { cancelled: true, token: linkKey };
+    return { cancelled: true, token: visit?.token ?? linkKey };
   });
 
   // The patient's place in the queue.
@@ -460,9 +460,15 @@ export function registerPatientWebRoutes() {
     const person = patients.find((entry) => entry.id === prescription.patientId);
     const doctor = doctors[0];
 
+    // The document is genuine only when the hash the link carries is the one
+    // the prescription holds. A changed document no longer holds it.
+    const hash = context.query.get("h") ?? "";
+    const genuine =
+      prescription.verifyToken.length > 0 && hash === prescription.verifyToken;
+
     return {
       id: prescription.id,
-      genuine: true,
+      genuine,
       doctor: {
         name: doctor.name,
         registration: doctor.registration,

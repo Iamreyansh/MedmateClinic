@@ -113,15 +113,24 @@ export function registerScheduleRoutes() {
         const day = new Date(start);
         day.setUTCDate(day.getUTCDate() + offset);
         const key = day.toISOString().slice(0, 10);
+        const column = onDay(key);
         days.push({
           date: key,
           label: day.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", timeZone: "UTC" }),
-          appointments: onDay(key),
+          dayName: day.toLocaleDateString("en-IN", { weekday: "short", timeZone: "UTC" }),
+          booked: column.length,
+          isToday: key === "2026-11-25",
+          appointments: column,
+          items: column,
         });
       }
       return {
         view: "week",
+        from: days[0]?.date ?? "",
+        to: days[days.length - 1]?.date ?? "",
         days,
+        appointments: days,
+        items: days,
         summary: summaryFor(days.flatMap((day) => day.appointments)),
         doctors: doctorCards(),
         today: "2026-11-25",
@@ -152,6 +161,7 @@ export function registerScheduleRoutes() {
       slotMinutes: 30,
       slots,
       appointments: list,
+      items: list,
       summary: summaryFor(list),
       doctors: doctorCards(),
       today: "2026-11-25",
