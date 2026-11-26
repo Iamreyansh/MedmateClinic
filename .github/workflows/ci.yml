@@ -236,9 +236,11 @@ jobs:
             exit 1
           fi
           # The table is written whatever the outcome, so a red run still says
-          # what it measured, and the exit status is the diff's own.
+          # what it measured, and the exit status is the diff's own. The error
+          # output is captured with it: a failure that says nothing is the
+          # failure nobody can fix.
           set +e
-          node verify/pixel-diff.mjs --baseline=history --json=verify/baselines/diffs/report-ci.json | tee verify/baselines/diffs/drift.txt
+          node verify/pixel-diff.mjs --baseline=history --json=verify/baselines/diffs/report-ci.json 2>&1 | tee verify/baselines/diffs/drift.txt
           status=${PIPESTATUS[0]}
           set -e
           {
@@ -329,8 +331,16 @@ jobs:
         # own deprecation notice recommends this command, so this is the
         # supported path.
         run: |
-          set -euo pipefail
-          npx playwright install chromium --with-deps
+          set -uo pipefail
+          npx playwright install chromium --with-deps 2>&1 | tee /tmp/playwright-install.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            # The command and its own words are published as annotations, so
+            # the reason is readable without the Actions UI.
+            echo "::error::the command that failed: npx playwright install chromium --with-deps (exit $status)"
+            echo "::error::what it said: $(tail -6 /tmp/playwright-install.log | tr '\n' ' ' | cut -c1-900)"
+          fi
+          exit $status
 
       - name: Say what did not install
         # "install the browser" tells the next person nothing. This says which
@@ -339,15 +349,11 @@ jobs:
         if: failure()
         working-directory: e2e
         run: |
-          echo "::error::the Playwright browser install failed — the three sections below say whether it was the apt lock, the system dependencies or the browser download"
-          echo "--- the apt lock ---"
-          (command -v fuser >/dev/null && sudo fuser -v /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock 2>&1) || echo "no process holds the apt lock"
-          echo "--- the system dependencies Playwright asks for ---"
-          npx playwright install-deps --dry-run chromium 2>&1 | tail -5 || echo "the dependency plan could not be printed"
-          echo "--- the browser download ---"
-          npx playwright install --dry-run chromium 2>&1 | tail -12 || echo "the download plan could not be printed"
-          echo "--- the browser cache ---"
-          ls -1 "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" 2>&1 || echo "the browser cache is empty"
+          echo "::error::the Playwright browser install failed — the three annotations below say whether it was the apt lock, the system dependencies or the browser download"
+          echo "::error::the apt lock: $( (command -v fuser >/dev/null && sudo fuser -v /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock 2>&1) || echo 'no process holds it' | tr '\n' ' ' | cut -c1-600)"
+          echo "::error::the system dependencies Playwright asks for: $(npx playwright install-deps --dry-run chromium 2>&1 | tail -3 | tr '\n' ' ' | cut -c1-900)"
+          echo "::error::the browser download: $(npx playwright install --dry-run chromium 2>&1 | head -5 | tr '\n' ' ' | cut -c1-900)"
+          echo "::error::the browser cache: $(ls -1 "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" 2>&1 | tr '\n' ' ' | cut -c1-600 || echo empty)"
 
       - name: Start the API
         run: |

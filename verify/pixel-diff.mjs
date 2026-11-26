@@ -182,28 +182,47 @@ export function diffImages(baseline, actual, threshold) {
 
 /* --------------------------------------------------------------- the capture */
 
-/** Sign in against the local API so the shell draws a real clinic. */
+/**
+ * Sign in against the local API so the shell draws a real clinic.
+ *
+ * The API can still be seeding the demo clinic when the harness asks, and
+ * the OTP is rate-limited, so the code is asked for a few times before the
+ * harness gives up. It gives up loudly: a harness that measured the screens
+ * without a session would measure a signed-out app, which is a different
+ * screen and a false number.
+ */
 async function signIn(context) {
-  const otp = await fetch(`${APP_URL}/api/auth/otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone: IDS.phone }),
-  })
-    .then((response) => response.json())
-    .catch(() => null);
+  let last = null;
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const otp = await fetch(`${APP_URL}/api/auth/otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: IDS.phone }),
+    })
+      .then((response) => response.json())
+      .catch((error) => ({ error: error.message }));
+    last = otp;
 
-  const code = otp?.code ?? otp?.demoCode;
-  if (!code) return null;
+    const code = otp?.code ?? otp?.demoCode;
+    if (code) {
+      const session = await fetch(`${APP_URL}/api/auth/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: IDS.phone, code }),
+      })
+        .then((response) => response.json())
+        .catch((error) => ({ error: error.message }));
+      if (session?.accessToken) return session.accessToken;
+      last = session;
+    }
 
-  const session = await fetch(`${APP_URL}/api/auth/verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ phone: IDS.phone, code }),
-  })
-    .then((response) => response.json())
-    .catch(() => null);
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
+  }
 
-  return session?.accessToken ?? null;
+  throw new Error(
+    `the app did not give a sign-in code for ${IDS.phone} after six tries: ${JSON.stringify(last)} — ` +
+      "the API has to be up and the demo clinic seeded before the screens can be compared",
+  );
 }
 
 /**
@@ -286,7 +305,16 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 const browser = await chromium.launch(launchOptions());
 const context = await browser.newContext({ viewport, deviceScaleFactor: dpr });
-const token = await signIn(context);
+
+// The session is the token itself, not the first character of it.
+let token = null;
+let signInError = null;
+try {
+  token = await signIn(context);
+} catch (error) {
+  signInError = error.message;
+  console.error(`✗ ${signInError}`);
+}
 if (token) {
   await context.addInitScript((value) => {
     window.localStorage.setItem("medmate.token", value);
@@ -316,7 +344,11 @@ const report = {
   errors: [],
 };
 
+if (signInError) report.errors.push(signInError);
+
 for (const route of routes) {
+  // No session, no comparison: the screens would be the signed-out app.
+  if (!token) break;
   const url = `${APP_URL}${routeUrl(route)}`;
 
   // A Figma export, when there is one, is the design and wins. The file is
