@@ -224,14 +224,16 @@ jobs:
           # capture of the deployed app needs a signed-in session and the
           # deployed app rate-limits its OTP, so it stays a local option —
           # CI never depends on a third party being up.
-          if ! ./verify/dev-stack.sh start; then
+          if ! ./verify/dev-stack.sh start 2>&1 | tee verify/baselines/diffs/stack.log; then
+            echo "::error::the stack did not come up: $(tail -3 verify/baselines/diffs/stack.log | tr '\n' ' ' | cut -c1-900)"
             echo "the stack did not come up — the API log follows" >> verify/baselines/diffs/run.txt
             for log in /tmp/medmate-*/api.log; do
               [ -f "$log" ] && tail -40 "$log" >> verify/baselines/diffs/run.txt
             done
             exit 1
           fi
-          if ! node verify/prepare-baselines.mjs --skip-reference; then
+          if ! node verify/prepare-baselines.mjs --skip-reference 2>&1 | tee verify/baselines/diffs/baselines.log; then
+            echo "::error::the baselines could not be prepared: $(tail -3 verify/baselines/diffs/baselines.log | tr '\n' ' ' | cut -c1-900)"
             echo "the baselines could not be prepared" >> verify/baselines/diffs/run.txt
             exit 1
           fi
@@ -243,6 +245,9 @@ jobs:
           node verify/pixel-diff.mjs --baseline=history --json=verify/baselines/diffs/report-ci.json 2>&1 | tee verify/baselines/diffs/drift.txt
           status=${PIPESTATUS[0]}
           set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::the pixel diff failed: $(grep -A4 'problem(s)' verify/baselines/diffs/drift.txt | tail -4 | tr '\n' ' ' | cut -c1-1200)"
+          fi
           {
             echo "### The pixel diff"
             echo
@@ -332,12 +337,22 @@ jobs:
         # supported path.
         run: |
           set -uo pipefail
-          npx playwright install chromium --with-deps 2>&1 | tee /tmp/playwright-install.log
+          # The runner image is Ubuntu 26.04, and Playwright 1.56.1 has no
+          # dependency list for it: `--with-deps` fails with "Cannot install
+          # dependencies for ubuntu26.04-x64 with Playwright 1.56.1!", and the
+          # browser is never downloaded. The browser itself is a plain
+          # download, pinned by e2e/package.json, so that is what is installed
+          # here; the runner image carries the libraries it needs, and if one
+          # were missing the suite's own output would name it.
+          if ! npx playwright install chromium --with-deps 2>&1 | tee /tmp/playwright-install.log; then
+            echo "::warning::the system dependencies could not be installed for this runner image — the browser alone is installed below, and the suite names anything that is still missing"
+            npx playwright install chromium 2>&1 | tee -a /tmp/playwright-install.log
+          fi
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             # The command and its own words are published as annotations, so
             # the reason is readable without the Actions UI.
-            echo "::error::the command that failed: npx playwright install chromium --with-deps (exit $status)"
+            echo "::error::the command that failed: npx playwright install chromium (exit $status)"
             echo "::error::what it said: $(tail -6 /tmp/playwright-install.log | tr '\n' ' ' | cut -c1-900)"
           fi
           exit $status
@@ -386,7 +401,16 @@ jobs:
         env:
           API_URL: http://127.0.0.1:8080
           WEB_URL: http://127.0.0.1:3100
-        run: npx playwright test
+        run: |
+          set -uo pipefail
+          npx playwright test 2>&1 | tee /tmp/playwright-test.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then
+            echo "::notice::the suite passed: $(grep -E '[0-9]+ passed' /tmp/playwright-test.log | tail -1 | tr '\n' ' ' | cut -c1-600)"
+          else
+            echo "::error::the suite failed (exit $status): $(tail -25 /tmp/playwright-test.log | tr '\n' ' ' | cut -c1-1500)"
+          fi
+          exit $status
 
       - name: Upload the report
         if: always()

@@ -166,10 +166,14 @@ public class SignupService {
 
     /** Eight random characters, in the characters a URL carries well. */
     private String randomTail() {
-        byte[] bytes = new byte[6];
+        byte[] bytes = new byte[4];
         random.nextBytes(bytes);
-        String tail = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        return tail.toLowerCase(Locale.ENGLISH);
+        // Eight lowercase hexadecimal characters. The tail is part of a public
+        // link that a patient types and a clinic shares, so it is strictly
+        // alphanumeric: no percent-encoding anywhere, and the shape the
+        // contract pins. The URL-safe Base64 alphabet this used to draw from
+        // contains `-` and `_`, which a slug in a patient's hand does not need.
+        return java.util.HexFormat.of().formatHex(bytes);
     }
 
     /** The owner role of this clinic: the role every grant hangs from. */
