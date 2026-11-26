@@ -1,6 +1,7 @@
 package com.medmate.clinic.nurse;
 
 import com.medmate.clinic.security.CurrentClinic;
+import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +37,12 @@ public class NurseController {
     @GetMapping("/doctors")
     public Object doctors() {
         return nurse.doctors(current.get().clinicIdAsUuid());
+    }
+
+    /** The patients the nurse can call in. A bare array, like the doctors. */
+    @GetMapping("/patients")
+    public List<Map<String, Object>> patients() {
+        return nurse.patients(current.get().clinicIdAsUuid());
     }
 
     /** Record the vitals and send the patient to the doctor. */

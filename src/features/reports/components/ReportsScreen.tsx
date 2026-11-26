@@ -19,7 +19,17 @@ import type {
 } from "@/features/reports/types/reports";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
-type Preset = "today" | "week" | "month" | "custom";
+/** The ranges the reports offer, in the order the design names them. */
+type Preset =
+  | "today"
+  | "yesterday"
+  | "7days"
+  | "30days"
+  | "month"
+  | "lastmonth"
+  | "90days"
+  | "12months"
+  | "custom";
 
 const TAB_LABELS: Record<ReportTab, string> = {
   summary: "Summary",
@@ -28,11 +38,16 @@ const TAB_LABELS: Record<ReportTab, string> = {
   consults: "Consult list",
 };
 
-const PRESETS: Array<{ value: Preset; label: string }> = [
+const PRESETS: Array<{ value: Preset; label: string; icon?: "cal" }> = [
   { value: "today", label: "Today" },
-  { value: "week", label: "This week" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "7days", label: "7 days" },
+  { value: "30days", label: "30 days" },
   { value: "month", label: "This month" },
-  { value: "custom", label: "Custom" },
+  { value: "lastmonth", label: "Last month" },
+  { value: "90days", label: "90 days" },
+  { value: "12months", label: "12 months" },
+  { value: "custom", label: "Pick dates", icon: "cal" },
 ];
 
 const PAGE = 20;
@@ -46,19 +61,36 @@ function iso(date: Date) {
 /** The dates a preset means. */
 function rangeFor(preset: Preset, custom: { from: string; to: string }) {
   const today = new Date();
+  const back = (days: number) => {
+    const start = new Date(today);
+    start.setDate(today.getDate() - days);
+    return { from: iso(start), to: iso(today) };
+  };
   switch (preset) {
     case "today":
       return { from: iso(today), to: iso(today) };
-    case "week": {
+    case "yesterday": {
       const start = new Date(today);
-      const day = (today.getDay() + 6) % 7;
-      start.setDate(today.getDate() - day);
-      return { from: iso(start), to: iso(today) };
+      start.setDate(today.getDate() - 1);
+      return { from: iso(start), to: iso(start) };
     }
+    case "7days":
+      return back(6);
+    case "30days":
+      return back(29);
     case "month": {
       const start = new Date(today.getFullYear(), today.getMonth(), 1);
       return { from: iso(start), to: iso(today) };
     }
+    case "lastmonth": {
+      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { from: iso(start), to: iso(end) };
+    }
+    case "90days":
+      return back(89);
+    case "12months":
+      return back(364);
     case "custom":
       return custom;
   }
@@ -94,7 +126,7 @@ export function ReportsScreen() {
   const dispatch = useAppDispatch();
   const { status, report, consultRows, error } = useAppSelector((state) => state.reports);
 
-  const [preset, setPreset] = useState<Preset>("month");
+  const [preset, setPreset] = useState<Preset>("30days");
   const [custom, setCustom] = useState({ from: "", to: "" });
   const [tab, setTab] = useState<ReportTab>("summary");
   const [doctor, setDoctor] = useState("");
@@ -165,6 +197,7 @@ export function ReportsScreen() {
           {PRESETS.map((option) => (
             <Chip
               key={option.value}
+              icon={option.icon}
               active={preset === option.value}
               onClick={() => setPreset(option.value)}
             >
@@ -178,7 +211,7 @@ export function ReportsScreen() {
           onChange={(event) => setDoctor(event.target.value)}
           aria-label="One doctor, or the whole clinic"
         >
-          <option value="">All doctors</option>
+          <option value="">Whole clinic</option>
           {(report?.doctors ?? []).map((person) => (
             <option key={person.id} value={person.id}>
               {person.name}

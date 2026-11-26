@@ -21,6 +21,9 @@ import { registerNurseRoutes } from "@/services/api/mock/nurseRoutes";
 import { registerLabRoutes } from "@/services/api/mock/labRoutes";
 import { registerKioskRoutes } from "@/services/api/mock/kioskRoutes";
 import { registerPatientWebRoutes } from "@/services/api/mock/patientWebRoutes";
+import { registerMessageRoutes } from "@/services/api/mock/messageRoutes";
+import { registerActivityRoutes } from "@/services/api/mock/activityRoutes";
+import { registerSettingsRoutes } from "@/services/api/mock/settingsRoutes";
 import {
   appointments,
   capabilities,
@@ -59,6 +62,9 @@ const otpCodes = new Map<string, string>();
 /** The PIN the mock accepts, in test mode. */
 const MOCK_PIN = "1234";
 
+/** The session the mock opens. The mock answers with fixture data. */
+const MOCK_SESSION = "mock.access.token";
+
 /**
  * The endpoints behind the session.
  *
@@ -92,7 +98,7 @@ mock.on("POST", "/auth/verify", (body) => {
     throw new Error("That code is not right.");
   }
   otpCodes.delete(phone);
-  auth.set("mock.access.token");
+  auth.set(MOCK_SESSION);
   return { accessToken: "mock.access.token" };
 });
 
@@ -101,8 +107,46 @@ mock.on("POST", "/auth/unlock", (body) => {
   if (String(request?.pin ?? "") !== MOCK_PIN) {
     throw new Error("That PIN is not right.");
   }
-  auth.set("mock.access.token");
-  return { accessToken: "mock.access.token" };
+  auth.set(MOCK_SESSION);
+  return { accessToken: MOCK_SESSION };
+});
+
+/**
+ * Sign a new clinic up.
+ *
+ * The five-step flow sends the whole form in one flat object and gets back
+ * the session, the clinic and the booking link — the link the clinic hands
+ * to its patients, which is never built from the clinic's name.
+ */
+mock.on("POST", "/auth/signup", (body) => {
+  const request = (body ?? {}) as Record<string, unknown>;
+  const clinicName = String(request.clinicName ?? "").trim();
+  const mobile = String(request.mobile ?? "").replace(/\D/g, "");
+  if (!clinicName) throw new Error("Enter the clinic's name.");
+  if (mobile.length !== 10) throw new Error("Enter a 10-digit mobile number.");
+
+  const slug = `${clinicName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Math.random()
+    .toString(16)
+    .slice(2, 10)
+    .padEnd(8, "0")}`;
+
+  const clinicId = `clinic_${slug}`;
+  auth.set(MOCK_SESSION);
+
+  return {
+    accessToken: MOCK_SESSION,
+    clinicId,
+    clinicName,
+    bookingSlug: slug,
+    bookingUrl: `https://medmate.in/book?clinic=${slug}`,
+    clinic: {
+      id: clinicId,
+      name: clinicName,
+      initials: clinicName.slice(0, 2).toUpperCase(),
+      locations: 1,
+      doctors: 1,
+    },
+  };
 });
 
 // ---------------------------------------------------------------- the session
@@ -167,6 +211,11 @@ mock.on("GET", "/clinic/queue", () => {
     const person = patient(item.patientId);
     return {
       token: item.token,
+      /** The doctor the patient is waiting for, when one is named. */
+      doctorId: item.seenBy ?? null,
+      doctorName: item.seenBy ? doctors.find((entry) => entry.id === item.seenBy)?.name ?? null : null,
+      /** `waiting` or `seen`. */
+      status: item.status === "waiting" ? "waiting" : "seen",
       kind: item.token.startsWith("A") ? "A" : "B",
       patient: person,
       reason: item.reason,
@@ -179,10 +228,17 @@ mock.on("GET", "/clinic/queue", () => {
     };
   });
   const room = signedInUser.name.includes("Ananya") ? "Room 2" : "Room 1";
+  // how long a consult takes, on average — the console reads it
+  const seen = visits.filter((item) => item.consultMinutes !== null);
+  const averageConsultMinutes = seen.length
+    ? Math.round(seen.reduce((sum, item) => sum + (item.consultMinutes ?? 0), 0) / seen.length)
+    : 0;
+
   return {
     items,
     next: items[0] ?? null,
     room,
+    averageConsultMinutes,
     meta: `${room} · ${items.length} waiting · 9 seen today · average consult 8 min`,
   };
 });
@@ -191,11 +247,27 @@ mock.on("GET", "/clinic/queue", () => {
 
 mock.on("GET", "/clinic/doctors", () => {
   requireSession();
-  return doctors.map((person) => ({
+  return doctors.map((person, index) => ({
     id: person.id,
     name: person.name,
     speciality: person.speciality,
     room: person.room,
+    /** The registration the doctor signs with. */
+    registration: person.registration,
+    /** The consultation fee. */
+    fee: 500 - index * 50,
+    /** The video consultation fee. */
+    videoFee: 400 - index * 50,
+    /** The hours the doctor works in. */
+    hours: ["10:00–13:00", "16:00–19:00"],
+    /** How many patients the doctor has seen today. */
+    bookedToday: index + 1,
+    /** How many slots are still free today. */
+    freeToday: 6 - index,
+    /** The next free slot today. */
+    nextFree: index === 0 ? "Tomorrow 10:00 am" : "Today 4:30 pm",
+    /** How many patients are in consult with the doctor. */
+    waiting: index,
   }));
 });
 
@@ -362,6 +434,28 @@ mock.on("GET", "/clinic/visits/:id", (_body, context) => {
       signatureMode: item.signatureMode,
       version: item.version,
     })),
+  };
+});
+
+/**
+ * Call the patient in.
+ *
+ * The clock on the wait starts here: the visit leaves the queue and the
+ * consultation clock starts. The service answers the same three keys.
+ */
+mock.on("POST", "/clinic/visits/:id/start", (_body, context) => {
+  requireSession();
+  const found = findVisit(context.params.id);
+  if (!found) throw new Error("That visit is not here.");
+  if (found.status === "waiting") {
+    found.status = "in_consult";
+    found.waitedMinutes = 12;
+  }
+  return {
+    visitId: found.id,
+    token: found.token,
+    status: found.status,
+    consultStartedAt: new Date().toISOString(),
   };
 });
 
@@ -556,8 +650,11 @@ mock.on("POST", "/clinic/prescriptions/:id/sign", (body, context) => {
 
 mock.on("GET", "/clinic/patients", () => {
   requireSession();
-  return {
-    items: patients.map((person) => ({
+  const today = visits.filter((item) => item.status === "waiting" || item.status === "in_consult");
+  const items = patients.map((person) => {
+    const inClinic = today.find((item) => item.patientId === person.id);
+    const dues = person.id === "pt_kavya" ? 500 : person.id === "pt_diya" ? 250 : 0;
+    return {
       id: person.id,
       name: person.name,
       initials: person.initials,
@@ -569,17 +666,41 @@ mock.on("GET", "/clinic/patients", () => {
       conditions: person.conditions,
       visits: person.visits,
       since: person.since,
-      lastSeen: "Today",
-      doctor: "Dr. Ananya Rao",
-      dues: 0,
-    })),
-    meta: `${patients.length} patients`,
+      token: inClinic?.token ?? null,
+      hereToday: Boolean(inClinic),
+      lastSeen: inClinic ? "Today" : person.visits > 1 ? "Last week" : "—",
+      doctor: person.id === "pt_kavya" ? "Dr. Naveen Kulkarni" : "Dr. Ananya Rao",
+      dues,
+      followUpOn:
+        person.id === "pt_kavya" ? "2026-11-30" : person.id === "pt_diya" ? "2026-12-04" : null,
+      mine: person.id === "pt_kavya" || person.id === "pt_diya",
+      joinedOn: person.visits > 1 ? "2024-06-12" : "2026-11-04",
+      newThisMonth: person.visits === 1 && person.since === "2026",
+    };
+  });
+  const here = items.filter((item) => item.hereToday).length;
+  return {
+    items,
+    meta: `${items.length} patients · ${here} here today`,
+    total: items.length,
   };
 });
 
 mock.on("GET", "/clinic/patients/:id", (_body, context) => {
   requireSession();
   const person = patient(context.params.id);
+  // the patient's own visits come first — they are the ones that can be
+  // written up, and the history follows them
+  const own = visits
+    .filter((item) => item.patientId === person.id)
+    .map((item) => ({
+      id: item.id,
+      date: "Today, 25 Nov",
+      doctor: "Dr. Ananya Rao",
+      diagnosis: item.reason ?? "General consultation",
+      medicines: "",
+      signed: "Signed",
+    }));
   return {
     patient: {
       id: person.id,
@@ -594,7 +715,7 @@ mock.on("GET", "/clinic/patients/:id", (_body, context) => {
       visits: person.visits,
       since: person.since,
     },
-    visits: timeline,
+    visits: [...own, ...timeline],
     readings,
     labResults,
     recordAccess,
@@ -638,3 +759,6 @@ registerNurseRoutes();
 registerLabRoutes();
 registerKioskRoutes();
 registerPatientWebRoutes();
+registerMessageRoutes();
+registerActivityRoutes();
+registerSettingsRoutes();

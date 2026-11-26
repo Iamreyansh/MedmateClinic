@@ -32,18 +32,21 @@ public class QueueController {
     private final PatientRepository patientRepository;
     private final StaffRepository staffRepository;
     private final ClinicZoneService zoneService;
+    private final com.medmate.clinic.vital.VitalsRepository vitalsRepository;
 
     public QueueController(
             CurrentClinic current,
             VisitRepository visitRepository,
             PatientRepository patientRepository,
             StaffRepository staffRepository,
-            ClinicZoneService zoneService) {
+            ClinicZoneService zoneService,
+            com.medmate.clinic.vital.VitalsRepository vitalsRepository) {
         this.current = current;
         this.visitRepository = visitRepository;
         this.patientRepository = patientRepository;
         this.staffRepository = staffRepository;
         this.zoneService = zoneService;
+        this.vitalsRepository = vitalsRepository;
     }
 
     @GetMapping("/queue")
@@ -74,6 +77,9 @@ public class QueueController {
             item.put("detail", visit.getDetail());
             item.put("wait", wait(visit));
             item.put("waiting", waitingFor(visit, clinicId));
+            // The reading the nurse took: the doctor reads it beside the
+            // patient's name, and without it the line is blank.
+            item.put("vitals", vitalsFor(visit, clinicId));
             items.add(item);
         }
 
@@ -104,6 +110,36 @@ public class QueueController {
                         + seenToday
                         + " seen today");
         return body;
+    }
+
+    /**
+     * The patient's last reading, as the queue shows it.
+     *
+     * <p>A line of text, the way the doctor reads it at the desk: the
+     * temperature and the saturation, and nothing else.
+     */
+    private String vitalsFor(Visit visit, UUID clinicId) {
+        com.medmate.clinic.vital.Vitals reading =
+                vitalsRepository
+                        .findFirstByClinicIdAndVisitIdOrderByRecordedAtDesc(clinicId, visit.getId())
+                        .orElse(null);
+        if (reading == null) {
+            return null;
+        }
+        StringBuilder line = new StringBuilder();
+        if (reading.getTempF() != null) {
+            line.append(
+                    "Temp "
+                            + reading.getTempF().stripTrailingZeros().toPlainString()
+                            + " °F");
+        }
+        if (reading.getSpo2() != null) {
+            if (line.length() > 0) {
+                line.append(" · ");
+            }
+            line.append("SpO₂ ").append(reading.getSpo2()).append("%");
+        }
+        return line.length() == 0 ? null : line.toString();
     }
 
     /** The start of the clinic's day. */

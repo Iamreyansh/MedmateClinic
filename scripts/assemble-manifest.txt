@@ -1,0 +1,19 @@
+# The large files, and the parts they arrive in.
+#
+# A file that cannot travel through the API in one piece is published as its
+# parts, and `scripts/assemble-large-files.sh` joins them back and checks the
+# result against the sha named here.
+#
+# Format, one file per line:
+#
+#   <sha256>  <target path>  <part> [<part> …]  [gzip]
+#   <sha256>  bundle:<branch>  <part> [<part> …]  bundle
+#
+# With `gzip`, the joined parts are a gzip stream and are gunzipped before the
+# sha is checked: the sha is of the ORIGINAL bytes.
+#
+# The bundle entry: the parts are base64 chunks of a gzipped `git bundle`.
+# The assembler joins them, decodes, gunzips, checks the sha of the gzipped
+# bundle, verifies the bundle, fetches the branch out of it and checks it out.
+#
+# Nothing is listed: the branch's files are published whole.

@@ -1,6 +1,8 @@
 package com.medmate.clinic.tenancy;
 
+import com.medmate.clinic.common.NotFoundException;
 import com.medmate.clinic.common.UnauthorizedException;
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -8,7 +10,7 @@ import org.springframework.stereotype.Service;
  * Points the request at a clinic's schema.
  *
  * <p>The sign-in arrives with only a mobile number, so the directory says
- * which clinic it belongs to; after that the token carries the clinic and the
+ * which clinic it belongs to; after that the session the clinic and the
  * filter routes every request.
  */
 @Service
@@ -45,14 +47,21 @@ public class ClinicRouting {
      *
      * <p>The link is the only thing that says which clinic the patient is in —
      * they have no session — so the service looks it up in the registry.
+     *
+     * <p>A link that has expired, or that the clinic has revoked, is not a link
+     * any more: the request is answered with a 404 and never reaches a clinic's
+     * data.
      */
     public RegistryClinic routeByLink(String linkKey) {
         PublicLink link =
                 links.findByLinkKey(linkKey)
                         .orElseThrow(
                                 () ->
-                                        new UnauthorizedException(
+                                        new NotFoundException(
                                                 "This link is not valid. Ask the clinic for a new one."));
+        if (!link.isLive(Instant.now())) {
+            throw new NotFoundException("This link is not valid. Ask the clinic for a new one.");
+        }
         return route(link.getClinicId());
     }
 
@@ -66,7 +75,7 @@ public class ClinicRouting {
     }
 
     /**
-     * Point the request at the clinic behind a public booking slug.
+     * Point the request at a clinic's schema by its public booking slug.
      *
      * <p>The patient's booking page is public, so the slug is the only thing
      * that says which clinic they are in. Nothing else about the clinic is
@@ -77,7 +86,7 @@ public class ClinicRouting {
                 clinics.findByBookingSlug(slug)
                         .orElseThrow(
                                 () ->
-                                        new UnauthorizedException(
+                                        new NotFoundException(
                                                 "Please use your clinic's own booking link. Ask the clinic, or find it on their WhatsApp or Google page."));
         resolver.use(clinic.getSchemaName());
         return clinic;

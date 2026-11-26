@@ -9,7 +9,15 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "fidelity": "node verify/check-fidelity.mjs"
+    "fidelity": "node verify/check-fidelity.mjs",
+    "fidelity:pixels": "node verify/pixel-diff.mjs",
+    "fidelity:baselines": "node verify/capture-baselines.mjs",
+    "fidelity:history": "node verify/extract-history-baselines.mjs",
+    "stack:start": "verify/dev-stack.sh start",
+    "stack:stop": "verify/dev-stack.sh stop",
+    "stack:status": "verify/dev-stack.sh status",
+    "e2e": "npm --prefix e2e run e2e",
+    "e2e:install": "npm --prefix e2e ci && npm --prefix e2e run install:browser"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.14.0",

@@ -9,6 +9,7 @@ import com.medmate.clinic.staff.Staff;
 import com.medmate.clinic.staff.StaffRepository;
 import com.medmate.clinic.tenancy.ClinicRouting;
 import com.medmate.clinic.tenancy.RegistryClinic;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,25 +82,57 @@ public class AuthService {
         return token;
     }
 
-    /** Unlock a device with the PIN. */
-    @Transactional(readOnly = true)
+    /**
+     * Unlock a device with the PIN.
+     *
+     * <p>A PIN is four digits, so a wrong one is counted: after a few wrong
+     * tries the device waits before it will try again. The wait has an end —
+     * it is a cool-off, not a lock-out — and signing in with the one-time
+     * code clears it, so the owner is never locked out of their own till with
+     * no way back in.
+     */
+    @Transactional
     public String unlock(UUID clinicId, String pin) {
         routing.route(clinicId);
-        for (Staff staff : staffRepository.findByClinicId(clinicId)) {
-            if (pinService.matches(staff.getId().toString(), staff.getPinHash(), pin)) {
-                String token = jwtService.issue(principalFor(staff));
-                audit.record(
-                        clinicId,
-                        staff.getId(),
-                        null,
-                        "auth.unlock",
-                        "device",
-                        staff.getId().toString(),
-                        Map.of());
-                return token;
-            }
+        UUID key = clinicId;
+        Lock state = locks.computeIfAbsent(key, ignored -> new Lock());
+
+        if (state.lockedUntil != null && state.lockedUntil.isAfter(Instant.now())) {
+            long wait = java.time.Duration.between(Instant.now(), state.lockedUntil).toMinutes() + 1;
+            throw new UnauthorizedException("Too many tries. Wait " + wait + " minutes and try again.");
         }
+
+        for (Staff staff : staffRepository.findByClinicId(clinicId)) {
+            if (!pinService.matches(staff.getId().toString(), staff.getPinHash(), pin)) {
+                continue;
+            }
+            state.failures = 0;
+            state.lockedUntil = null;
+            // A hash made by the older scheme is rewritten now, in the scheme
+            // the service uses now.
+            if (pinService.needsRehash(staff.getPinHash())) {
+                staff.setPinHash(pinService.hash(staff.getId().toString(), pin));
+                staffRepository.save(staff);
+            }
+            String token = jwtService.issue(principalFor(staff));
+            audit.record(
+                    clinicId,
+                    staff.getId(),
+                    null,
+                    "auth.unlock",
+                    "device",
+                    staff.getId().toString(),
+                    Map.of());
+            return token;
+        }
+
+        state.failures++;
         audit.record(clinicId, null, null, "auth.unlock_failed", "device", null, Map.of());
+        if (state.failures >= MAX_PIN_FAILURES) {
+            state.lockedUntil = Instant.now().plus(PIN_COOL_OFF);
+            state.failures = 0;
+            throw new UnauthorizedException("Too many tries. Wait 15 minutes and try again.");
+        }
         throw new UnauthorizedException("That PIN is not right.");
     }
 
@@ -114,6 +147,21 @@ public class AuthService {
 
     private String roleName(Staff staff) {
         return staff.getRoleId() == null ? "staff" : staff.getRoleId().toString();
+    }
+
+    /** How many wrong PINs are allowed before the device waits. */
+    private static final int MAX_PIN_FAILURES = 5;
+
+    /** How long the device waits after too many wrong PINs. */
+    private static final java.time.Duration PIN_COOL_OFF = java.time.Duration.ofMinutes(15);
+
+    /** The PIN lock, per clinic. */
+    private final java.util.Map<UUID, Lock> locks = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The PIN lock: how many have gone wrong, and until when it holds. */
+    private static final class Lock {
+        private int failures;
+        private Instant lockedUntil;
     }
 
     /** The person behind a mobile number, inside the clinic's schema. */

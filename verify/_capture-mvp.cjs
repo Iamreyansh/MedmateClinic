@@ -15,19 +15,16 @@ const BASE = "https://medmate-doctor-clinic.netlify.app";
 const PHONE = "9876543210";
 const OUT = process.argv[2] ?? "/tmp/mvp/rendered";
 
-function findChromium() {
-  const base = path.join(os.homedir(), "Library/Caches/ms-playwright");
-  if (!fs.existsSync(base)) return undefined;
-  for (const entry of fs.readdirSync(base)) {
-    if (!entry.startsWith("chromium-")) continue;
-    const candidate = path.join(
-      base,
-      entry,
-      "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
-    );
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return undefined;
+/**
+ * The browser.
+ *
+ * The old search only knew the macOS Playwright cache, so on Linux this script
+ * launched with no browser at all. `verify/browser.mjs` knows Linux, macOS,
+ * Windows and the agent-browser's own Chrome.
+ */
+async function findChromium() {
+  const { launchOptions } = await import(path.join(__dirname, "browser.mjs"));
+  return launchOptions().executablePath;
 }
 
 const PAGES = process.argv.slice(3);
@@ -35,7 +32,7 @@ const PAGES = process.argv.slice(3);
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({
-    executablePath: findChromium(),
+    executablePath: await findChromium(),
     args: ["--no-sandbox"],
   });
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });

@@ -6,6 +6,7 @@ import com.medmate.clinic.grant.GrantService;
 import com.medmate.clinic.patient.PatientRepository;
 import com.medmate.clinic.security.ClinicPrincipal;
 import com.medmate.clinic.security.CurrentClinic;
+import com.medmate.clinic.staff.Staff;
 import com.medmate.clinic.staff.StaffRepository;
 import com.medmate.clinic.visit.VisitRepository;
 import java.util.ArrayList;
@@ -86,7 +87,21 @@ public class DashboardController {
             manage.add(item);
         }
 
+        // The clinic's doctors: the dashboard shows the doctor consoles.
+        List<Map<String, Object>> doctors = new ArrayList<>();
+        for (Staff person : staffRepository.findByClinicId(clinicId)) {
+            Map<String, Object> doctor = new LinkedHashMap<>();
+            doctor.put("id", person.getId().toString());
+            doctor.put("name", person.getFullName());
+            doctor.put("initials", initials(person.getFullName()));
+            doctor.put("speciality", person.getSpeciality() == null ? "" : person.getSpeciality());
+            doctor.put("room", person.getSpeciality() == null ? "" : person.getSpeciality());
+            doctor.put("waiting", 0);
+            doctors.add(doctor);
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
+        body.put("doctors", doctors);
         body.put("meta", waiting + " in your queue · 2 awaiting vitals · 1 prescription to hand over · 5 appointments still to come today");
         body.put(
                 "trial",
@@ -100,5 +115,23 @@ public class DashboardController {
         body.put("stations", stations);
         body.put("manage", manage);
         return body;
+    }
+
+    /** The person's initials. */
+    private String initials(String name) {
+        if (name == null) {
+            return "";
+        }
+        StringBuilder initials = new StringBuilder();
+        for (String part : name.split("\\s+")) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            initials.append(part.charAt(0));
+            if (initials.length() == 2) {
+                break;
+            }
+        }
+        return initials.toString().toUpperCase();
     }
 }

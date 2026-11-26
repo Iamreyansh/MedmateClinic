@@ -8,11 +8,20 @@
  * The mock holds the same state the staff screens read, so a patient who books
  * a visit appears in the clinic's queue.
  *
+ * Two different numbers are in play, and the split matters:
+ *
+ * - the **link key** is the random, high-entropy secret that lives in the URL.
+ *   It is the only thing that identifies the booking, so it cannot be
+ *   enumerated and it is never shown as a queue number.
+ * - the **queue number** is the short, human slip — "A-016" — that the front
+ *   desk reads out and that the patient sees on screen.
+ *
  * The patient's own session is kept in the browser's session storage, because a
  * patient on a phone will reload the page — and a link that forgets what it
  * was for is a link that has to be asked for again.
  */
 
+import { ApiError } from "@/services/api/client";
 import { mock } from "@/services/api/mock/router";
 import {
   appointments,
@@ -41,27 +50,30 @@ const PUBLIC_CLINIC = {
 
 /** What the patient has done, kept between reloads. */
 type PatientSession = {
-  /** The visit ids the patient booked, by token. */
+  /** The visit ids the patient booked, by link key. */
   booked: Record<string, string>;
   /** The names of the patients, by visit id. */
   names: Record<string, string>;
-  /** The symptoms forms the patient filled in, by token. */
+  /** The symptoms forms the patient filled in, by link key. */
   intakes: Record<string, { symptoms: string[]; redFlags: string[]; notes: string; duration: string }>;
+  /** The bookings already made, by idempotency key. */
+  idempotent: Record<string, string>;
 };
 
 /** The session, as it was left. */
 function readSession(): PatientSession {
   try {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return { booked: {}, names: {}, intakes: {} };
-    const parsed = JSON.parse(raw) as PatientSession;
+    if (!raw) return { booked: {}, names: {}, intakes: {}, idempotent: {} };
+    const parsed = JSON.parse(raw) as Partial<PatientSession>;
     return {
       booked: parsed.booked ?? {},
       names: parsed.names ?? {},
       intakes: parsed.intakes ?? {},
+      idempotent: parsed.idempotent ?? {},
     };
   } catch {
-    return { booked: {}, names: {}, intakes: {} };
+    return { booked: {}, names: {}, intakes: {}, idempotent: {} };
   }
 }
 
@@ -72,6 +84,31 @@ function writeSession(session: PatientSession): void {
   } catch {
     // The browser will not let us keep it — the patient can still book.
   }
+}
+
+/**
+ * A random link key.
+ *
+ * The key is what a patient carries, so it has to be unguessable: a
+ * sequential "A-001" would let anyone walk the clinic's bookings. A queue
+ * number is a separate, short thing.
+ */
+function newLinkKey(): string {
+  const alphabet = "abcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  let key = "";
+  for (const byte of bytes) key += alphabet[byte % alphabet.length];
+  return key;
+}
+
+/** The next queue number, the short slip the desk reads out. */
+function nextQueueNumber(): string {
+  const highest = visits.reduce((max, visit) => {
+    const number = Number(visit.token.replace(/\D/g, ""));
+    return Number.isFinite(number) && visit.token.startsWith("A") && number > max ? number : max;
+  }, 15);
+  return `A-${String(highest + 1).padStart(3, "0")}`;
 }
 
 /** The consultation fee, by doctor. */
@@ -87,36 +124,56 @@ function slotsFor(doctorId: string): Array<{ label: string; startsAt: string; fr
 
   return hours.map((time, index) => ({
     label: time,
-    startsAt: `2026-11-26T${time}:00Z`,
+    // an instant in the clinic's own zone, not a UTC wall-clock — so the
+    // label, the comparison and the booking all agree
+    startsAt: clinicInstant("2026-11-26", time),
     // the first few are taken by the clinic's own bookings
     free: index >= taken,
   }));
+}
+
+/**
+ * An instant, in the clinic's own zone.
+ *
+ * The clinic books in its own time: 09:00 there is 09:00 on the wall, and
+ * the instant it is must be the one the service compares against.
+ */
+function clinicInstant(day: string, time: string): string {
+  const [hour, minute] = time.split(":").map(Number);
+  // Asia/Kolkata is +05:30
+  const date = new Date(`${day}T00:00:00+05:30`);
+  date.setUTCHours(hour - 5, minute - 30, 0, 0);
+  return date.toISOString();
 }
 
 /** The next free time, in the patient's words. */
 function nextFree(doctorId: string): string | null {
   const free = slotsFor(doctorId).find((slot) => slot.free);
   if (!free) return null;
-  const date = new Date(free.startsAt);
-  return `Tomorrow, ${date.getUTCHours().toString().padStart(2, "0")}:${date
-    .getUTCMinutes()
-    .toString()
-    .padStart(2, "0")}`;
+  // the label is the clinic's own clock
+  return `Tomorrow, ${free.label}`;
 }
 
-/** The visit a live token points at. */
-function visitForToken(token: string): MockVisit | undefined {
-  const found = visits.find((item) => item.token === token);
+/**
+ * The visit a link key points at.
+ *
+ * A key that is not ours is a key that is not valid — there is no second
+ * clinic's booking hiding behind it.
+ */
+function visitForLink(linkKey: string): MockVisit {
+  const session = readSession();
+  const visitId = session.booked[linkKey];
+  if (!visitId) {
+    throw new ApiError(404, "This link is no longer valid. Ask the clinic for a new one.");
+  }
+
+  const found = visits.find((item) => item.id === visitId);
   if (found) return found;
 
   // The patient booked it before a reload — put the visit back.
-  const session = readSession();
-  const visitId = session.booked[token];
-  if (!visitId) return undefined;
-
   const visit: MockVisit = {
     id: visitId,
-    token,
+    token: nextQueueNumber(),
     patientId: visitId.replace("vs_booked_", "pt_"),
     status: "waiting",
     mode: "in_clinic",
@@ -154,9 +211,18 @@ function visitForToken(token: string): MockVisit | undefined {
 export function registerPatientWebRoutes() {
   // The booking page: the clinic, its doctors and the times.
   mock.on("GET", "/public/doctors", (_body, context) => {
-    const slug = context.query.get("clinic") ?? SLUG;
+    // The slug may be overridden here, and only here — this is the one page
+    // that is reached by a link the clinic hands out.
+    // the slug always travels with the booking link, so a page without one
+    // has no clinic to book with — it is not a page at all
+    const asked = context.query.get("clinic");
+    if (!asked) {
+      throw new ApiError(404, "Open your clinic's own booking link to book a visit.");
+    }
+    const slug = asked;
     if (slug !== SLUG) {
-      throw new Error(
+      throw new ApiError(
+        404,
         "Please use your clinic's own booking link. Ask the clinic, or find it on their WhatsApp or Google page.",
       );
     }
@@ -181,13 +247,36 @@ export function registerPatientWebRoutes() {
     };
   });
 
-  // Book the visit. The patient gets a token and two links to keep.
-  mock.on("POST", "/public/booking", (body) => {
+  // Book the visit. The patient gets a link key and two links to keep.
+  mock.on("POST", "/public/booking", (body, context) => {
     const request = (body ?? {}) as Record<string, unknown>;
     const name = String(request.name ?? "").trim();
     const phone = String(request.phone ?? "").replace(/\D/g, "");
     if (!name) throw new Error("Enter the patient's name.");
     if (phone.length !== 10) throw new Error("Enter a 10-digit mobile number.");
+
+    // A double tap must not make two visits. The key the caller sent is kept,
+    // and a repeat with the same key gets the first booking back.
+    const idempotencyKey = String(
+      context.headers["idempotency-key"] ?? request.idempotencyKey ?? "",
+    ).trim();
+
+    const session = readSession();
+    if (idempotencyKey && session.idempotent[idempotencyKey]) {
+      const linkKey = session.idempotent[idempotencyKey];
+      const visit = visitForLink(linkKey);
+      const appointment = appointments.find((entry) => entry.visitId === visit.id);
+      const doctor = doctors.find((entry) => entry.id === appointment?.doctorId) ?? doctors[0];
+      return {
+        token: linkKey,
+        queueToken: visit.token,
+        liveUrl: `/t/${linkKey}`,
+        intakeUrl: `/intake/${linkKey}`,
+        startsAt: appointment?.startsAt ?? "",
+        doctor: doctor.name,
+        clinic: PUBLIC_CLINIC.name,
+      };
+    }
 
     const doctorId = String(request.doctorId ?? "");
     const doctor = doctors.find((person) => person.id === doctorId) ?? doctors[0];
@@ -212,13 +301,13 @@ export function registerPatientWebRoutes() {
       patients.push(person);
     }
 
-    // the token is the next in the series
-    const next = visits.filter((item) => item.token.startsWith("A")).length + 1;
-    const token = `A-${String(next).padStart(3, "0")}`;
+    // the link key is random; the queue number is the short slip
+    const linkKey = newLinkKey();
+    const queueToken = nextQueueNumber();
 
     const visit: MockVisit = {
-      id: `vs_booked_${phone.slice(-4)}`,
-      token,
+      id: `vs_booked_${phone.slice(-4)}_${linkKey.slice(0, 6)}`,
+      token: queueToken,
       patientId: person.id,
       status: "waiting",
       mode: "in_clinic",
@@ -234,7 +323,7 @@ export function registerPatientWebRoutes() {
     visits.push(visit);
 
     const appointment: MockAppointment = {
-      id: `ap_${token}`,
+      id: `ap_${linkKey}`,
       visitId: visit.id,
       patientId: person.id,
       doctorId: doctor.id,
@@ -246,28 +335,44 @@ export function registerPatientWebRoutes() {
     appointments.push(appointment);
 
     // the patient's links to keep
-    const session = readSession();
-    session.booked[token] = visit.id;
+    session.booked[linkKey] = visit.id;
     session.names[visit.id] = person.name;
-    session.intakes[token] = { symptoms: [], redFlags: [], notes: "", duration: "" };
+    session.intakes[linkKey] = { symptoms: [], redFlags: [], notes: "", duration: "" };
+    if (idempotencyKey) session.idempotent[idempotencyKey] = linkKey;
     writeSession(session);
 
     return {
-      token,
-      liveUrl: `/t/${token}`,
-      intakeUrl: `/intake/${token}`,
+      token: linkKey,
+      queueToken,
+      liveUrl: `/t/${linkKey}`,
+      intakeUrl: `/intake/${linkKey}`,
       startsAt,
       doctor: doctor.name,
       clinic: PUBLIC_CLINIC.name,
     };
   });
 
+  // Call the booking off.
+  mock.on("POST", "/public/booking/:token/cancel", (_body, context) => {
+    const linkKey = context.params.token;
+    const session = readSession();
+    const visitId = session.booked[linkKey];
+    if (!visitId) {
+      throw new ApiError(404, "This booking is no longer here. Ask the clinic for a new one.");
+    }
+    const visit = visits.find((entry) => entry.id === visitId);
+    if (visit) {
+      visit.status = "cancelled";
+    }
+    delete session.booked[linkKey];
+    writeSession(session);
+    return { cancelled: true, token: linkKey };
+  });
+
   // The patient's place in the queue.
   mock.on("GET", "/token/:token", (_body, context) => {
-    const token = context.params.token;
-    const visit = visitForToken(token);
-    if (!visit) throw new Error("This link is not valid");
-
+    const linkKey = context.params.token;
+    const visit = visitForLink(linkKey);
     const person = patients.find((entry) => entry.id === visit.patientId);
     const appointment = appointments.find((entry) => entry.visitId === visit.id);
     const doctor = doctors.find((entry) => entry.id === appointment?.doctorId) ?? doctors[0];
@@ -282,6 +387,7 @@ export function registerPatientWebRoutes() {
     const prescription = prescriptions.find((entry) => entry.visitId === visit.id);
 
     return {
+      // the queue slip, in the patient's words — not the link key
       token: visit.token,
       patient: person?.name ?? "",
       position,
@@ -297,12 +403,12 @@ export function registerPatientWebRoutes() {
 
   // The symptoms form, before the visit.
   mock.on("GET", "/intake/:token", (_body, context) => {
-    const token = context.params.token;
-    const visit = visitForToken(token);
-    if (!visit) throw new Error("This link has expired. Ask the clinic for a new one.");
-
-    const person = patients.find((entry) => entry.id === visit.patientId);
-    const form = readSession().intakes[token];
+    const linkKey = context.params.token;
+    visitForLink(linkKey);
+    const session = readSession();
+    const form = session.intakes[linkKey];
+    const visit = visits.find((item) => item.id === session.booked[linkKey]);
+    const person = patients.find((entry) => entry.id === visit?.patientId);
 
     return {
       patient: person?.name ?? "",
@@ -317,16 +423,15 @@ export function registerPatientWebRoutes() {
 
   // Send the symptoms form in.
   mock.on("POST", "/intake/:token", (body, context) => {
-    const token = context.params.token;
-    const visit = visitForToken(token);
-    if (!visit) throw new Error("This link has expired. Ask the clinic for a new one.");
+    const linkKey = context.params.token;
+    const visit = visitForLink(linkKey);
 
     const request = (body ?? {}) as Record<string, unknown>;
     const symptoms = Array.isArray(request.symptoms) ? (request.symptoms as string[]) : [];
     const redFlags = Array.isArray(request.redFlags) ? (request.redFlags as string[]) : [];
 
     const session = readSession();
-    session.intakes[token] = {
+    session.intakes[linkKey] = {
       symptoms,
       redFlags,
       notes: request.notes ? String(request.notes) : "",
@@ -334,10 +439,10 @@ export function registerPatientWebRoutes() {
     };
     writeSession(session);
     // the doctor reads what the patient wrote
-    visit.reason = request.notes ? String(request.notes) : symptoms.join(", ") || visit.reason;
+    visit.reason = [...symptoms, ...redFlags].join(", ") || visit.reason;
 
     return {
-      token,
+      token: linkKey,
       filled: true,
       submittedAt: new Date("2026-11-25T18:05:00Z").toISOString(),
     };
@@ -349,7 +454,7 @@ export function registerPatientWebRoutes() {
     const prescription = prescriptions.find(
       (entry) => entry.id === id || entry.id === `rx_${id}` || entry.id === id.replace(/^rx_/, ""),
     );
-    if (!prescription) throw new Error("No matching prescription");
+    if (!prescription) throw new ApiError(404, "We could not find that prescription.");
 
     const visit = visits.find((item) => item.id === prescription.visitId);
     const person = patients.find((entry) => entry.id === prescription.patientId);
@@ -380,7 +485,7 @@ export function registerPatientWebRoutes() {
         forDays: String(entry.forDays ?? ""),
       })),
       signatureMode: prescription.signatureMode,
-      visitToken: visit?.token ?? null,
+      visitToken: visit?.token ?? "",
     };
   });
 }

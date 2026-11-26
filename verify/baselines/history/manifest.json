@@ -1,0 +1,711 @@
+{
+  "recoveredAt": "2026-11-26T04:26:34.668Z",
+  "source": {
+    "ref": "647ea0e^",
+    "command": "git archive 647ea0e^ _research",
+    "note": "The deployed MVP's own screens, captured by an earlier agent and removed in 647ea0e. These are the only surviving pixels of the shipped design."
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "fullPage": true,
+  "mode": "deployed-mvp",
+  "apiMode": "the deployed MVP's own API — not the local mock",
+  "shots": [
+    {
+      "source": "_research/figma-01-initial.png",
+      "file": "history/shots/figma-01-initial.png",
+      "width": 1200,
+      "height": 769
+    },
+    {
+      "source": "_research/figma-02-expanded.png",
+      "file": "history/shots/figma-02-expanded.png",
+      "width": 1200,
+      "height": 769
+    },
+    {
+      "source": "_research/shots/build-fidelity-mobile.png",
+      "file": "history/shots/build-fidelity-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "source": "_research/shots/build-fidelity-v2.png",
+      "file": "history/shots/build-fidelity-v2.png",
+      "width": 1280,
+      "height": 1791
+    },
+    {
+      "source": "_research/shots/build-fidelity-viewport.png",
+      "file": "history/shots/build-fidelity-viewport.png",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source": "_research/shots/build-fidelity.png",
+      "file": "history/shots/build-fidelity.png",
+      "width": 1280,
+      "height": 1060
+    },
+    {
+      "source": "_research/shots/build-home.png",
+      "file": "history/shots/build-home.png",
+      "width": 1280,
+      "height": 834
+    },
+    {
+      "source": "_research/shots/landing-band.png",
+      "file": "history/shots/landing-band.png",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "source": "_research/shots/landing-features.png",
+      "file": "history/shots/landing-features.png",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "source": "_research/shots/landing-flow.png",
+      "file": "history/shots/landing-flow.png",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "source": "_research/shots/landing-footer.png",
+      "file": "history/shots/landing-footer.png",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "source": "_research/shots/landing-hero.png",
+      "file": "history/shots/landing-hero.png",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "source": "_research/shots/landing-lp-band.png",
+      "file": "history/shots/landing-lp-band.png",
+      "width": 1440,
+      "height": 517
+    },
+    {
+      "source": "_research/shots/landing-lp-cta.png",
+      "file": "history/shots/landing-lp-cta.png",
+      "width": 1440,
+      "height": 298
+    },
+    {
+      "source": "_research/shots/landing-lp-features.png",
+      "file": "history/shots/landing-lp-features.png",
+      "width": 1440,
+      "height": 1038
+    },
+    {
+      "source": "_research/shots/landing-lp-hero.png",
+      "file": "history/shots/landing-lp-hero.png",
+      "width": 1440,
+      "height": 619
+    },
+    {
+      "source": "_research/shots/landing-pricing.png",
+      "file": "history/shots/landing-pricing.png",
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "source": "_research/shots/live/_billing.png",
+      "file": "history/shots/_billing.png",
+      "width": 1440,
+      "height": 1697
+    },
+    {
+      "source": "_research/shots/live/_console-alldoctors.png",
+      "file": "history/shots/_console-alldoctors.png",
+      "width": 1440,
+      "height": 929,
+      "note": "the doctor console — all doctors"
+    },
+    {
+      "source": "_research/shots/live/_console.png",
+      "file": "history/shots/_console.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_consult-dx.png",
+      "file": "history/shots/_consult-dx.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the doctor console — diagnosis"
+    },
+    {
+      "source": "_research/shots/live/_consult-filled.png",
+      "file": "history/shots/_consult-filled.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the doctor console — filled"
+    },
+    {
+      "source": "_research/shots/live/_consult-fu.png",
+      "file": "history/shots/_consult-fu.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the doctor console — follow-up"
+    },
+    {
+      "source": "_research/shots/live/_consult-med.png",
+      "file": "history/shots/_consult-med.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the doctor console — medicine"
+    },
+    {
+      "source": "_research/shots/live/_consult-med2.png",
+      "file": "history/shots/_consult-med2.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the doctor console — medicine, second"
+    },
+    {
+      "source": "_research/shots/live/_consult-sign.png",
+      "file": "history/shots/_consult-sign.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the doctor console — signing"
+    },
+    {
+      "source": "_research/shots/live/_consult.png",
+      "file": "history/shots/_consult.png",
+      "width": 1440,
+      "height": 2769,
+      "note": "the doctor console, full page"
+    },
+    {
+      "source": "_research/shots/live/_desk.png",
+      "file": "history/shots/_desk.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_doctors.png",
+      "file": "history/shots/_doctors.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_esign.png",
+      "file": "history/shots/_esign.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the doctor console — e-signature"
+    },
+    {
+      "source": "_research/shots/live/_inbox.png",
+      "file": "history/shots/_inbox.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_kiosk-open.png",
+      "file": "history/shots/_kiosk-open.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the kiosk with its own flow open"
+    },
+    {
+      "source": "_research/shots/live/_kiosk-step1.png",
+      "file": "history/shots/_kiosk-step1.png",
+      "width": 1440,
+      "height": 900,
+      "note": "kiosk step 1"
+    },
+    {
+      "source": "_research/shots/live/_kiosk-step3-patient.png",
+      "file": "history/shots/_kiosk-step3-patient.png",
+      "width": 1440,
+      "height": 900,
+      "note": "kiosk step 3 — the patient"
+    },
+    {
+      "source": "_research/shots/live/_kiosk-step4-doctor.png",
+      "file": "history/shots/_kiosk-step4-doctor.png",
+      "width": 1440,
+      "height": 900,
+      "note": "kiosk step 4 — the doctor"
+    },
+    {
+      "source": "_research/shots/live/_kiosk.png",
+      "file": "history/shots/_kiosk.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "source": "_research/shots/live/_lab.png",
+      "file": "history/shots/_lab.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_locations.png",
+      "file": "history/shots/_locations.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_messages.png",
+      "file": "history/shots/_messages.png",
+      "width": 1440,
+      "height": 1148
+    },
+    {
+      "source": "_research/shots/live/_nurse-after.png",
+      "file": "history/shots/_nurse-after.png",
+      "width": 1440,
+      "height": 929,
+      "note": "the nurse station after a reading"
+    },
+    {
+      "source": "_research/shots/live/_nurse-vitals-dialog.png",
+      "file": "history/shots/_nurse-vitals-dialog.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the nurse station's vitals dialog"
+    },
+    {
+      "source": "_research/shots/live/_nurse.png",
+      "file": "history/shots/_nurse.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_patients.png",
+      "file": "history/shots/_patients.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_reports.png",
+      "file": "history/shots/_reports.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_schedule.png",
+      "file": "history/shots/_schedule.png",
+      "width": 1440,
+      "height": 1222
+    },
+    {
+      "source": "_research/shots/live/_settings.png",
+      "file": "history/shots/_settings.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_staff.png",
+      "file": "history/shots/_staff.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_subscription.png",
+      "file": "history/shots/_subscription.png",
+      "width": 1440,
+      "height": 1058
+    },
+    {
+      "source": "_research/shots/live/_teleconsult.png",
+      "file": "history/shots/_teleconsult.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/_templates.png",
+      "file": "history/shots/_templates.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live/dlg-add-doctor.png",
+      "file": "history/shots/dlg-add-doctor.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the add-a-doctor dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-add-someone.png",
+      "file": "history/shots/dlg-add-someone.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the add-someone dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-book-visit.png",
+      "file": "history/shots/dlg-book-visit.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the book-a-visit dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-certificate.png",
+      "file": "history/shots/dlg-certificate.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the certificate dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-checkin-patient.png",
+      "file": "history/shots/dlg-checkin-patient.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the check-in dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-lock.png",
+      "file": "history/shots/dlg-lock.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the lock dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-message-template.png",
+      "file": "history/shots/dlg-message-template.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the message-template dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-my-account.png",
+      "file": "history/shots/dlg-my-account.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the my-account dialog"
+    },
+    {
+      "source": "_research/shots/live/dlg-refer.png",
+      "file": "history/shots/dlg-refer.png",
+      "width": 1440,
+      "height": 900,
+      "note": "the refer-a-colleague dialog"
+    },
+    {
+      "source": "_research/shots/live/mobile-book.png",
+      "file": "history/shots/mobile-book.png",
+      "width": 390,
+      "height": 844,
+      "note": "the patient booking page on a phone"
+    },
+    {
+      "source": "_research/shots/live/mobile-login.png",
+      "file": "history/shots/mobile-login.png",
+      "width": 390,
+      "height": 844,
+      "note": "the sign-in on a phone"
+    },
+    {
+      "source": "_research/shots/live/patient-book.png",
+      "file": "history/shots/patient-book.png",
+      "width": 430,
+      "height": 900
+    },
+    {
+      "source": "_research/shots/live/patient-intake.png",
+      "file": "history/shots/patient-intake.png",
+      "width": 430,
+      "height": 900
+    },
+    {
+      "source": "_research/shots/live/patient-track.png",
+      "file": "history/shots/patient-track.png",
+      "width": 430,
+      "height": 900
+    },
+    {
+      "source": "_research/shots/live/patient-verify.png",
+      "file": "history/shots/patient-verify.png",
+      "width": 430,
+      "height": 900
+    },
+    {
+      "source": "_research/shots/live/settings-clinic---letterhead.png",
+      "file": "history/shots/settings-clinic---letterhead.png",
+      "width": 1440,
+      "height": 1505,
+      "note": "settings — clinic & letterhead"
+    },
+    {
+      "source": "_research/shots/live/settings-pharmacies.png",
+      "file": "history/shots/settings-pharmacies.png",
+      "width": 1440,
+      "height": 929,
+      "note": "settings — pharmacies"
+    },
+    {
+      "source": "_research/shots/live/settings-ready-to-go-live.png",
+      "file": "history/shots/settings-ready-to-go-live.png",
+      "width": 1440,
+      "height": 1408,
+      "note": "settings — ready to go live"
+    },
+    {
+      "source": "_research/shots/live/staff-roles-matrix.png",
+      "file": "history/shots/staff-roles-matrix.png",
+      "width": 1500,
+      "height": 1536,
+      "note": "staff — the roles matrix"
+    },
+    {
+      "source": "_research/shots/live/staff-roles.png",
+      "file": "history/shots/staff-roles.png",
+      "width": 1440,
+      "height": 1536,
+      "note": "staff — roles"
+    },
+    {
+      "source": "_research/shots/live_billing.png",
+      "file": "history/shots/live_billing.png",
+      "width": 1440,
+      "height": 1634
+    },
+    {
+      "source": "_research/shots/live_dashboard.png",
+      "file": "history/shots/live_dashboard.png",
+      "width": 1440,
+      "height": 2055
+    },
+    {
+      "source": "_research/shots/live_desk.png",
+      "file": "history/shots/live_desk.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live_inbox.png",
+      "file": "history/shots/live_inbox.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live_kiosk.png",
+      "file": "history/shots/live_kiosk.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "source": "_research/shots/live_lab.png",
+      "file": "history/shots/live_lab.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live_nurse.png",
+      "file": "history/shots/live_nurse.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live_queue.png",
+      "file": "history/shots/live_queue.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/shots/live_schedule.png",
+      "file": "history/shots/live_schedule.png",
+      "width": 1440,
+      "height": 1222
+    },
+    {
+      "source": "_research/shots/live_teleconsult.png",
+      "file": "history/shots/live_teleconsult.png",
+      "width": 1440,
+      "height": 929
+    },
+    {
+      "source": "_research/test-dash2.png",
+      "file": "history/shots/test-dash2.png",
+      "width": 1500,
+      "height": 950
+    },
+    {
+      "source": "_research/test-dashboard.png",
+      "file": "history/shots/test-dashboard.png",
+      "width": 2400,
+      "height": 1538
+    },
+    {
+      "source": "_research/test-menu.png",
+      "file": "history/shots/test-menu.png",
+      "width": 1500,
+      "height": 950
+    },
+    {
+      "source": "_research/test-nopopup.png",
+      "file": "history/shots/test-nopopup.png",
+      "width": 1500,
+      "height": 950
+    }
+  ],
+  "routes": {
+    "dashboard": {
+      "file": "history/dashboard.png",
+      "source": "_research/shots/live_dashboard.png",
+      "width": 1440,
+      "height": 2055
+    },
+    "queue": {
+      "file": "history/queue.png",
+      "source": "_research/shots/live_queue.png",
+      "width": 1440,
+      "height": 929
+    },
+    "patients": {
+      "file": "history/patients.png",
+      "source": "_research/shots/live/_patients.png",
+      "width": 1440,
+      "height": 929
+    },
+    "reports": {
+      "file": "history/reports.png",
+      "source": "_research/shots/live/_reports.png",
+      "width": 1440,
+      "height": 929
+    },
+    "desk": {
+      "file": "history/desk.png",
+      "source": "_research/shots/live_desk.png",
+      "width": 1440,
+      "height": 929
+    },
+    "billing": {
+      "file": "history/billing.png",
+      "source": "_research/shots/live_billing.png",
+      "width": 1440,
+      "height": 1634
+    },
+    "schedule": {
+      "file": "history/schedule.png",
+      "source": "_research/shots/live_schedule.png",
+      "width": 1440,
+      "height": 1222
+    },
+    "settings": {
+      "file": "history/settings.png",
+      "source": "_research/shots/live/_settings.png",
+      "width": 1440,
+      "height": 929
+    },
+    "subscription": {
+      "file": "history/subscription.png",
+      "source": "_research/shots/live/_subscription.png",
+      "width": 1440,
+      "height": 1058
+    },
+    "templates": {
+      "file": "history/templates.png",
+      "source": "_research/shots/live/_templates.png",
+      "width": 1440,
+      "height": 929
+    },
+    "nurse": {
+      "file": "history/nurse.png",
+      "source": "_research/shots/live_nurse.png",
+      "width": 1440,
+      "height": 929
+    },
+    "lab": {
+      "file": "history/lab.png",
+      "source": "_research/shots/live_lab.png",
+      "width": 1440,
+      "height": 929
+    },
+    "kiosk": {
+      "file": "history/kiosk.png",
+      "source": "_research/shots/live_kiosk.png",
+      "width": 1440,
+      "height": 900
+    },
+    "landing": {
+      "file": "history/landing.png",
+      "source": "_research/shots/landing-lp-hero.png",
+      "width": 1440,
+      "height": 619
+    },
+    "inbox": {
+      "file": "history/inbox.png",
+      "source": "_research/shots/live_inbox.png",
+      "width": 1440,
+      "height": 929
+    },
+    "teleconsult": {
+      "file": "history/teleconsult.png",
+      "source": "_research/shots/live_teleconsult.png",
+      "width": 1440,
+      "height": 929
+    },
+    "consult": {
+      "file": "history/consult.png",
+      "source": "_research/shots/live/_console.png",
+      "width": 1440,
+      "height": 929
+    },
+    "doctors": {
+      "file": "history/doctors.png",
+      "source": "_research/shots/live/_doctors.png",
+      "width": 1440,
+      "height": 929
+    },
+    "locations": {
+      "file": "history/locations.png",
+      "source": "_research/shots/live/_locations.png",
+      "width": 1440,
+      "height": 929
+    },
+    "messages": {
+      "file": "history/messages.png",
+      "source": "_research/shots/live/_messages.png",
+      "width": 1440,
+      "height": 1148
+    },
+    "staff": {
+      "file": "history/staff.png",
+      "source": "_research/shots/live/_staff.png",
+      "width": 1440,
+      "height": 929
+    },
+    "book": {
+      "file": "history/book.png",
+      "source": "_research/shots/live/patient-book.png",
+      "width": 430,
+      "height": 900
+    },
+    "intake": {
+      "file": "history/intake.png",
+      "source": "_research/shots/live/patient-intake.png",
+      "width": 430,
+      "height": 900
+    },
+    "book-live": {
+      "file": "history/book-live.png",
+      "source": "_research/shots/live/patient-track.png",
+      "width": 430,
+      "height": 900
+    },
+    "verify": {
+      "file": "history/verify.png",
+      "source": "_research/shots/live/patient-verify.png",
+      "width": 430,
+      "height": 900
+    },
+    "login": {
+      "file": "history/login.png",
+      "source": "_research/shots/live/mobile-login.png",
+      "width": 390,
+      "height": 844
+    }
+  }
+}

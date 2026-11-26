@@ -108,10 +108,10 @@ export function InvoicePaper({
       {bill.timeline.length > 0 ? (
         <ul className="rp-notes" style={{ marginTop: 10 }}>
           {bill.timeline.map((entry) => (
-            <li className="info" key={`${entry.label}-${entry.at}`}>
+            <li className="info" key={`${entry.text}-${entry.at}`}>
               <Icon name="check" size={18} />
               <span>
-                <b>{entry.label}</b> · {entry.at}
+                <b>{entry.text}</b> · {entry.at}
               </span>
             </li>
           ))}

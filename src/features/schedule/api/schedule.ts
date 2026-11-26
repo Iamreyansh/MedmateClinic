@@ -16,6 +16,23 @@ export const fetchAppointments = (params: { date?: string; view?: string; doctor
   return apiGet<AppointmentsPayload>(suffix ? `/clinic/appointments?${suffix}` : "/clinic/appointments");
 };
 
+/** The clinic's own public booking link, for the patients to use. */
+export const fetchBookingLink = () =>
+  apiGet<{ link: string; slug: string; clinic: string; channels: string[] }>(
+    "/clinic/desk/booking-link",
+  );
+
+/** The days ahead, and how free each doctor is on each of them. */
+export type DaySummary = {
+  date: string;
+  freeByDoctor: Array<{ doctorId: string; name: string; free: number; booked: number }>;
+};
+
+export const fetchAppointmentSummary = (from: string, to: string) =>
+  apiGet<{ days: DaySummary[] }>(
+    `/clinic/appointments/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+  );
+
 /**
  * Book a visit.
  *

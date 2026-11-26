@@ -1,0 +1,444 @@
+name: CI
+
+on:
+  # Both triggers. A `pull_request` event reads the workflow file from the
+  # merge ref, so the PR's own workflow runs — but a branch that is not a pull
+  # request is only built by a push, so both are needed.
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_HOME: /usr/lib/jvm/java-21-openjdk-amd64
+  # The mock is off everywhere in CI. A bundle built with the mock on would
+  # answer with fixture patients and let anyone in.
+  VITE_USE_MOCK: "false"
+
+jobs:
+  frontend:
+    name: Frontend — typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+
+      - name: Assemble the large files
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        # The output is captured, because a step that fails without saying
+        # why is a step nobody can fix.
+        run: npm test 2>&1 | tee vitest-output.txt; exit ${PIPESTATUS[0]}
+
+      - name: Production build (the mock must be off)
+        run: npm run build
+        env:
+          VITE_USE_MOCK: "false"
+
+      - name: The production bundle must code-split
+        # The patient-web surfaces and the kiosk are loaded on demand, so the
+        # bundle is more than one chunk. A single 596 kB chunk means the lazy
+        # routes were inlined.
+        run: |
+          set -euo pipefail
+          chunks=$(find dist/assets -name '*.js' | wc -l)
+          echo "chunks: $chunks"
+          if [ "$chunks" -lt 2 ]; then
+            echo "::error::the production bundle is one chunk — the lazy routes were inlined"
+            exit 1
+          fi
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-bundle
+          path: dist
+          retention-days: 7
+
+      - name: Publish the test output
+        # The artifact is how a reviewer reads it from the Actions UI. The
+        # branch is a best-effort second copy: a workflow token that cannot
+        # write refuses the push, and the step says so rather than pretending.
+        # The artifact is the channel that always works.
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -f vitest-output.txt ]; then
+            echo "the tests did not run" > vitest-output.txt
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B ci-output
+          git add vitest-output.txt
+          git commit -m "ci: the frontend unit test output" || true
+          git push origin ci-output --force || echo "could not publish the output"
+
+  backend:
+    name: Backend — package, unit tests, integration test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # The integration test's own database. The job runs nothing but the
+          # test, so the service can carry the test's database.
+          POSTGRES_DB: medmate_clinic_api_test
+          POSTGRES_USER: medmate
+          POSTGRES_PASSWORD: medmate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medmate -d medmate_clinic_api_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Compile the API
+        run: mvn -B -ntp -f backend/pom.xml -DskipTests package
+
+      - name: Unit tests and the integration test
+        run: mvn -B -ntp -f backend/pom.xml verify
+        env:
+          TEST_DB_URL: jdbc:postgresql://127.0.0.1:5432/medmate_clinic_api_test
+          TEST_DB_USER: medmate
+          TEST_DB_PASSWORD: medmate
+          APP_ENV: development
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-reports
+          path: backend/target/surefire-reports
+          retention-days: 7
+
+  fidelity:
+    name: Fidelity — the pixel diff against the baselines
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    # The pixel diff runs against the real stack, so this job needs the
+    # database the app under test talks to — the same one the E2E job brings
+    # up. Without it the API cannot come up and the job dies before it
+    # compares anything.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: medmate_clinic_api
+          POSTGRES_USER: medmate
+          POSTGRES_PASSWORD: medmate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medmate -d medmate_clinic_api"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The history baseline set is recovered from this repository's own
+          # history — `git archive 647ea0e^` — so the whole history is
+          # needed. A shallow checkout cannot resolve that commit: the job
+          # died before it compared anything and published no table at all.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+        # The API under test is started by `verify/dev-stack.sh`, which needs a
+        # JDK: without this step its JAVA_HOME points at a path that is not
+        # there, and the API never comes up.
+
+      - name: Materialise the delivery
+        # The branch carries the delivery as parts; the assembler puts the real
+        # files in the checkout before anything reads them.
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Assemble the large files and commit them
+        # A file that was too big to publish in one piece arrives as its parts.
+        # The assembler joins them and checks the result against the sha in
+        # scripts/assemble-manifest.txt.
+        run: |
+          set -euo pipefail
+          bash scripts/assemble-large-files.sh
+          branch="${{ github.head_ref || github.ref_name }}"
+          if git diff --quiet; then
+            echo "nothing to assemble"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore: assemble large files" || true
+            git push origin "HEAD:refs/heads/${branch}" || echo "could not publish the assembled files"
+          fi
+
+      - name: The deployed MVP must still answer
+        # The provenance check fails when the deployed app cannot be reached.
+        # It is a separate step so the reason a job went red is obvious.
+        run: node verify/check-fidelity.mjs --provenance-only
+
+      - name: The pixel diff
+        # The app under test is the real stack: Postgres, the API and the SPA
+        # with the mock off. Started here rather than in a service, because
+        # the app has to talk to the API on the same runner.
+        run: |
+          set -uo pipefail
+          # The directory is made before anything runs, so the upload step
+          # always has a path and every run publishes what it knows — even the
+          # runs that find nothing to compare.
+          mkdir -p verify/baselines/diffs
+          echo "the fidelity run started at $(date -u +%Y-%m-%dT%H:%M:%SZ) on $(git rev-parse --short HEAD)" > verify/baselines/diffs/run.txt
+          # The baseline is one CI can always get: the Figma export where one
+          # is present, otherwise the deployed MVP's own screens as they
+          # shipped, recovered from this repository's own history. The live
+          # capture of the deployed app needs a signed-in session and the
+          # deployed app rate-limits its OTP, so it stays a local option —
+          # CI never depends on a third party being up.
+          if ! ./verify/dev-stack.sh start 2>&1 | tee verify/baselines/diffs/stack.log; then
+            echo "::error::the stack did not come up: $(tail -3 verify/baselines/diffs/stack.log | tr '\n' ' ' | cut -c1-900)"
+            echo "the stack did not come up — the API log follows" >> verify/baselines/diffs/run.txt
+            for log in /tmp/medmate-*/api.log; do
+              [ -f "$log" ] && tail -40 "$log" >> verify/baselines/diffs/run.txt
+            done
+            exit 1
+          fi
+          if ! node verify/prepare-baselines.mjs --skip-reference 2>&1 | tee verify/baselines/diffs/baselines.log; then
+            echo "::error::the baselines could not be prepared: $(tail -3 verify/baselines/diffs/baselines.log | tr '\n' ' ' | cut -c1-900)"
+            echo "the baselines could not be prepared" >> verify/baselines/diffs/run.txt
+            exit 1
+          fi
+          # The table is written whatever the outcome, so a red run still says
+          # what it measured, and the exit status is the diff's own. The error
+          # output is captured with it: a failure that says nothing is the
+          # failure nobody can fix.
+          set +e
+          node verify/pixel-diff.mjs --baseline=history --json=verify/baselines/diffs/report-ci.json 2>&1 | tee verify/baselines/diffs/drift.txt
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::the pixel diff failed: $(grep -A4 'problem(s)' verify/baselines/diffs/drift.txt | tail -4 | tr '\n' ' ' | cut -c1-1200)"
+          fi
+          # The table is published as an annotation too, so the numbers are
+          # readable through the API and not only through the Actions UI.
+          if [ -f verify/baselines/diffs/drift.txt ]; then
+            echo "::notice::the drift table: $(sed -n '/^route /,$p' verify/baselines/diffs/drift.txt | tr '\n' ' | ' | cut -c1-3500)"
+          fi
+          {
+            echo "### The pixel diff"
+            echo
+            echo "Every route is compared against the Figma export where one is present, otherwise against the deployed MVP as it shipped."
+            echo
+            cat verify/baselines/diffs/drift.txt || true
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      - name: Upload the diffs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-diffs
+          path: verify/baselines/diffs
+          retention-days: 7
+
+  e2e:
+    name: E2E — Playwright against the real stack
+    # The suite's Playwright is 1.56.1, and it has no dependency list for the
+    # runner image this workflow's default now is (Ubuntu 26.04): the install
+    # fails with "Cannot install dependencies for ubuntu26.04-x64 with
+    # Playwright 1.56.1!". The image is pinned to the one that Playwright
+    # 1.56.1 supports, rather than the suite's browser being moved.
+    runs-on: ubuntu-24.04
+    needs: [frontend, backend]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # The integration test's own database. The job runs nothing but the
+          # test, so the service can carry the test's database.
+          POSTGRES_DB: medmate_clinic_api
+          POSTGRES_USER: medmate
+          POSTGRES_PASSWORD: medmate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medmate -d medmate_clinic_api"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.4
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Compile the API
+        run: mvn -B -f backend -DskipTests package
+
+      - name: Assemble the large files
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Materialise the delivery
+        run: bash scripts/assemble-large-files.sh
+
+      - name: Install the web app
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the E2E suite
+        working-directory: e2e
+        run: npm ci --no-audit --no-fund
+
+      - name: Cache the browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-1.56.1
+
+      - name: Install the browser
+        working-directory: e2e
+        # The browser the suite launches, pinned by e2e/package.json: the
+        # local Playwright is 1.56.1, so `playwright install` fetches exactly
+        # the build that version expects.
+        #
+        # `microsoft/playwright-github-action@v1` is deprecated and refuses to
+        # run on anything but Ubuntu 18.04, 20.04 and 22.04 — the runner is
+        # Ubuntu 24.04, where it fails with "Cannot install dependencies for
+        # this linux distribution!" — and it reads none of its documented
+        # inputs, so a pinned browser or version would be ignored anyway. Its
+        # own deprecation notice recommends this command, so this is the
+        # supported path.
+        run: |
+          set +e
+          set -uo pipefail
+          # The runner image is Ubuntu 26.04, and Playwright 1.56.1 has no
+          # dependency list for it: `--with-deps` fails with "Cannot install
+          # dependencies for ubuntu26.04-x64 with Playwright 1.56.1!", and the
+          # browser is never downloaded. The browser itself is a plain
+          # download, pinned by e2e/package.json, so that is what is installed
+          # here if the dependencies cannot be; the runner image carries the
+          # libraries it needs, and if one were missing the suite's own output
+          # would name it.
+          npx playwright install chromium --with-deps 2>&1 | tee /tmp/playwright-install.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::the system dependencies could not be installed for this runner image — the browser alone is installed below, and the suite names anything that is still missing"
+            npx playwright install chromium 2>&1 | tee -a /tmp/playwright-install.log
+            status=${PIPESTATUS[0]}
+          fi
+          if [ "$status" -ne 0 ]; then
+            # The command and its own words are published as annotations, so
+            # the reason is readable without the Actions UI.
+            echo "::error::the command that failed: npx playwright install chromium (exit $status)"
+            echo "::error::what it said: $(tail -8 /tmp/playwright-install.log | tr '\n' ' ' | cut -c1-1200)"
+          fi
+          exit $status
+
+      - name: Say what did not install
+        # "install the browser" tells the next person nothing. This says which
+        # part broke: the apt lock, the system dependencies or the browser
+        # download.
+        if: failure()
+        working-directory: e2e
+        run: |
+          echo "::error::the Playwright browser install failed — the three annotations below say whether it was the apt lock, the system dependencies or the browser download"
+          echo "::error::the apt lock: $( (command -v fuser >/dev/null && sudo fuser -v /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock 2>&1) || echo 'no process holds it' | tr '\n' ' ' | cut -c1-600)"
+          echo "::error::the system dependencies Playwright asks for: $(npx playwright install-deps --dry-run chromium 2>&1 | tail -3 | tr '\n' ' ' | cut -c1-900)"
+          echo "::error::the browser download: $(npx playwright install --dry-run chromium 2>&1 | head -5 | tr '\n' ' ' | cut -c1-900)"
+          echo "::error::the browser cache: $(ls -1 "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" 2>&1 | tr '\n' ' ' | cut -c1-600 || echo empty)"
+
+      - name: Start the API
+        run: |
+          set -euo pipefail
+          DATABASE_URL="jdbc:postgresql://127.0.0.1:5432/medmate_clinic_api" \
+          DATABASE_USER=medmate DATABASE_PASSWORD=medmate \
+          DEMO_ENABLED=true DEMO_CLINIC_ID=11111111-1111-4111-8111-111111111111 \
+          APP_ENV=development SERVER_PORT=8080 \
+          CORS_ORIGINS="http://localhost:3100,http://127.0.0.1:3100" \
+            java -jar backend/target/medmate-clinic-api-1.0.0.jar &
+          for _ in $(seq 1 120); do
+            if curl -sSf -m 2 http://127.0.0.1:8080/actuator/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sSf http://127.0.0.1:8080/actuator/health
+
+      - name: Start the web app
+        run: |
+          set -euo pipefail
+          VITE_USE_MOCK=false VITE_API_URL="http://127.0.0.1:8080/api" \
+            npx vite --host 127.0.0.1 --port 3100 --strictPort &
+          for _ in $(seq 1 90); do
+            if curl -sSf -m 2 http://127.0.0.1:3100/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sSf -o /dev/null -w "web: %{http_code}\n" http://127.0.0.1:3100/
+
+      - name: Run the suite
+        working-directory: e2e
+        env:
+          API_URL: http://127.0.0.1:8080
+          WEB_URL: http://127.0.0.1:3100
+        run: |
+          set +e
+          set -uo pipefail
+          npx playwright test 2>&1 | tee /tmp/playwright-test.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then
+            echo "::notice::the suite passed: $(grep -E '[0-9]+ passed' /tmp/playwright-test.log | tail -1 | tr '\n' ' ' | cut -c1-600)"
+          else
+            echo "::error::the suite failed (exit $status): $(tail -25 /tmp/playwright-test.log | tr '\n' ' ' | cut -c1-1500)"
+          fi
+          exit $status
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: e2e/.artifacts
+          retention-days: 7

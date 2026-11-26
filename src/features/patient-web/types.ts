@@ -65,8 +65,14 @@ export type BookPayload = {
 
 /** What the API answers with when the booking is made. */
 export type BookResult = {
-  /** The token of the visit that was created. */
+  /**
+   * The link key — the random secret that lives in the URL.
+   *
+   * It is not a queue number and must never be shown as one.
+   */
   token: string;
+  /** The queue slip — the short number the desk reads out. */
+  queueToken: string;
   /** The link the patient keeps, to track their turn. */
   liveUrl: string;
   /** The link to fill the symptoms form in. */
@@ -78,7 +84,7 @@ export type BookResult = {
 
 /** The patient's place in the queue. */
 export type LiveToken = {
-  /** The token itself. */
+  /** The queue slip, in the patient's words — "A-016", not the link key. */
   token: string;
   /** The patient's name. */
   patient: string;
@@ -143,4 +149,6 @@ export type VerifiedPrescription = {
   medicines: Array<{ name: string; dose: string; when: string; forDays: string }>;
   /** Whether the signature is a real one. */
   signatureMode: string | null;
+  /** The queue slip the prescription belongs to. */
+  visitToken: string;
 };

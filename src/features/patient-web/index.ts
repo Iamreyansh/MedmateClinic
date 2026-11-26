@@ -1,10 +1,12 @@
 export { BookScreen } from "@/features/patient-web/components/BookScreen";
+export { ApptScreen } from "@/features/patient-web/components/ApptScreen";
 export { LiveTokenScreen } from "@/features/patient-web/components/LiveTokenScreen";
 export { IntakeScreen } from "@/features/patient-web/components/IntakeScreen";
 export { VerifyScreen } from "@/features/patient-web/components/VerifyScreen";
 export {
   fetchPublicBooking,
   bookVisit,
+  cancelBooking,
   fetchLiveToken,
   fetchIntake,
   submitIntake,

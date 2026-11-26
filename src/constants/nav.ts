@@ -42,7 +42,9 @@ export type NavGroup = {
 
 export const nav: NavGroup[] = [
   {
-    items: [{ label: "Dashboard", href: "/dashboard", icon: "home" }],
+    // the dashboard counts the clinic's work, so it needs the reporting
+    // capability — a front desk or a nurse may not open it
+    items: [{ label: "Dashboard", href: "/dashboard", icon: "home", resource: "report" }],
   },
   {
     heading: "Stations",
@@ -90,6 +92,7 @@ export const builtRoutes = new Set<string>([
   "/queue",
   "/visit/:id",
   "/patients",
+  "/patients/:id",
   "/inbox",
   "/teleconsult",
   "/templates",
