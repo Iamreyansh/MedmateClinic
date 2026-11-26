@@ -3,13 +3,10 @@
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Icon } from "@/components/ui/Icon";
-import { ACTS, CLINIC_KINDS, bookingSlug, type StepProps } from "@/features/onboarding/types";
+import { ACTS, CLINIC_KINDS, type StepProps } from "@/features/onboarding/types";
 
 /** Step 2 — the clinic: what it is called, what kind it is, how it is registered. */
 export function ClinicStep({ form, set, onBack, onNext, valid }: StepProps) {
-  const slug = bookingSlug(form.clinicName) || "your-clinic";
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-
   return (
     <>
       <div className="su-eyebrow">Step 2 of 5</div>
@@ -108,7 +105,8 @@ export function ClinicStep({ form, set, onBack, onNext, valid }: StepProps) {
         <div className="su-book">
           <Icon name="cal" size={16} />
           <span>
-            Patients will book at <b>{`${origin}/book?clinic=${slug}`}</b>
+            The booking link is made when the clinic is created. It carries a private code, so
+            nobody can guess the clinic&apos;s address.
           </span>
         </div>
       </div>

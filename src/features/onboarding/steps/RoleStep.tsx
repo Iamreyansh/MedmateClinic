@@ -1,25 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Icon } from "@/components/ui/Icon";
-import { lookupHpr } from "@/features/onboarding/lookupHpr";
 import { ROLES, SIGNING, type StepProps } from "@/features/onboarding/types";
 
 /** Step 4 — what the owner does here, and how they sign prescriptions. */
 export function RoleStep({ form, set, onBack, onNext, valid }: StepProps) {
-  const [looking, setLooking] = useState(false);
-
-  const findHpr = async () => {
-    setLooking(true);
-    const doctor = await lookupHpr(form.hpr);
-    set("doctorName", doctor.name);
-    set("doctorQual", doctor.qualification);
-    set("doctorReg", `${doctor.council} · ${doctor.registration}`);
-    setLooking(false);
-  };
-
   return (
     <>
       <div className="su-eyebrow">Step 4 of 5</div>
@@ -46,30 +33,48 @@ export function RoleStep({ form, set, onBack, onNext, valid }: StepProps) {
           <>
             <div className="field">
               <label htmlFor="su-hpr">Your HPR ID</label>
-              <div style={{ display: "flex", gap: 10 }}>
-                <Input
-                  id="su-hpr"
-                  value={form.hpr}
-                  placeholder="71-0000-0000-0000"
-                  onChange={(event) => set("hpr", event.target.value)}
-                />
-                <Button variant="secondary" icon="search" disabled={looking} onClick={findHpr}>
-                  {looking ? "Finding…" : "Find me"}
-                </Button>
-              </div>
+              <Input
+                id="su-hpr"
+                value={form.hpr}
+                placeholder="71-0000-0000-0000"
+                onChange={(event) => set("hpr", event.target.value)}
+              />
             </div>
 
-            {form.doctorName ? (
-              <div className="su-ok">
-                <Icon name="check" size={18} />
-                <span>
-                  <b>
-                    {form.doctorName} · {form.doctorQual}
-                  </b>
-                  <span>{form.doctorReg}</span>
-                </span>
-              </div>
-            ) : null}
+            <div className="su-note neutral">
+              <Icon name="alert" size={16} />
+              <span>
+                The HPR registry is not connected yet, so nothing can check these details for you.
+                Enter them below, exactly as they are on your registration.
+              </span>
+            </div>
+
+            <div className="field">
+              <label htmlFor="su-doctor-name">Your name on the register</label>
+              <Input
+                id="su-doctor-name"
+                value={form.doctorName}
+                onChange={(event) => set("doctorName", event.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="su-doctor-qual">Qualification</label>
+              <Input
+                id="su-doctor-qual"
+                value={form.doctorQual}
+                placeholder="MBBS, MD"
+                onChange={(event) => set("doctorQual", event.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="su-doctor-reg">Council registration</label>
+              <Input
+                id="su-doctor-reg"
+                value={form.doctorReg}
+                placeholder="Karnataka Medical Council · Reg. KMC 84213"
+                onChange={(event) => set("doctorReg", event.target.value)}
+              />
+            </div>
 
             <div className="field">
               <label htmlFor="su-spec">Speciality</label>

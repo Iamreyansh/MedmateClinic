@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -40,14 +40,39 @@ export function QueueScreen() {
   // who is signed in — the console's own patients are theirs
   const userId = useAppSelector((state) => state.session.session?.user.id ?? "");
   const dispatch = useAppDispatch();
-  const { status, queue, doctors, lastCheckedIn, error } = useAppSelector((state) => state.queue);
+  const { status, queue, doctors, doctorsStatus, lastCheckedIn, error } = useAppSelector(
+    (state) => state.queue,
+  );
   const [filter, setFilter] = useState("mine");
   const [checkingIn, setCheckingIn] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  /**
+   * The doctor the console is opened on.
+   *
+   * The dashboard sends the doctor it wants in the path, and the clinic’s own
+   * list of doctors is what says whether that doctor is one the clinic has: a
+   * filter that names a doctor the clinic does not have shows the whole queue
+   * rather than an empty screen.
+   */
+  const doctorParam = searchParams.get("doctor");
+  const doctor = useMemo(
+    () => doctors.find((person) => person.id === doctorParam) ?? null,
+    [doctors, doctorParam],
+  );
+  const settled = doctorsStatus === "ready" || doctorsStatus === "error";
+  const scope = settled ? (doctor ? doctorParam : null) : null;
 
   useEffect(() => {
-    void dispatch(loadQueue());
     void dispatch(loadDoctors());
   }, [dispatch]);
+
+  useEffect(() => {
+    // the scope has to be checked against the clinic’s doctors first, so the
+    // queue waits for that list when a doctor was asked for
+    if (doctorParam && !settled) return;
+    void dispatch(loadQueue(scope ?? undefined));
+  }, [dispatch, doctorParam, scope, settled]);
 
   const next = queue?.next ?? null;
   const items = useMemo(() => queue?.items ?? [], [queue]);
@@ -58,31 +83,56 @@ export function QueueScreen() {
    * A patient who is waiting for a doctor is waiting for this doctor, unless
    * the row says otherwise; a patient nobody has claimed is unassigned.
    */
+  /**
+   * The queue of the doctor the console is opened on.
+   *
+   * A doctor who exists and has nobody waiting has an empty queue — which is
+   * not the same as a doctor the clinic does not have, and the screen tells
+   * the two apart rather than falling back to the whole clinic.
+   */
+  const scoped = useMemo(
+    () => (scope ? items.filter((item) => item.doctorId === scope) : items),
+    [items, scope],
+  );
+
   const visible = useMemo(() => {
     switch (filter) {
       case "all":
-        return items;
+        return scoped;
       case "unassigned":
-        return items.filter((item) => !item.doctorId);
+        return scoped.filter((item) => !item.doctorId);
       case "seen":
-        return items.filter((item) => item.status && item.status !== "waiting");
+        return scoped.filter((item) => item.status && item.status !== "waiting");
       case "waiting":
-        return items.filter((item) => !item.status || item.status === "waiting");
+        return scoped.filter((item) => !item.status || item.status === "waiting");
       case "urgent":
-        return items.filter((item) => item.wait === "Urgent");
+        return scoped.filter((item) => item.wait === "Urgent");
       default:
-        return items.filter((item) => !item.doctorId || item.doctorId === userId);
+        return scope
+          ? scoped
+          : scoped.filter((item) => !item.doctorId || item.doctorId === userId);
     }
-  }, [items, filter, userId]);
+  }, [scoped, filter, userId, scope]);
 
   return (
     <AppShell activeHref="/queue">
       <div className="nq-bar">
         <div>
           <h1 className="t-h1">
-            Doctor <em>console</em>
+            {doctor ? (
+              <>
+                {doctor.name}’s <em>console</em>
+              </>
+            ) : (
+              <>
+                Doctor <em>console</em>
+              </>
+            )}
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 4 }}>
+            {doctor
+              ? "Showing this doctor’s patients · waiting is clinic-wide"
+              : "Showing all doctors"}{" "}
             {queue?.meta ??
               `${clinicDate(new Date().toISOString())} · emergencies and urgent patients first · refreshes every 10 seconds`}
           </p>
@@ -125,9 +175,11 @@ export function QueueScreen() {
 
       <div className="rx-grid">
         <div className="nq-list">
-          {items.length === 0 && status !== "error" ? (
+          {(scope ? scoped.length === 0 : items.length === 0) && status !== "error" ? (
             <div className="card" style={{ padding: 18 }}>
-              <b style={{ fontSize: 15 }}>No one is waiting here</b>
+              <b style={{ fontSize: 15 }}>
+                {doctor ? `No one is waiting for ${doctor.name}` : "No one is waiting here"}
+              </b>
               <p className="t-cap" style={{ marginTop: 4 }}>
                 The queue is empty. Patients appear here as they check in at the kiosk or reception.
               </p>
@@ -216,7 +268,7 @@ export function QueueScreen() {
         doctors={doctors}
         onCheckIn={(details) => {
           void dispatch(checkIn(details)).then(() => {
-            void dispatch(loadQueue());
+            void dispatch(loadQueue(scope ?? undefined));
           });
         }}
       />

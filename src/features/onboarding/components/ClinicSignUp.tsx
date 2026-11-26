@@ -8,7 +8,11 @@ import { ClinicStep } from "@/features/onboarding/steps/ClinicStep";
 import { LocationStep } from "@/features/onboarding/steps/LocationStep";
 import { RoleStep } from "@/features/onboarding/steps/RoleStep";
 import { AgreementsStep } from "@/features/onboarding/steps/AgreementsStep";
-import { CodeStep, YouStep } from "@/features/onboarding/steps/YouStep";
+import { YouStep } from "@/features/onboarding/steps/YouStep";
+import { CodeStep } from "@/features/onboarding/steps/CodeStep";
+import { signupClinic } from "@/features/onboarding/api/signup";
+import { ApiError } from "@/services/api";
+import { auth } from "@/services/api/client";
 import {
   AGREEMENTS,
   EMPTY_FORM,
@@ -35,8 +39,14 @@ export function ClinicSignUp() {
   const [form, setForm] = useState<Form>(EMPTY_FORM);
   const [code, setCode] = useState("");
   const [agreed, setAgreed] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
-  const set: SetField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const set: SetField = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    // a different number is a different code
+    if (key === "mobile") setCode("");
+  };
 
   const stepIndex = Math.max(
     0,
@@ -94,6 +104,34 @@ export function ClinicSignUp() {
 
   const toggleAgreement = (id: string) =>
     setAgreed((list) => (list.includes(id) ? list.filter((item) => item !== id) : [...list, id]));
+
+  /**
+   * Create the clinic, and sign the owner in.
+   *
+   * The service makes the clinic, its own schema and the booking link, and
+   * answers with the session. The session is kept the way the rest of the app
+   * keeps it — in memory and in the session storage, so a refresh does not
+   * sign the owner out and a closed tab does.
+   */
+  const finish = async () => {
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const result = await signupClinic(form);
+      auth.set(result.accessToken);
+      navigate("/dashboard", {
+        state: { clinicName: result.clinicName, bookingUrl: result.bookingUrl },
+      });
+    } catch (reason) {
+      setCreateError(
+        reason instanceof ApiError && reason.message
+          ? reason.message
+          : "The clinic could not be created. Check the connection and try again.",
+      );
+    } finally {
+      setCreating(false);
+    }
+  };
 
   if (stage === "intro") {
     return <Intro onStart={() => goTo("you")} />;
@@ -175,8 +213,10 @@ export function ClinicSignUp() {
               agreed={agreed}
               onToggle={toggleAgreement}
               onBack={backward}
-              onFinish={() => navigate("/dashboard")}
+              onFinish={finish}
               valid={valid}
+              busy={creating}
+              error={createError}
             />
           ) : null}
         </div>
