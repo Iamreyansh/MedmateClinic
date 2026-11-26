@@ -28,6 +28,7 @@ import { NurseScreen } from "@/features/nurse";
 import { LabScreen } from "@/features/lab";
 import { RequireSession } from "@/app/routes/RequireSession";
 import { NotFoundScreen } from "@/app/routes/NotFoundScreen";
+import { mobileRoutes } from "@/app/routes/mobile";
 
 /**
  * The surfaces a clinic tablet never opens.
@@ -133,6 +134,11 @@ export const routes: RouteObject[] = [
 
   { path: "/fidelity", element: <DevToolsScreen /> },
   { path: "*", element: <NotFoundScreen /> },
+
+  // The phone app: the staff app, the patient's own screens and the
+  // sign-up. It is appended, not woven in, so the desktop routes keep the
+  // order they had.
+  ...mobileRoutes,
 ];
 
 /** One route, behind the session. */
