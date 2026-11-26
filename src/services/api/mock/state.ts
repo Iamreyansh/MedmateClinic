@@ -671,6 +671,27 @@ export type MockLabOrder = {
 
 export const labOrders: MockLabOrder[] = [
   {
+    // Written by the doctor and not collected yet. The service counts it as
+    // open work, so the bench here carries one too: a bench that hid the
+    // unreported orders left the technician looking at an empty bench.
+    id: "lo_ishaan_lipid",
+    visitId: "vs_ishaan",
+    prescriptionId: "rx_vs_ishaan",
+    patientId: "pt_ishaan",
+    testName: "Lipid profile",
+    status: "ordered",
+    sampleNo: null,
+    partner: null,
+    orderedBy: "dr_ananya",
+    collectedAt: null,
+    reportedAt: null,
+    value: null,
+    reference: null,
+    abnormal: false,
+    critical: false,
+    note: null,
+  },
+  {
     id: "lo_kavya_cbc",
     visitId: "vs_kavya",
     prescriptionId: "rx_vs_kavya",

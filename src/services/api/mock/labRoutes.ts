@@ -87,7 +87,13 @@ export function registerLabRoutes() {
     const open = labOrders.filter((order) => order.status !== "reported");
     const reported = labOrders.filter((order) => order.status === "reported");
     const openPayload = open.map(orderPayload);
-    const reportedPayload = reported.map(orderPayload);
+    // Newest first, the way the service pages them: today's results sit at
+    // the top of the "Reported today" tab, not at the bottom of three months.
+    // A list that is ordered wrongly reads as a list that is missing.
+    const reportedPayload = reported
+      .slice()
+      .sort((a, b) => String(b.reportedAt ?? "").localeCompare(String(a.reportedAt ?? "")))
+      .map(orderPayload);
 
     return {
       counts: {
@@ -95,7 +101,10 @@ export function registerLabRoutes() {
         inLab: open.filter((order) => order.status === "in_lab").length,
         sentOut: open.filter((order) => order.status === "sent_out").length,
         reportedToday: reported.length,
-        abnormalToday: reportedPayload.filter((order) => order.abnormal).length,
+        // The count is made over every reported result, not over the page in
+        // front of the technician: the same rule the per-row flag uses, so
+        // the two cannot drift apart.
+        abnormalToday: reported.filter((order) => order.abnormal).length,
       },
       // An order that has been written but not collected is still on the
       // bench — it must not vanish between the doctor and the technician.

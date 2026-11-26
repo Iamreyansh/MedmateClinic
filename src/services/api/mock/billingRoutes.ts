@@ -5,6 +5,7 @@
  * supply that prints for the patient.
  */
 
+import { ApiError } from "@/services/api/client";
 import { mock } from "@/services/api/mock/router";
 import { invoices, patients, visits } from "@/services/api/mock/state";
 import { requireSession } from "@/services/api/mock/guard";
@@ -16,6 +17,9 @@ function patientByVisit(visitId: string) {
   if (!visit) return patients[0];
   return patients.find((person) => person.id === visit.patientId) ?? patients[0];
 }
+
+/** The clinic's today — the day the till's numbers are about. */
+const TODAY = "2026-11-25";
 
 export function registerBillingRoutes() {
   mock.on("GET", "/clinic/billing", (_body, context) => {
@@ -56,17 +60,40 @@ export function registerBillingRoutes() {
 
     // The service filters and pages the bills: a range of days, a status, a
     // payment mode. No range at all means every bill the clinic has.
+    //
+    // The status is the service's own vocabulary. `to_collect` — and its
+    // alias `unpaid` — `paid` and `refunded` are filters; `all` asks for no
+    // filter at all, and `today` asks for this day's bills. A status the
+    // service does not know is a 400, not an empty page: a screen that asked
+    // for something impossible must be told so.
     const statusOf = (bill: (typeof invoices)[number]) =>
       bill.status === "paid" ? "paid" : bill.status === "refunded" ? "refunded" : "to_collect";
+    const wanted = (status ?? "").trim().toLowerCase();
+    if (!["", "all", "today", "to_collect", "unpaid", "paid", "refunded"].includes(wanted)) {
+      throw new ApiError(400, "That is not a bill status.");
+    }
+    const statusFilter =
+      wanted === "to_collect" || wanted === "unpaid"
+        ? "to_collect"
+        : wanted === "paid"
+          ? "paid"
+          : wanted === "refunded"
+            ? "refunded"
+            : "";
+    // The shorthand speaks only when no range was named — the rule the
+    // service uses, so `from`/`to` and `status=today` together are the
+    // range and the window both.
+    const todayOnly = wanted === "today" && !from && !to;
     const inRange = (bill: (typeof invoices)[number]) => {
       const created = bill.createdAt ?? "";
+      if (todayOnly && !created.startsWith(TODAY)) return false;
       if (from && !created.startsWith(from)) return false;
       if (to && !created.startsWith(to)) return false;
       return true;
     };
     const everyBill = [...paid, ...pending, ...refunded]
       .filter(inRange)
-      .filter((bill) => (status ? statusOf(bill) === status : true))
+      .filter((bill) => (statusFilter ? statusOf(bill) === statusFilter : true))
       .filter((bill) => (mode ? bill.payMode === mode : true));
     const page = everyBill.slice(offset, offset + limit);
     const bills = page.map((bill) => {
@@ -109,7 +136,7 @@ export function registerBillingRoutes() {
     });
 
     return {
-      day: "2026-11-25",
+      day: TODAY,
       dayLabel: "25 November 2026",
       summary: {
         collected,
@@ -119,7 +146,7 @@ export function registerBillingRoutes() {
         refundCount: refunded.length,
         refundAmount,
         // The bills raised today — not every bill the clinic has ever raised.
-        dayBills: invoices.filter((bill) => (bill.createdAt ?? "").startsWith("2026-11-25")).length,
+        dayBills: invoices.filter((bill) => (bill.createdAt ?? "").startsWith(TODAY)).length,
       },
       byMode,
       pending: pendingItems,
