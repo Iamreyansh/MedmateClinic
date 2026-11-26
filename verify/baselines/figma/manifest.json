@@ -64,10 +64,10 @@
     },
     "frameCount": 138,
     "byStatus": {
-      "built": 74,
-      "partial": 5,
-      "missing": 58,
-      "placeholder": 1
+      "built": 135,
+      "partial": 1,
+      "placeholder": 0,
+      "missing": 2
     },
     "frames": [
       {
@@ -95,7 +95,7 @@
         "frame": "Screen / Patient record (doctor)",
         "node": "21:2977",
         "page": "Screens",
-        "route": "/patients",
+        "route": "/patients/:id",
         "status": "built"
       },
       {
@@ -256,288 +256,288 @@
         "frame": "Mobile / Dashboard (owner)",
         "node": "24:3",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/dashboard",
+        "status": "built"
       },
       {
         "frame": "Mobile / Doctor Console — consult",
         "node": "24:136",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/console",
+        "status": "built"
       },
       {
         "frame": "Mobile / Inbox (doctor)",
         "node": "24:257",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/inbox",
+        "status": "built"
       },
       {
         "frame": "Mobile / Patient record (doctor)",
         "node": "24:350",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/patients/:id",
+        "status": "built"
       },
       {
         "frame": "Mobile / Teleconsult (doctor)",
         "node": "24:449",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/teleconsult",
+        "status": "built"
       },
       {
         "frame": "Mobile / My templates (doctor)",
         "node": "24:538",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/templates",
+        "status": "built"
       },
       {
         "frame": "Mobile / Reception Desk (front desk)",
         "node": "28:319",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/desk",
+        "status": "built"
       },
       {
         "frame": "Mobile / Billing & POS (front desk)",
         "node": "28:449",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/billing",
+        "status": "built"
       },
       {
         "frame": "Mobile / Appointments (front desk)",
         "node": "28:555",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/schedule",
+        "status": "built"
       },
       {
         "frame": "Mobile / Patients (front desk)",
         "node": "28:666",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/patients",
+        "status": "built"
       },
       {
         "frame": "Mobile / Patient messages (front desk)",
         "node": "28:781",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/messages",
+        "status": "built"
       },
       {
         "frame": "Mobile / Nurse Station (nurse)",
         "node": "28:874",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/nurse",
+        "status": "built"
       },
       {
         "frame": "Mobile / Lab & Diagnostics (lab technician)",
         "node": "28:986",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/lab",
+        "status": "built"
       },
       {
         "frame": "Mobile / Reports (owner)",
         "node": "30:670",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/reports",
+        "status": "built"
       },
       {
         "frame": "Mobile / Doctors (clinic admin)",
         "node": "30:775",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/doctors",
+        "status": "built"
       },
       {
         "frame": "Mobile / Locations (clinic admin)",
         "node": "30:894",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/locations",
+        "status": "built"
       },
       {
         "frame": "Mobile / Staff & roles — Roles & access (clinic admin)",
         "node": "30:994",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/staff",
+        "status": "built"
       },
       {
         "frame": "Mobile / Subscription (owner)",
         "node": "30:1142",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/subscription",
+        "status": "built"
       },
       {
         "frame": "Mobile / Settings (owner)",
         "node": "30:1275",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/settings",
+        "status": "built"
       },
       {
         "frame": "Mobile / Landing page (visitor)",
         "node": "31:991",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m",
+        "status": "built"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 1 of 5",
         "node": "31:1201",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/signup",
+        "status": "built"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 2 of 5",
         "node": "31:1232",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/signup",
+        "status": "built"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 3 of 5",
         "node": "31:1274",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/signup",
+        "status": "built"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 4 of 5",
         "node": "31:1312",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/signup",
+        "status": "built"
       },
       {
         "frame": "Mobile / Clinic sign-up — step 5 of 5",
         "node": "31:1353",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/signup",
+        "status": "built"
       },
       {
         "frame": "Patient phone / 1 Welcome",
         "node": "33:1163",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/checkin",
+        "status": "built"
       },
       {
         "frame": "Patient phone / 2 Mobile number",
         "node": "33:1217",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/checkin",
+        "status": "built"
       },
       {
         "frame": "Patient phone / 3 Code",
         "node": "33:1263",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/checkin",
+        "status": "built"
       },
       {
         "frame": "Patient phone / 4 Patient",
         "node": "33:1317",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/checkin",
+        "status": "built"
       },
       {
         "frame": "Patient phone / 5 Doctor",
         "node": "33:1385",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/checkin",
+        "status": "built"
       },
       {
         "frame": "Patient phone / 6 Pay",
         "node": "33:1460",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/checkin",
+        "status": "built"
       },
       {
         "frame": "Patient phone / 7 Checked in",
         "node": "33:1532",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/checkin",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Book 1 — Doctor & time",
         "node": "54:1217",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/book",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Book 2 — Your details",
         "node": "54:1318",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/book/details",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Book 3 — Confirmed",
         "node": "54:1383",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/book/confirmed",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Manage booking",
         "node": "54:1437",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/manage/:key",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Live token",
         "node": "54:1488",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/visit/:key",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Symptoms form",
         "node": "55:1287",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/symptoms/:key",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Legal document",
         "node": "55:1350",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/legal",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Verify prescription",
         "node": "55:1393",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/verify/:id",
+        "status": "built"
       },
       {
         "frame": "Patient phone / Verify certificate",
         "node": "55:1427",
         "page": "Mobile",
-        "route": null,
-        "status": "missing"
+        "route": "/m/verify/certificate/:id",
+        "status": "built"
       },
       {
         "frame": "Book online — 1 Doctor & time",
@@ -586,7 +586,7 @@
         "node": "51:3494",
         "page": "Sub-pages & dialogs",
         "route": "/legal",
-        "status": "placeholder"
+        "status": "built"
       },
       {
         "frame": "Verify prescription (public)",
@@ -600,7 +600,7 @@
         "node": "37:773",
         "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Dialog — Check in a patient",
@@ -648,50 +648,50 @@
         "frame": "Dialog — Add someone",
         "node": "41:1541",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/staff",
+        "status": "built"
       },
       {
         "frame": "Dialog — Edit member",
         "node": "41:1595",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/staff",
+        "status": "built"
       },
       {
         "frame": "Dialog — Person access",
         "node": "41:1649",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/staff",
+        "status": "built"
       },
       {
         "frame": "Dialog — New profile",
         "node": "41:1725",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/staff",
+        "status": "built"
       },
       {
         "frame": "Dialog — Add a doctor",
         "node": "41:1768",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/doctors",
+        "status": "built"
       },
       {
         "frame": "Dialog — Hours & leave",
         "node": "41:1835",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/doctors",
+        "status": "built"
       },
       {
         "frame": "Dialog — Add a branch",
         "node": "41:1906",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/locations",
+        "status": "built"
       },
       {
         "frame": "Dialog — Write a certificate",
@@ -739,8 +739,8 @@
         "frame": "Dialog — Add a pharmacy",
         "node": "45:3242",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/settings",
+        "status": "built"
       },
       {
         "frame": "Dialog — Checkout",
@@ -760,22 +760,22 @@
         "frame": "Dialog — My account",
         "node": "58:3661",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/account",
+        "status": "built"
       },
       {
         "frame": "Dialog — Edit doctor",
         "node": "58:3710",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/doctors",
+        "status": "built"
       },
       {
         "frame": "Dialog — Edit branch",
         "node": "58:3770",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/locations",
+        "status": "built"
       },
       {
         "frame": "Dialog — Send a message",
@@ -823,36 +823,36 @@
         "frame": "Settings — My PIN & device",
         "node": "43:1942",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "partial"
+        "route": "/settings",
+        "status": "built"
       },
       {
         "frame": "Settings — Letterhead",
         "node": "43:2193",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/settings",
+        "status": "built"
       },
       {
         "frame": "Settings — Pharmacies",
         "node": "43:2454",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "partial"
+        "route": "/settings",
+        "status": "built"
       },
       {
         "frame": "Settings — Agreements",
         "node": "43:2708",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "missing"
+        "route": "/settings",
+        "status": "built"
       },
       {
         "frame": "Settings — Readiness check",
         "node": "43:2952",
         "page": "Sub-pages & dialogs",
-        "route": null,
-        "status": "partial"
+        "route": "/settings",
+        "status": "built"
       },
       {
         "frame": "Kiosk — open on this device (staff)",
@@ -957,7 +957,7 @@
         "node": "58:3190",
         "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "missing"
+        "status": "built"
       },
       {
         "frame": "Doctor Console — queue (sub-page)",
@@ -1020,7 +1020,7 @@
         "node": "42:1402",
         "page": "Sub-pages & dialogs",
         "route": null,
-        "status": "partial"
+        "status": "built"
       },
       {
         "frame": "Reports — Clinical (doctors only)",

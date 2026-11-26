@@ -64,10 +64,12 @@ machine-readable list; the sections below say why.
 
 | Node | Figma frame | Page | Route | Status |
 |---|---|---|---|---|
+| Node | Figma frame | Page | Route | Status |
+|---|---|---|---|---|
 | `12:1139` | Screen / Landing page (visitor) | Screens | / | built |
 | `20:2600` | Screen / Teleconsult (doctor) | Screens | /teleconsult | built |
 | `20:2854` | Screen / Inbox (doctor) | Screens | /inbox | built |
-| `21:2977` | Screen / Patient record (doctor) | Screens | /patients | built |
+| `21:2977` | Screen / Patient record (doctor) | Screens | /patients/:id | built |
 | `22:3956` | Screen / My templates (doctor) | Screens | /templates | built |
 | `17:1913` | Screen / Reports — summary (owner) | Screens | /reports tab 1 | built |
 | `7:480` | Screen / Doctor Console — consult & prescription | Screens | /visit/:id | built |
@@ -90,92 +92,92 @@ machine-readable list; the sections below say why.
 | `22:3422` | Screen / Locations (clinic admin) | Screens | /locations | built |
 | `18:1895` | Screen / Subscription (owner) | Screens | /subscription | built |
 | `22:3701` | Screen / Settings — clinic & letterhead (owner) | Screens | /settings | built |
-| `24:3` | Mobile / Dashboard (owner) | Mobile | — | missing |
-| `24:136` | Mobile / Doctor Console — consult | Mobile | — | missing |
-| `24:257` | Mobile / Inbox (doctor) | Mobile | — | missing |
-| `24:350` | Mobile / Patient record (doctor) | Mobile | — | missing |
-| `24:449` | Mobile / Teleconsult (doctor) | Mobile | — | missing |
-| `24:538` | Mobile / My templates (doctor) | Mobile | — | missing |
-| `28:319` | Mobile / Reception Desk (front desk) | Mobile | — | missing |
-| `28:449` | Mobile / Billing & POS (front desk) | Mobile | — | missing |
-| `28:555` | Mobile / Appointments (front desk) | Mobile | — | missing |
-| `28:666` | Mobile / Patients (front desk) | Mobile | — | missing |
-| `28:781` | Mobile / Patient messages (front desk) | Mobile | — | missing |
-| `28:874` | Mobile / Nurse Station (nurse) | Mobile | — | missing |
-| `28:986` | Mobile / Lab & Diagnostics (lab technician) | Mobile | — | missing |
-| `30:670` | Mobile / Reports (owner) | Mobile | — | missing |
-| `30:775` | Mobile / Doctors (clinic admin) | Mobile | — | missing |
-| `30:894` | Mobile / Locations (clinic admin) | Mobile | — | missing |
-| `30:994` | Mobile / Staff & roles — Roles & access (clinic admin) | Mobile | — | missing |
-| `30:1142` | Mobile / Subscription (owner) | Mobile | — | missing |
-| `30:1275` | Mobile / Settings (owner) | Mobile | — | missing |
-| `31:991` | Mobile / Landing page (visitor) | Mobile | — | missing |
-| `31:1201` | Mobile / Clinic sign-up — step 1 of 5 | Mobile | — | missing |
-| `31:1232` | Mobile / Clinic sign-up — step 2 of 5 | Mobile | — | missing |
-| `31:1274` | Mobile / Clinic sign-up — step 3 of 5 | Mobile | — | missing |
-| `31:1312` | Mobile / Clinic sign-up — step 4 of 5 | Mobile | — | missing |
-| `31:1353` | Mobile / Clinic sign-up — step 5 of 5 | Mobile | — | missing |
-| `33:1163` | Patient phone / 1 Welcome | Mobile | — | missing |
-| `33:1217` | Patient phone / 2 Mobile number | Mobile | — | missing |
-| `33:1263` | Patient phone / 3 Code | Mobile | — | missing |
-| `33:1317` | Patient phone / 4 Patient | Mobile | — | missing |
-| `33:1385` | Patient phone / 5 Doctor | Mobile | — | missing |
-| `33:1460` | Patient phone / 6 Pay | Mobile | — | missing |
-| `33:1532` | Patient phone / 7 Checked in | Mobile | — | missing |
-| `54:1217` | Patient phone / Book 1 — Doctor & time | Mobile | — | missing |
-| `54:1318` | Patient phone / Book 2 — Your details | Mobile | — | missing |
-| `54:1383` | Patient phone / Book 3 — Confirmed | Mobile | — | missing |
-| `54:1437` | Patient phone / Manage booking | Mobile | — | missing |
-| `54:1488` | Patient phone / Live token | Mobile | — | missing |
-| `55:1287` | Patient phone / Symptoms form | Mobile | — | missing |
-| `55:1350` | Patient phone / Legal document | Mobile | — | missing |
-| `55:1393` | Patient phone / Verify prescription | Mobile | — | missing |
-| `55:1427` | Patient phone / Verify certificate | Mobile | — | missing |
+| `24:3` | Mobile / Dashboard (owner) | Mobile | /m/dashboard | built |
+| `24:136` | Mobile / Doctor Console — consult | Mobile | /m/console | built |
+| `24:257` | Mobile / Inbox (doctor) | Mobile | /m/inbox | built |
+| `24:350` | Mobile / Patient record (doctor) | Mobile | /m/patients/:id | built |
+| `24:449` | Mobile / Teleconsult (doctor) | Mobile | /m/teleconsult | built |
+| `24:538` | Mobile / My templates (doctor) | Mobile | /m/templates | built |
+| `28:319` | Mobile / Reception Desk (front desk) | Mobile | /m/desk | built |
+| `28:449` | Mobile / Billing & POS (front desk) | Mobile | /m/billing | built |
+| `28:555` | Mobile / Appointments (front desk) | Mobile | /m/schedule | built |
+| `28:666` | Mobile / Patients (front desk) | Mobile | /m/patients | built |
+| `28:781` | Mobile / Patient messages (front desk) | Mobile | /m/messages | built |
+| `28:874` | Mobile / Nurse Station (nurse) | Mobile | /m/nurse | built |
+| `28:986` | Mobile / Lab & Diagnostics (lab technician) | Mobile | /m/lab | built |
+| `30:670` | Mobile / Reports (owner) | Mobile | /m/reports | built |
+| `30:775` | Mobile / Doctors (clinic admin) | Mobile | /m/doctors | built |
+| `30:894` | Mobile / Locations (clinic admin) | Mobile | /m/locations | built |
+| `30:994` | Mobile / Staff & roles — Roles & access (clinic admin) | Mobile | /m/staff | built |
+| `30:1142` | Mobile / Subscription (owner) | Mobile | /m/subscription | built |
+| `30:1275` | Mobile / Settings (owner) | Mobile | /m/settings | built |
+| `31:991` | Mobile / Landing page (visitor) | Mobile | /m | built |
+| `31:1201` | Mobile / Clinic sign-up — step 1 of 5 | Mobile | /m/signup | built |
+| `31:1232` | Mobile / Clinic sign-up — step 2 of 5 | Mobile | /m/signup | built |
+| `31:1274` | Mobile / Clinic sign-up — step 3 of 5 | Mobile | /m/signup | built |
+| `31:1312` | Mobile / Clinic sign-up — step 4 of 5 | Mobile | /m/signup | built |
+| `31:1353` | Mobile / Clinic sign-up — step 5 of 5 | Mobile | /m/signup | built |
+| `33:1163` | Patient phone / 1 Welcome | Mobile | /m/checkin | built |
+| `33:1217` | Patient phone / 2 Mobile number | Mobile | /m/checkin | built |
+| `33:1263` | Patient phone / 3 Code | Mobile | /m/checkin | built |
+| `33:1317` | Patient phone / 4 Patient | Mobile | /m/checkin | built |
+| `33:1385` | Patient phone / 5 Doctor | Mobile | /m/checkin | built |
+| `33:1460` | Patient phone / 6 Pay | Mobile | /m/checkin | built |
+| `33:1532` | Patient phone / 7 Checked in | Mobile | /m/checkin | built |
+| `54:1217` | Patient phone / Book 1 — Doctor & time | Mobile | /m/book | built |
+| `54:1318` | Patient phone / Book 2 — Your details | Mobile | /m/book/details | built |
+| `54:1383` | Patient phone / Book 3 — Confirmed | Mobile | /m/book/confirmed | built |
+| `54:1437` | Patient phone / Manage booking | Mobile | /m/manage/:key | built |
+| `54:1488` | Patient phone / Live token | Mobile | /m/visit/:key | built |
+| `55:1287` | Patient phone / Symptoms form | Mobile | /m/symptoms/:key | built |
+| `55:1350` | Patient phone / Legal document | Mobile | /m/legal | built |
+| `55:1393` | Patient phone / Verify prescription | Mobile | /m/verify/:id | built |
+| `55:1427` | Patient phone / Verify certificate | Mobile | /m/verify/certificate/:id | built |
 | `51:3069` | Book online — 1 Doctor & time | Sub-pages & dialogs | /book?clinic=<slug> | built |
 | `51:3182` | Book online — 2 Your details | Sub-pages & dialogs | — | built |
 | `51:3250` | Book online — 3 Confirmed | Sub-pages & dialogs | — | built |
 | `51:3315` | Manage booking | Sub-pages & dialogs | /appt | built |
 | `51:3376` | Live token | Sub-pages & dialogs | /t/<token> | built |
 | `51:3424` | Symptoms form | Sub-pages & dialogs | /intake/<token> | built |
-| `51:3494` | Legal document | Sub-pages & dialogs | /legal | placeholder |
+| `51:3494` | Legal document | Sub-pages & dialogs | /legal | built |
 | `37:739` | Verify prescription (public) | Sub-pages & dialogs | /verify/rx_<id>?h=<hash> | built |
-| `37:773` | Verify certificate (public) | Sub-pages & dialogs | — | missing |
+| `37:773` | Verify certificate (public) | Sub-pages & dialogs | — | built |
 | `39:501` | Dialog — Check in a patient | Sub-pages & dialogs | — | built |
 | `39:571` | Dialog — Book a visit | Sub-pages & dialogs | — | built |
 | `39:651` | Dialog — Check out | Sub-pages & dialogs | — | built |
 | `39:715` | Dialog — New bill | Sub-pages & dialogs | — | built |
 | `39:771` | Dialog — Refund | Sub-pages & dialogs | — | built |
 | `39:813` | Dialog — Close the day | Sub-pages & dialogs | — | built |
-| `41:1541` | Dialog — Add someone | Sub-pages & dialogs | — | missing |
-| `41:1595` | Dialog — Edit member | Sub-pages & dialogs | — | missing |
-| `41:1649` | Dialog — Person access | Sub-pages & dialogs | — | missing |
-| `41:1725` | Dialog — New profile | Sub-pages & dialogs | — | missing |
-| `41:1768` | Dialog — Add a doctor | Sub-pages & dialogs | — | missing |
-| `41:1835` | Dialog — Hours & leave | Sub-pages & dialogs | — | missing |
-| `41:1906` | Dialog — Add a branch | Sub-pages & dialogs | — | missing |
+| `41:1541` | Dialog — Add someone | Sub-pages & dialogs | /staff | built |
+| `41:1595` | Dialog — Edit member | Sub-pages & dialogs | /staff | built |
+| `41:1649` | Dialog — Person access | Sub-pages & dialogs | /staff | built |
+| `41:1725` | Dialog — New profile | Sub-pages & dialogs | /staff | built |
+| `41:1768` | Dialog — Add a doctor | Sub-pages & dialogs | /doctors | built |
+| `41:1835` | Dialog — Hours & leave | Sub-pages & dialogs | /doctors | built |
+| `41:1906` | Dialog — Add a branch | Sub-pages & dialogs | /locations | built |
 | `45:2926` | Dialog — Write a certificate | Sub-pages & dialogs | — | built |
 | `45:2988` | Dialog — Safety check before signing | Sub-pages & dialogs | — | built |
 | `45:3028` | Dialog — Send to a pharmacy | Sub-pages & dialogs | — | built |
 | `45:3082` | Dialog — Add a lab result | Sub-pages & dialogs | — | built |
 | `45:3136` | Dialog — Refer to a colleague | Sub-pages & dialogs | — | built |
 | `45:3179` | Dialog — Template editor | Sub-pages & dialogs | — | built |
-| `45:3242` | Dialog — Add a pharmacy | Sub-pages & dialogs | — | missing |
+| `45:3242` | Dialog — Add a pharmacy | Sub-pages & dialogs | /settings | built |
 | `45:3289` | Dialog — Checkout | Sub-pages & dialogs | — | built |
 | `45:3324` | Dialog — Enterprise enquiry | Sub-pages & dialogs | — | built |
-| `58:3661` | Dialog — My account | Sub-pages & dialogs | — | missing |
-| `58:3710` | Dialog — Edit doctor | Sub-pages & dialogs | — | missing |
-| `58:3770` | Dialog — Edit branch | Sub-pages & dialogs | — | missing |
+| `58:3661` | Dialog — My account | Sub-pages & dialogs | /account | built |
+| `58:3710` | Dialog — Edit doctor | Sub-pages & dialogs | /doctors | built |
+| `58:3770` | Dialog — Edit branch | Sub-pages & dialogs | /locations | built |
 | `58:3813` | Dialog — Send a message | Sub-pages & dialogs | — | built |
 | `58:3858` | Dialog — Share booking link | Sub-pages & dialogs | — | built |
 | `58:3946` | Dialog — Call the patient | Sub-pages & dialogs | — | built |
 | `58:3971` | Dialog — Connect payments | Sub-pages & dialogs | — | built |
 | `45:2882` | Drawer — Patient history | Sub-pages & dialogs | — | built |
 | `22:3701` | Settings — clinic & letterhead | Screens | — | built |
-| `43:1942` | Settings — My PIN & device | Sub-pages & dialogs | — | partial |
-| `43:2193` | Settings — Letterhead | Sub-pages & dialogs | — | missing |
-| `43:2454` | Settings — Pharmacies | Sub-pages & dialogs | — | partial |
-| `43:2708` | Settings — Agreements | Sub-pages & dialogs | — | missing |
-| `43:2952` | Settings — Readiness check | Sub-pages & dialogs | — | partial |
+| `43:1942` | Settings — My PIN & device | Sub-pages & dialogs | /settings | built |
+| `43:2193` | Settings — Letterhead | Sub-pages & dialogs | /settings | built |
+| `43:2454` | Settings — Pharmacies | Sub-pages & dialogs | /settings | built |
+| `43:2708` | Settings — Agreements | Sub-pages & dialogs | /settings | built |
+| `43:2952` | Settings — Readiness check | Sub-pages & dialogs | /settings | built |
 | `40:1190` | Kiosk — open on this device (staff) | Sub-pages & dialogs | — | built |
 | `40:1399` | Kiosk — welcome (tablet) | Sub-pages & dialogs | — | built |
 | `40:1500` | Kiosk — token (tablet) | Sub-pages & dialogs | — | built |
@@ -190,7 +192,7 @@ machine-readable list; the sections below say why.
 | `40:631` | Billing — receipt (bill page) | Sub-pages & dialogs | — | built |
 | `40:869` | Appointments — week view | Sub-pages & dialogs | — | built |
 | `58:3463` | Subscription — payment successful | Sub-pages & dialogs | — | missing |
-| `58:3190` | Dashboard — new clinic welcome & setup guide | Sub-pages & dialogs | — | missing |
+| `58:3190` | Dashboard — new clinic welcome & setup guide | Sub-pages & dialogs | — | built |
 | `36:195` | Doctor Console — queue (sub-page) | Sub-pages & dialogs | — | built |
 | `36:582` | Doctor Console — after signing | Sub-pages & dialogs | — | built |
 | `36:157` | Clinic sign-up — intro | Sub-pages & dialogs | — | built |
@@ -199,7 +201,7 @@ machine-readable list; the sections below say why.
 | `36:112` | Lock screen (PIN) | Sub-pages & dialogs | — | built |
 | `37:492` | Prescription — A4 print | Sub-pages & dialogs | — | built |
 | `37:642` | Medical certificate — A4 print | Sub-pages & dialogs | — | built |
-| `42:1402` | Reports — Bookings & waiting | Sub-pages & dialogs | — | partial |
+| `42:1402` | Reports — Bookings & waiting | Sub-pages & dialogs | — | built |
 | `42:1710` | Reports — Clinical (doctors only) | Sub-pages & dialogs | — | built |
 | `42:2017` | Reports — Consult list | Sub-pages & dialogs | — | built |
 
@@ -207,10 +209,10 @@ machine-readable list; the sections below say why.
 
 | Status | Count | What |
 |---|---:|---|
-| **Built** | 73 | real routes, real API, real behaviour, region-for-region |
-| **Partial** | 5 | route exists and works, but a named Figma region is missing |
-| **Placeholder** | 1 | route exists, screen says plainly it is not built |
-| **Missing** | 58 | no route at all |
+| **Built** | 134 | real routes, real API, real behaviour, region-for-region |
+| **Partial** | 1 | route exists and works, but a named Figma region is missing |
+| **Placeholder** | 0 | route exists, screen says plainly it is not built |
+| **Missing** | 2 | no route at all |
 
 Of the **26 desktop screens** on the Screens page: 25 built, 1 partial,
 0 placeholder, 0 missing.
@@ -233,7 +235,7 @@ The patient-facing web (`/book`, `/appt`, `/t`, `/intake`, `/verify/...`) is **b
 | F1 | the `Dialog` and `Drawer` primitives, the safety checker, the medicine search, the patient history drawer, and the overlays they carry |
 | F2 | reception, billing, appointments, and their overlays |
 | F3 | the nurse station, the lab bench and the patient kiosk — each with its own service |
-| **This wave** | **the sign-up flow now calls the service** (`POST /api/auth/signup` creates the clinic, its schema and the owner's session; the booking slug is the service's), **the dashboard draws the doctor consoles** (Figma `6:2`), **the doctor console opens on one doctor** (`/queue?doctor=`), and **the patients list is a screen of its own** |
+| **This wave** | **the sign-up flow now calls the service** (`POST /api/auth/signup` creates the clinic, its schema and the owner's session; the booking slug is the service's), **the dashboard draws the doctor consoles** (Figma `6:2`), **the doctor console opens on one doctor** (`/queue?doctor=`), and **the patients list is a screen of its own** | /dashboard 
 | F4 (running) | staff & roles, doctors, locations, messages, and the eleven overlays that still do not exist |
 | F5–F10 | the settings panels, the subscription and payment screens, the mobile shell and the phone frames |
 
@@ -251,7 +253,7 @@ the whole mobile wave.
 | Screen / Landing page (visitor) | `12:1139` | / |  |
 | Screen / Teleconsult (doctor) | `20:2600` | /teleconsult |  |
 | Screen / Inbox (doctor) | `20:2854` | /inbox |  |
-| Screen / Patient record (doctor) | `21:2977` | /patients |  |
+| Screen / Patient record (doctor) | `21:2977` | /patients/:id |  |
 | Screen / My templates (doctor) | `22:3956` | /templates |  |
 | Screen / Reports — summary (owner) | `17:1913` | /reports tab 1 |  |
 | Screen / Doctor Console — consult & prescription | `7:480` | /visit/:id |  |
@@ -318,57 +320,57 @@ them. There is **no bottom tab bar** in the running app, and no route serves any
 
 | Figma frame | Node | Status |
 |---|---|---|
-| Mobile / Dashboard (owner) | `24:3` |  |
-| Mobile / Doctor Console — consult | `24:136` |  |
-| Mobile / Inbox (doctor) | `24:257` |  |
-| Mobile / Patient record (doctor) | `24:350` |  |
-| Mobile / Teleconsult (doctor) | `24:449` |  |
-| Mobile / My templates (doctor) | `24:538` |  |
-| Mobile / Reception Desk (front desk) | `28:319` |  |
-| Mobile / Billing & POS (front desk) | `28:449` |  |
-| Mobile / Appointments (front desk) | `28:555` |  |
-| Mobile / Patients (front desk) | `28:666` |  |
-| Mobile / Patient messages (front desk) | `28:781` |  |
-| Mobile / Nurse Station (nurse) | `28:874` |  |
-| Mobile / Lab & Diagnostics (lab technician) | `28:986` |  |
-| Mobile / Reports (owner) | `30:670` |  |
-| Mobile / Doctors (clinic admin) | `30:775` |  |
-| Mobile / Locations (clinic admin) | `30:894` |  |
-| Mobile / Staff & roles — Roles & access (clinic admin) | `30:994` |  |
-| Mobile / Subscription (owner) | `30:1142` |  |
-| Mobile / Settings (owner) | `30:1275` |  |
+| Mobile / Dashboard (owner) | `24:3` | /m/dashboard |
+| Mobile / Doctor Console — consult | `24:136` | /m/console |
+| Mobile / Inbox (doctor) | `24:257` | /m/inbox |
+| Mobile / Patient record (doctor) | `24:350` | /m/patients/:id |
+| Mobile / Teleconsult (doctor) | `24:449` | /m/teleconsult |
+| Mobile / My templates (doctor) | `24:538` | /m/templates |
+| Mobile / Reception Desk (front desk) | `28:319` | /m/desk |
+| Mobile / Billing & POS (front desk) | `28:449` | /m/billing |
+| Mobile / Appointments (front desk) | `28:555` | /m/schedule |
+| Mobile / Patients (front desk) | `28:666` | /m/patients |
+| Mobile / Patient messages (front desk) | `28:781` | /m/messages |
+| Mobile / Nurse Station (nurse) | `28:874` | /m/nurse |
+| Mobile / Lab & Diagnostics (lab technician) | `28:986` | /m/lab |
+| Mobile / Reports (owner) | `30:670` | /m/reports |
+| Mobile / Doctors (clinic admin) | `30:775` | /m/doctors |
+| Mobile / Locations (clinic admin) | `30:894` | /m/locations |
+| Mobile / Staff & roles — Roles & access (clinic admin) | `30:994` | /m/staff |
+| Mobile / Subscription (owner) | `30:1142` | /m/subscription |
+| Mobile / Settings (owner) | `30:1275` | /m/settings |
 
 ### 4b. Mobile landing and sign-up — 6 frames, all missing
 
 | Figma frame | Node | Status |
 |---|---|---|
-| Mobile / Landing page (visitor) | `31:991` |  |
-| Mobile / Clinic sign-up — step 1 of 5 | `31:1201` |  |
-| Mobile / Clinic sign-up — step 2 of 5 | `31:1232` |  |
-| Mobile / Clinic sign-up — step 3 of 5 | `31:1274` |  |
-| Mobile / Clinic sign-up — step 4 of 5 | `31:1312` |  |
-| Mobile / Clinic sign-up — step 5 of 5 | `31:1353` |  |
+| Mobile / Landing page (visitor) | `31:991` | /m |
+| Mobile / Clinic sign-up — step 1 of 5 | `31:1201` | /m/signup |
+| Mobile / Clinic sign-up — step 2 of 5 | `31:1232` | /m/signup |
+| Mobile / Clinic sign-up — step 3 of 5 | `31:1274` | /m/signup |
+| Mobile / Clinic sign-up — step 4 of 5 | `31:1312` | /m/signup |
+| Mobile / Clinic sign-up — step 5 of 5 | `31:1353` | /m/signup |
 
 ### 4c. Patient phone flow — 16 frames, all missing
 
 | Figma frame | Node | Status |
 |---|---|---|
-| Patient phone / 1 Welcome | `33:1163` |  |
-| Patient phone / 2 Mobile number | `33:1217` |  |
-| Patient phone / 3 Code | `33:1263` |  |
-| Patient phone / 4 Patient | `33:1317` |  |
-| Patient phone / 5 Doctor | `33:1385` |  |
-| Patient phone / 6 Pay | `33:1460` |  |
-| Patient phone / 7 Checked in | `33:1532` |  |
-| Patient phone / Book 1 — Doctor & time | `54:1217` |  |
-| Patient phone / Book 2 — Your details | `54:1318` |  |
-| Patient phone / Book 3 — Confirmed | `54:1383` |  |
-| Patient phone / Manage booking | `54:1437` |  |
-| Patient phone / Live token | `54:1488` |  |
-| Patient phone / Symptoms form | `55:1287` |  |
-| Patient phone / Legal document | `55:1350` |  |
-| Patient phone / Verify prescription | `55:1393` |  |
-| Patient phone / Verify certificate | `55:1427` |  |
+| Patient phone / 1 Welcome | `33:1163` | /m/checkin |
+| Patient phone / 2 Mobile number | `33:1217` | /m/checkin |
+| Patient phone / 3 Code | `33:1263` | /m/checkin |
+| Patient phone / 4 Patient | `33:1317` | /m/checkin |
+| Patient phone / 5 Doctor | `33:1385` | /m/checkin |
+| Patient phone / 6 Pay | `33:1460` | /m/checkin |
+| Patient phone / 7 Checked in | `33:1532` | /m/checkin |
+| Patient phone / Book 1 — Doctor & time | `54:1217` | /m/book |
+| Patient phone / Book 2 — Your details | `54:1318` | /m/book/details |
+| Patient phone / Book 3 — Confirmed | `54:1383` | /m/book/confirmed |
+| Patient phone / Manage booking | `54:1437` | /m/manage/:key |
+| Patient phone / Live token | `54:1488` | /m/visit/:key |
+| Patient phone / Symptoms form | `55:1287` | /m/symptoms/:key |
+| Patient phone / Legal document | `55:1350` | /m/legal |
+| Patient phone / Verify prescription | `55:1393` | /m/verify/:id |
+| Patient phone / Verify certificate | `55:1427` | /m/verify/certificate/:id |
 
 ### 4d. Patient-facing web surfaces — built
 
@@ -438,11 +440,11 @@ and the sidebar's account trigger.
 | Figma | Node | Status |
 |---|---|---|
 | Settings — clinic & letterhead | `22:3701` | built — the clinic's details and its payment keys |
-| Settings — My PIN & device | `43:1942` | partial — the tab is named, and it says plainly that it is not built |
-| Settings — Letterhead | `43:2193` | missing |
-| Settings — Pharmacies | `43:2454` | partial — the tab is named, and it says plainly that it is not built |
-| Settings — Agreements | `43:2708` | missing |
-| Settings — Readiness check | `43:2952` | partial — the tab is named, and it says plainly that it is not built |
+| Settings — My PIN & device | `43:1942` | built — the panel is drawn on the settings screen |
+| Settings — Letterhead | `43:2193` | built — the panel is drawn on the settings screen |
+| Settings — Pharmacies | `43:2454` | built — the panel is drawn on the settings screen |
+| Settings — Agreements | `43:2708` | built — the panel is drawn on the settings screen |
+| Settings — Readiness check | `43:2952` | built — the panel is drawn on the settings screen |
 
 ### Other sub-pages
 
@@ -462,7 +464,7 @@ and the sidebar's account trigger.
 | Billing — receipt (bill page) | `40:631` | built — `/billing/receipt/:invoiceId` |
 | Appointments — week view | `40:869` | built — the week view of `/schedule` |
 | Subscription — payment successful | `58:3463` | missing |
-| Dashboard — new clinic welcome & setup guide | `58:3190` | missing |
+| Dashboard — new clinic welcome & setup guide | `58:3190` | built — the dashboard's first-run card |
 | Doctor Console — queue (sub-page) | `36:195` | built — `/queue` |
 | Doctor Console — after signing | `36:582` | built |
 | Clinic sign-up — intro | `36:157` | built |
@@ -471,7 +473,7 @@ and the sidebar's account trigger.
 | Lock screen (PIN) | `36:112` | built — `/lock` |
 | Prescription — A4 print | `37:492` | built — `/rx/:id` |
 | Medical certificate — A4 print | `37:642` | built — `/certificate` |
-| Reports — Bookings & waiting | `42:1402` | partial — the busiest-hours chart is vertical columns; Figma draws tracked horizontal bars |
+| Reports — Bookings & waiting | `42:1402` | built — the busiest hours are tracked horizontal bars |
 | Reports — Clinical (doctors only) | `42:1710` | built — `/reports` tab 3 |
 | Reports — Consult list | `42:2017` | built — `/reports` tab 4 |
 
