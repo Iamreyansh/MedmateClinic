@@ -101,6 +101,17 @@ public class ClinicProvisioningService {
                 log.info("seeding the demo clinic's bench and templates");
                 runScript(clinic, schema, "db/demo/V303__demo_lab_and_templates.sql");
             }
+            // The readings the nurse took. The console shows a reading beside
+            // the patient's name, so a clinic with no readings at all leaves
+            // that line blank on every row -- which is not what the mock
+            // shows for the same people.
+            Integer readings =
+                    jdbc.queryForObject(
+                            "select count(*) from " + schema + ".vitals", Integer.class);
+            if (readings != null && readings == 0) {
+                log.info("seeding the demo clinic's readings");
+                runScript(clinic, schema, "db/demo/V304__demo_vitals.sql");
+            }
             // The doctors' rooms are in that script too: the room a doctor
             // works in is the column on their own staff row, and a seed
             // inside a migration cannot see the people it would set.

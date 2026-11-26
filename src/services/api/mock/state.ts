@@ -415,6 +415,26 @@ export const vitals: MockVitals[] = restorableArray([
     recordedBy: "Mary Joseph",
   },
   {
+    // Ishaan was measured at the desk, and the reading is the one the demo
+    // clinic seeds for her: the same patient, the same numbers, on both
+    // sides of the mock.
+    id: "vt_ishaan",
+    visitId: "vs_ishaan",
+    recordedAt: "2026-11-25T09:25:00Z",
+    tempF: 100.9,
+    bp: "112/72",
+    pulse: 90,
+    spo2: 96,
+    weightKg: 26,
+    sugarMg: 98,
+    note: "Rash for three days",
+    priority: null,
+    breathRate: 20,
+    heightCm: 96,
+    sentTo: "dr_vikram",
+    recordedBy: "Mary Joseph",
+  },
+  {
     id: "vt_kavya",
     visitId: "vs_kavya",
     recordedAt: "2026-11-25T10:42:00Z",

@@ -97,7 +97,30 @@ async function signIn(context) {
   await context.addCookies([
     { name, value, domain: new URL(REFERENCE_URL).hostname, path: "/" },
   ]);
+  await assertSignedIn(name, value);
   return { name, length: value.length };
+}
+
+/**
+ * The session must answer before anything is photographed.
+ *
+ * A capture that quietly photographed the signed-out app is worse than no
+ * capture at all: the baseline would be the sign-in screen wearing a route's
+ * name, and every later comparison would be against it. So the expectation
+ * that this capture is signed in lives here, in the harness, and fails
+ * loudly -- not in the manifest, where it would only be a record of what
+ * happened.
+ */
+async function assertSignedIn(name, value) {
+  const check = await fetch(`${REFERENCE_URL}/api/me`, {
+    headers: { cookie: `${name}=${value}` },
+  }).catch((error) => ({ ok: false, status: 0, error: error.message }));
+  if (!check?.ok) {
+    throw new Error(
+      `the session did not answer /api/me (${check?.status ?? "no answer"}) -- ` +
+        `the capture would be the signed-out app, not the design`,
+    );
+  }
 }
 
 /** Has the app drawn its own "not found" screen? */
@@ -135,6 +158,10 @@ const manifest = {
   mode: "deployed-mvp",
   apiMode: "the deployed MVP's own API — not the local mock",
   signedIn: session.name !== "none",
+  signedInIsEnforced:
+    "The capture signs in before it photographs anything, and the harness fails " +
+    "loudly if the session does not answer or if a signed-in route was sent to the " +
+    "sign-in screen. The manifest only records what happened.",
   note:
     "The deployed MVP is the shipped design. A route listed as `missing` is one the " +
     "deployed app does not have; no image was fabricated for it.",
@@ -162,6 +189,14 @@ for (const route of wanted) {
 
     const httpStatus = response?.status() ?? 0;
     const finalUrl = target.url();
+    // A signed-in route that was sent to the sign-in is the signed-out app:
+    // the capture would be the sign-in screen wearing the route's name, and
+    // it is an error, not a baseline.
+    if (!isPublic && /\/(login|signin|sign-in)/.test(finalUrl)) {
+      throw new Error(
+        `${route.id}: the deployed app sent the visitor to ${finalUrl} -- the session was not held`,
+      );
+    }
     if (httpStatus >= 400) {
       note = `the deployed app answered HTTP ${httpStatus}`;
     } else if (await looksLikeNotFound(target)) {

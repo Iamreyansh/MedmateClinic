@@ -94,6 +94,10 @@ The one-time code comes back in the answer while `AUTH_EXPOSE_CODE=true`, which
 is how a developer signs in without a phone. The PIN is the front desk's: it is
 what unlocks a locked device and what closes the kiosk.
 
+A demo database that was seeded before the PIN was fixed keeps the old hash —
+the fix is in the seed, not in a migration — so drop the database and boot the
+service again to get the working PIN.
+
 ## The environment variables
 
 ### The app (Vite)

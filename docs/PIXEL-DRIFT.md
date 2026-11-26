@@ -13,16 +13,16 @@ Three baseline sets, and every route is measured against each one that has a bas
 | Route | vs `history` | vs `reference` | vs `service` (re-measured) |
 |---|---|---|---|
 | `billing` | **8.633%** | **9.424%** | **0.000%** |
-| `dashboard` | **10.742%** | **11.805%** | **0.000%** |
-| `desk` | **9.751%** | **11.940%** | — |
+| `dashboard` | **10.746%** | **11.810%** | **0.000%** |
+| `desk` | **9.791%** | **11.962%** | — |
 | `kiosk` | **1.680%** (declared 1.7±2%) | **5.043%** (declared 5±1%) | — |
-| `lab` | **7.999%** | **10.802%** | **0.000%** |
+| `lab` | **7.997%** | **10.798%** | **0.000%** |
 | `landing` | **13.647%** (declared 13.6±4%) | **26.510%** (declared 26.5±1%) | — |
-| `nurse` | **9.970%** | **12.371%** | — |
-| `patients` | **9.339%** | **10.131%** | — |
-| `queue` | **16.052%** (declared 14.8±4%) | **21.286%** (declared 21±1%) | **0.000%** |
-| `reports` | **19.432%** (declared 19.2±4%) | **21.213%** (declared 21±1%) | — |
-| `schedule` | **10.035%** | **10.910%** | **0.000%** |
+| `nurse` | **6.349%** | **8.642%** | — |
+| `patients` | **9.299%** | **9.956%** | — |
+| `queue` | **16.070%** (declared 14.8±4%) | **21.208%** (declared 21±1%) | **0.000%** |
+| `reports` | **19.426%** (declared 19.2±4%) | **21.212%** (declared 21±1%) | — |
+| `schedule` | **10.071%** | **10.949%** | **0.000%** |
 | `settings` | **5.913%** | **8.185%** | — |
 | `subscription` | **11.531%** | **12.879%** | — |
 | `templates` | **9.719%** | **11.343%** | **0.000%** |
@@ -30,6 +30,8 @@ Three baseline sets, and every route is measured against each one that has a bas
 The routes in the third column were re-measured against the real service after the demo data moved: the dashboard's live waiting, the schedule strip, the billing tabs, the queue tabs, the lab bench's unreported orders and the templates.
 
 `lab` and `templates` were out of the comparison while the demo clinic had no lab results and no templates. The demo seeds (V303) brought both, so they are measured now.
+
+The nurse station's reading is the demo's own: the demo seeds give the clinic the readings the mock has always shown (V304), so the console shows a reading beside a patient's name in both. Before that, the mock showed a reading and the service showed none — the last place the two disagreed on data.
 
 The mobile routes (`/m/*`) are **declared, not compared**: their baseline is the Figma frame, under the published naming rule (`verify/baselines/figma/<baselineName(path)>.png`, 1280x720, DPR 1), and no Figma frame has been exported yet. The recovered phone shots (`history/shots/mobile-book.png`, `history/shots/mobile-login.png`) are the patient-web app at a phone width — a different surface — and are not these routes' baseline.
 
