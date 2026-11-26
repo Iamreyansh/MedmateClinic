@@ -125,7 +125,7 @@ export function DoctorsScreen() {
             <div className="plan-meta" style={{ marginTop: 12 }}>
               <div>
                 <b>Today</b>
-                {doctor.hours?.join(" · ") || "—"}
+                {Array.isArray(doctor.hours) ? doctor.hours.join(" · ") : (doctor.hours ?? "—")}
               </div>
               <div>
                 <b>Seen</b>

@@ -18,8 +18,13 @@ export type ClinicDoctor = {
   fee?: number;
   /** The video consultation fee. */
   videoFee?: number;
-  /** The hours the doctor works in. */
-  hours?: string[];
+  /**
+   * The hours the doctor works in.
+   *
+   * The service sends a line — "10:00 – 19:00" — and a clinic with two
+   * sessions sends the pair. Both are read.
+   */
+  hours?: string | string[];
   /** How many patients the doctor has seen today. */
   bookedToday?: number;
   /** How many slots are still free today. */

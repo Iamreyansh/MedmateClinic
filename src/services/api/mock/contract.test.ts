@@ -141,11 +141,6 @@ const JAVA_CONTROLLERS = [
  */
 const FRONTEND_ONLY: Array<{ method: string; path: string; why: string }> = [
   {
-    method: "GET",
-    path: "/clinic/appointments/summary",
-    why: "the service is adding the days-ahead summary, for the strip",
-  },
-  {
     method: "POST",
     path: "/public/booking/:token/cancel",
     why: "the service has no way to call a booking off yet",
@@ -466,7 +461,7 @@ describe("the fields in the payload", () => {
       registration: string;
       fee: number;
       videoFee: number;
-      hours: string[];
+      hours: string | string[];
       bookedToday: number;
       freeToday: number;
       nextFree: string | null;
@@ -478,7 +473,9 @@ describe("the fields in the payload", () => {
       expect(doctor.registration).toBeTruthy();
       expect(typeof doctor.fee).toBe("number");
       expect(typeof doctor.videoFee).toBe("number");
-      expect(doctor.hours.length).toBeGreaterThan(0);
+      expect(
+        Array.isArray(doctor.hours) ? doctor.hours.length : doctor.hours.length,
+      ).toBeGreaterThan(0);
       expect(typeof doctor.bookedToday).toBe("number");
       expect(typeof doctor.freeToday).toBe("number");
       expect(typeof doctor.waiting).toBe("number");
