@@ -135,27 +135,12 @@ const JAVA_CONTROLLERS = [
 /**
  * The paths only the app has.
  *
- * The service has not built them yet. They are listed so that the day it
- * does, the list is the work order — and so nobody thinks the mock invented
- * them.
+ * It is empty: every path the app calls has a counterpart in the service, so
+ * the app calls nothing the service lacks. When a path is added to one side
+ * before the other, it is listed here — with the reason — until the service
+ * catches up.
  */
-const FRONTEND_ONLY: Array<{ method: string; path: string; why: string }> = [
-  {
-    method: "POST",
-    path: "/public/booking/:token/cancel",
-    why: "the service has no way to call a booking off yet",
-  },
-  {
-    method: "GET",
-    path: "/clinic/staff",
-    why: "the service is adding the staff list, with the roles from the grants",
-  },
-  {
-    method: "GET",
-    path: "/clinic/locations",
-    why: "the service is adding the branch list, in the settings shape",
-  },
-];
+const FRONTEND_ONLY: Array<{ method: string; path: string; why: string }> = [];
 
 /**
  * The endpoints that answer with a bare array.
@@ -334,12 +319,16 @@ describe("the mock and the Java service answer the same paths", () => {
     }
   });
 
-  it("lists every path the service has that the app only has", () => {
+  it("calls nothing the service lacks", () => {
     // the list is the work order: the day the service builds one of these,
     // it is removed from the list and the mock keeps answering it
     for (const entry of FRONTEND_ONLY) {
       expect(mock.has(entry.method, entry.path)).toBe(true);
     }
+    expect(
+      FRONTEND_ONLY.map((entry) => `${entry.method} ${entry.path}`),
+      "the app calls nothing the service lacks",
+    ).toEqual([]);
   });
 });
 

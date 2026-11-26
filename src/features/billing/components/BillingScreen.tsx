@@ -205,7 +205,7 @@ export function BillingScreen() {
                       {item.patient.name} · {item.patient.age} {item.patient.sex}
                     </b>
                     <p className="t-cap" style={{ marginTop: 2 }}>
-                      {item.description}
+                      {item.description ?? "Consultation in-clinic"}
                     </p>
                     <p className="t-cap" style={{ marginTop: 2 }}>
                       {item.status === "paid"

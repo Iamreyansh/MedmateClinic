@@ -18,7 +18,8 @@ export type PendingBill = {
   amount: number;
   createdAt: string | null;
   patient: { id: string; name: string; age: number; sex: string; phone?: string };
-  description: string;
+  /** What the bill is for — the service may leave it out. */
+  description?: string;
 };
 
 export type BillingSummary = {
