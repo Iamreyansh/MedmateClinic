@@ -1,12 +1,12 @@
 {
-  "recoveredAt": "2026-11-25T22:25:37.041Z",
+  "recoveredAt": "2026-11-26T04:26:34.668Z",
   "source": {
     "ref": "647ea0e^",
     "command": "git archive 647ea0e^ _research",
     "note": "The deployed MVP's own screens, captured by an earlier agent and removed in 647ea0e. These are the only surviving pixels of the shipped design."
   },
   "viewport": {
-    "width": 390,
+    "width": 1440,
     "height": 900
   },
   "deviceScaleFactor": 1,

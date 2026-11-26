@@ -18,6 +18,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { ROUTES } from "./routes.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = path.join(root, "verify", "baselines", "history");
@@ -131,6 +132,21 @@ for (const [route, source] of Object.entries(PRIMARY)) {
 
 const widths = [...new Set(restored.map((entry) => entry.width))].sort((a, b) => a - b);
 
+// The viewport must describe the shots the pixel diff compares: the routes
+// the harness diffs. The recovered set also holds the patient-web screens,
+// which were captured on a phone, and a viewport taken from those would
+// compare a phone-sized screenshot with a desktop baseline.
+const diffed = new Set(ROUTES.filter((route) => route.diff).map((route) => route.id));
+const diffWidths = [
+  ...new Set(
+    Object.entries(PRIMARY)
+      .filter(([route]) => diffed.has(route))
+      .map(([, source]) => restored.find((entry) => entry.source === source)?.width)
+      .filter(Boolean),
+  ),
+].sort((a, b) => a - b);
+const viewportWidth = diffWidths.length === 1 ? diffWidths[0] : widths[0] === 1440 ? 1440 : widths[0];
+
 const manifest = {
   recoveredAt: new Date().toISOString(),
   source: {
@@ -140,7 +156,7 @@ const manifest = {
       "The deployed MVP's own screens, captured by an earlier agent and removed in 647ea0e. " +
       "These are the only surviving pixels of the shipped design.",
   },
-  viewport: { width: widths[0] === 1440 ? 1440 : widths[0], height: 900 },
+  viewport: { width: viewportWidth, height: 900 },
   deviceScaleFactor: 1,
   fullPage: true,
   mode: "deployed-mvp",

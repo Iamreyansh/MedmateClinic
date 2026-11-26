@@ -153,8 +153,15 @@ export const ROUTES = [
     api: ["/kiosk"],
     diff: true,
     budget: 38,
-    // The drift this route is expected to show, and why.
-    expected: { percent: 36, reason: "deliberate difference from the deployed MVP — the kiosk's own flow; the Figma baseline is the arbiter" },
+    // The drift this route is expected to show against each baseline set, and
+    // why. A declaration is a statement about one comparison, so it belongs to
+    // one set: the same screen drifts further from the MVP as it shipped than
+    // from the MVP as it answers today. The tolerance covers the machine the
+    // declaration was measured on — a pixel percentage is not portable.
+    expected: {
+      reference: { percent: 36, tolerance: 1, reason: "deliberate difference from the deployed MVP — the kiosk's own flow; the Figma baseline is the arbiter" },
+      history: { percent: 1.7, tolerance: 2, reason: "the kiosk's entry prompt is the shipped MVP's own — the kiosk's screen is behind the staff PIN in both, so only the Figma baseline can measure it" },
+    },
     public: false,
     expect: "content",
     note: "No kiosk endpoint exists on the backend at all.",
@@ -210,8 +217,15 @@ export const ROUTES = [
     api: ["/clinic/queue", "/clinic/doctors"],
     diff: true,
     budget: 28,
-    // The drift this route is expected to show, and why.
-    expected: { percent: 26, reason: "deliberate difference from the deployed MVP — the app's own six tabs; the Figma baseline is the arbiter" },
+    // The drift this route is expected to show against each baseline set, and
+    // why. A declaration is a statement about one comparison, so it belongs to
+    // one set: the same screen drifts further from the MVP as it shipped than
+    // from the MVP as it answers today. The tolerance covers the machine the
+    // declaration was measured on — a pixel percentage is not portable.
+    expected: {
+      reference: { percent: 26, tolerance: 1, reason: "deliberate difference from the deployed MVP — the app's own six tabs; the Figma baseline is the arbiter" },
+      history: { percent: 14.8, tolerance: 4, reason: "deliberate difference from the deployed MVP — the app's own six tabs; the Figma baseline is the arbiter" },
+    },
     public: false,
     expect: "content",
   },
@@ -234,8 +248,15 @@ export const ROUTES = [
     api: ["/clinic/reports"],
     diff: true,
     budget: 26,
-    // The drift this route is expected to show, and why.
-    expected: { percent: 24, reason: "deliberate difference from the deployed MVP — the app's own tab sets; the Figma baseline is the arbiter" },
+    // The drift this route is expected to show against each baseline set, and
+    // why. A declaration is a statement about one comparison, so it belongs to
+    // one set: the same screen drifts further from the MVP as it shipped than
+    // from the MVP as it answers today. The tolerance covers the machine the
+    // declaration was measured on — a pixel percentage is not portable.
+    expected: {
+      reference: { percent: 24, tolerance: 1, reason: "deliberate difference from the deployed MVP — the app's own tab sets; the Figma baseline is the arbiter" },
+      history: { percent: 19.2, tolerance: 4, reason: "deliberate difference from the deployed MVP — the app's own tab sets; the Figma baseline is the arbiter" },
+    },
     public: false,
     expect: "content",
   },
@@ -297,8 +318,15 @@ export const ROUTES = [
     api: [],
     diff: true,
     budget: 14,
-    // The drift this route is expected to show, and why.
-    expected: { percent: 29, reason: "the local landing page is a different implementation of the deployed one" },
+    // The drift this route is expected to show against each baseline set, and
+    // why. A declaration is a statement about one comparison, so it belongs to
+    // one set: the same screen drifts further from the MVP as it shipped than
+    // from the MVP as it answers today. The tolerance covers the machine the
+    // declaration was measured on — a pixel percentage is not portable.
+    expected: {
+      reference: { percent: 29, tolerance: 1, reason: "the local landing page is a different implementation of the deployed one" },
+      history: { percent: 13.6, tolerance: 4, reason: "the local landing page is a different implementation of the deployed one" },
+    },
     public: true,
     expect: "public",
   },

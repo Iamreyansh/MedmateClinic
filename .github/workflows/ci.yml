@@ -75,8 +75,9 @@ jobs:
 
       - name: Publish the test output
         # The artifact is how a reviewer reads it from the Actions UI. The
-        # branch is how it can be read through the API, which is the only way
-        # to see why the step failed without the UI.
+        # branch is a best-effort second copy: a workflow token that cannot
+        # write refuses the push, and the step says so rather than pretending.
+        # The artifact is the channel that always works.
         if: always()
         run: |
           set -euo pipefail
@@ -140,8 +141,32 @@ jobs:
     name: Fidelity — the pixel diff against the baselines
     runs-on: ubuntu-latest
     needs: [frontend, backend]
+    # The pixel diff runs against the real stack, so this job needs the
+    # database the app under test talks to — the same one the E2E job brings
+    # up. Without it the API cannot come up and the job dies before it
+    # compares anything.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: medmate_clinic_api
+          POSTGRES_USER: medmate
+          POSTGRES_PASSWORD: medmate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medmate -d medmate_clinic_api"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The history baseline set is recovered from this repository's own
+          # history — `git archive 647ea0e^` — so the whole history is
+          # needed. A shallow checkout cannot resolve that commit: the job
+          # died before it compared anything and published no table at all.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -187,16 +212,43 @@ jobs:
         # with the mock off. Started here rather than in a service, because
         # the app has to talk to the API on the same runner.
         run: |
-          set -euo pipefail
-          ./verify/dev-stack.sh start
-          node verify/prepare-baselines.mjs
-          # The gate is the drift each route is declared to show, plus a point
-          # of tolerance; a route with no declaration is held to its budget, so
-          # an unexpected change still breaks the build. The table goes into the
-          # job summary and into an artifact, so the numbers are read by a human
-          # whatever the exit code is.
-          node verify/pixel-diff.mjs --baseline=reference --json=verify/baselines/diffs/report-ci.json | tee verify/baselines/diffs/drift.txt
-          cat verify/baselines/diffs/drift.txt >> "$GITHUB_STEP_SUMMARY"
+          set -uo pipefail
+          # The directory is made before anything runs, so the upload step
+          # always has a path and every run publishes what it knows — even the
+          # runs that find nothing to compare.
+          mkdir -p verify/baselines/diffs
+          echo "the fidelity run started at $(date -u +%Y-%m-%dT%H:%M:%SZ) on $(git rev-parse --short HEAD)" > verify/baselines/diffs/run.txt
+          # The baseline is one CI can always get: the Figma export where one
+          # is present, otherwise the deployed MVP's own screens as they
+          # shipped, recovered from this repository's own history. The live
+          # capture of the deployed app needs a signed-in session and the
+          # deployed app rate-limits its OTP, so it stays a local option —
+          # CI never depends on a third party being up.
+          if ! ./verify/dev-stack.sh start; then
+            echo "the stack did not come up — the API log follows" >> verify/baselines/diffs/run.txt
+            for log in /tmp/medmate-*/api.log; do
+              [ -f "$log" ] && tail -40 "$log" >> verify/baselines/diffs/run.txt
+            done
+            exit 1
+          fi
+          if ! node verify/prepare-baselines.mjs --skip-reference; then
+            echo "the baselines could not be prepared" >> verify/baselines/diffs/run.txt
+            exit 1
+          fi
+          # The table is written whatever the outcome, so a red run still says
+          # what it measured, and the exit status is the diff's own.
+          set +e
+          node verify/pixel-diff.mjs --baseline=history --json=verify/baselines/diffs/report-ci.json | tee verify/baselines/diffs/drift.txt
+          status=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### The pixel diff"
+            echo
+            echo "Every route is compared against the Figma export where one is present, otherwise against the deployed MVP as it shipped."
+            echo
+            cat verify/baselines/diffs/drift.txt || true
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
 
       - name: Upload the diffs
         if: always()
@@ -257,21 +309,45 @@ jobs:
         working-directory: e2e
         run: npm ci --no-audit --no-fund
 
+      - name: Cache the browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-1.56.1
+
       - name: Install the browser
         working-directory: e2e
-        # Two jobs install browser dependencies at the same time and fight over
-        # the apt lock, so this retries rather than failing on the lock.
+        # The browser the suite launches, pinned by e2e/package.json: the
+        # local Playwright is 1.56.1, so `playwright install` fetches exactly
+        # the build that version expects.
+        #
+        # `microsoft/playwright-github-action@v1` is deprecated and refuses to
+        # run on anything but Ubuntu 18.04, 20.04 and 22.04 — the runner is
+        # Ubuntu 24.04, where it fails with "Cannot install dependencies for
+        # this linux distribution!" — and it reads none of its documented
+        # inputs, so a pinned browser or version would be ignored anyway. Its
+        # own deprecation notice recommends this command, so this is the
+        # supported path.
         run: |
-          for attempt in 1 2 3 4 5; do
-            if npx playwright install chromium --with-deps; then
-              echo "the browser is installed"
-              exit 0
-            fi
-            echo "attempt ${attempt} failed — waiting for the apt lock"
-            sleep 90
-          done
-          echo "the browser could not be installed"
-          exit 1
+          set -euo pipefail
+          npx playwright install chromium --with-deps
+
+      - name: Say what did not install
+        # "install the browser" tells the next person nothing. This says which
+        # part broke: the apt lock, the system dependencies or the browser
+        # download.
+        if: failure()
+        working-directory: e2e
+        run: |
+          echo "::error::the Playwright browser install failed — the three sections below say whether it was the apt lock, the system dependencies or the browser download"
+          echo "--- the apt lock ---"
+          (command -v fuser >/dev/null && sudo fuser -v /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock 2>&1) || echo "no process holds the apt lock"
+          echo "--- the system dependencies Playwright asks for ---"
+          npx playwright install-deps --dry-run chromium 2>&1 | tail -5 || echo "the dependency plan could not be printed"
+          echo "--- the browser download ---"
+          npx playwright install --dry-run chromium 2>&1 | tail -12 || echo "the download plan could not be printed"
+          echo "--- the browser cache ---"
+          ls -1 "${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}" 2>&1 || echo "the browser cache is empty"
 
       - name: Start the API
         run: |

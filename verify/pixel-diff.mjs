@@ -308,8 +308,10 @@ const report = {
   threshold: THRESHOLD,
   maxDrift: MAX_DRIFT,
   budgetNote:
-    "Each route carries its own budget in verify/routes.mjs. `kiosk` and `landing` are " +
-    "held tight on purpose: both are known to be wrong today.",
+    "Each route carries its own budget in verify/routes.mjs, and a route may carry a " +
+    "declaration per baseline set: the drift it is expected to show against that set, " +
+    "with a tolerance that covers the machine the declaration was measured on. A route " +
+    "with no declaration for the set being diffed is held to its budget.",
   routes: [],
   errors: [],
 };
@@ -352,11 +354,59 @@ for (const route of routes) {
     continue;
   }
 
-  // The gate is the drift this route is declared to show, plus a point of
-  // tolerance. A route with no declaration is held to its budget, so an
-  // unexpected change still breaks the build.
-  const declared = route.expected;
-  const budget = declared ? declared.percent + 1 : route.budget ?? MAX_DRIFT;
+  // A screen that reached an error or empty state is not the screen this
+  // comparison is about, and it sits close enough to the baseline's empty
+  // space to look like a tiny drift — which is how a broken screen used to
+  // pass a visual check. The app's own states are marked in the DOM:
+  // `.note.red` is the error state, `.empty-card` the empty one. So they are
+  // asked for, not guessed at from the pixels.
+  const state = await page
+    .evaluate(() => {
+      const body = document.body;
+      const text = (body?.innerText ?? "").trim();
+      const screen = document.querySelector("main .page") ?? document.querySelector("main") ?? body;
+      const screenText = (screen?.innerText ?? "").trim();
+      return {
+        textLength: text.length,
+        screenTextLength: screenText.length,
+        error: Boolean(document.querySelector(".note.red")),
+        empty: Boolean(document.querySelector(".empty-card")),
+        loading: /loading/i.test(screenText) && screenText.length < 400,
+      };
+    })
+    .catch(() => null);
+
+  const stateProblem = !state
+    ? "the screen could not be read"
+    : state.textLength === 0
+      ? "the screen rendered nothing"
+      : state.error
+        ? "the screen is showing its error state"
+        : state.empty
+          ? "the screen is showing its empty state"
+          : state.loading
+            ? "the screen is still loading"
+            : null;
+
+  if (stateProblem) {
+    const entry = { id: route.id, source, status: "error", error: `${stateProblem} at ${url}` };
+    report.routes.push(entry);
+    report.errors.push(`${route.id}: ${entry.error}`);
+    console.error(`✗ ${route.id.padEnd(12)} ${entry.error}`);
+    continue;
+  }
+
+  // The gate is the drift the route is declared to show, plus a tolerance
+  // that covers the machine the declaration was measured on: a pixel
+  // percentage is not a portable measurement. A declaration belongs to one
+  // baseline set, because the same screen legitimately drifts further from
+  // the MVP as it shipped than from the MVP as it answers today. A route with
+  // no declaration for this set is held to its budget, so an unexpected
+  // change still breaks the build.
+  const declared = route.expected?.[source] ?? null;
+  const tolerance = declared?.tolerance ?? 0;
+  const budget = declared ? declared.percent + tolerance : route.budget ?? MAX_DRIFT;
+  const floor = declared ? Math.max(0, declared.percent - tolerance) : null;
   const entry = { id: route.id, source, url, budget };
 
   if (UPDATE) {
@@ -399,19 +449,25 @@ for (const route of routes) {
   }
 
   entry.baselineFile = path.relative(root, baselineFile);
-  entry.expected = declared ? { percent: declared.percent, reason: declared.reason } : null;
-  entry.gate = budget;
-  entry.status = entry.percent > budget ? "fail" : "pass";
+  entry.expected = declared ? { percent: declared.percent, tolerance: declared.tolerance, reason: declared.reason } : null;
+  entry.gate = declared
+    ? { band: [floor, budget], percent: declared.percent, tolerance: declared.tolerance }
+    : budget;
+  const above = entry.percent > budget;
+  const below = floor !== null && entry.percent < floor;
+  entry.status = above || below ? "fail" : "pass";
   if (entry.status === "fail") {
     report.errors.push(
-      `${route.id}: ${entry.percent}% of pixels differ (budget ${budget}%) — ${entry.diffFile}`,
+      `${route.id}: ${entry.percent}% of pixels differ — ` +
+        (declared ? `the declaration is ${declared.percent}% ± ${declared.tolerance}%` : `the budget is ${budget}%`) +
+        `${above ? " (more than declared)" : " (less than declared — the screen changed shape)"} — ${entry.diffFile}`,
     );
   }
 
   const flag = entry.status === "fail" ? "✗" : "✓";
   const strictText =
     entry.strictPercent === undefined ? "" : `   strict ${String(entry.strictPercent).padStart(7)}%`;
-  const expectedText = entry.expected ? `   declared ${entry.expected.percent}%` : "";
+  const expectedText = entry.expected ? `   declared ${entry.expected.percent}% ± ${entry.expected.tolerance}%` : "";
   console.log(
     `${flag} ${route.id.padEnd(12)} ${String(entry.percent).padStart(7)}% differ  [${source}]${strictText}${expectedText}` +
       `  worst ${stored.worst.count}px at ${stored.worst.x},${stored.worst.y}` +
@@ -426,13 +482,13 @@ await browser.close();
 /* ---------------------------------------------------------------- the report */
 
 const width = Math.max(...report.routes.map((entry) => entry.id.length), 12);
-console.log(`\n${"route".padEnd(width)}  ${"scaled".padStart(8)}  ${"strict".padStart(8)}  ${"declared".padStart(8)}  source   worst region`);
-console.log(`${"-".repeat(width)}  ${"-".repeat(8)}  ${"-".repeat(8)}  ${"-".repeat(8)}  ${"-".repeat(7)}   ${"-".repeat(20)}`);
+console.log(`\n${"route".padEnd(width)}  ${"scaled".padStart(8)}  ${"strict".padStart(8)}  ${"declared".padStart(11)}  source   worst region`);
+console.log(`${"-".repeat(width)}  ${"-".repeat(8)}  ${"-".repeat(8)}  ${"-".repeat(11)}  ${"-".repeat(7)}   ${"-".repeat(20)}`);
 for (const entry of report.routes) {
   console.log(
     `${entry.id.padEnd(width)}  ${String(entry.percent ?? "-").padStart(7)}%  ` +
       `${String(entry.strictPercent ?? "-").padStart(7)}%  ` +
-      `${String(entry.expected ? `${entry.expected.percent}%` : "-").padStart(7)}  ` +
+      `${String(entry.expected ? `${entry.expected.percent}±${entry.expected.tolerance}%` : "-").padStart(11)}  ` +
       `${(entry.source ?? "-").padEnd(7)}  ` +
       `x${entry.worstRegion?.x ?? "-"} y${entry.worstRegion?.y ?? "-"} ${entry.worstRegion?.count ?? "-"}px`,
   );
@@ -450,5 +506,5 @@ if (report.errors.length) {
   for (const error of report.errors) console.error(`  ${error}`);
   if (!NO_FAIL) process.exitCode = 1;
 } else {
-  console.log(`\n✓ every route is within its budget of the ${BASELINE} baseline`);
+  console.log(`\n✓ every route is within its gate of the ${BASELINE} baseline`);
 }

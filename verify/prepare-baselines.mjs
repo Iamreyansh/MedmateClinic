@@ -19,6 +19,7 @@
  * baseline — it never skips one.
  *
  *   node verify/prepare-baselines.mjs
+ *   node verify/prepare-baselines.mjs --skip-reference
  */
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -55,7 +56,13 @@ const referenceReady =
   existsSync(path.join(referenceDir, "manifest.json")) &&
   existsSync(path.join(referenceDir, "dashboard.png"));
 
-if (referenceReady && !flag("force-reference")) {
+// The live capture needs a signed-in session against the deployed app, and
+// the deployed app rate-limits its OTP, so it is a local option. CI compares
+// against the Figma export where one is present and the history set
+// otherwise, and both of those it can always get.
+if (flag("skip-reference")) {
+  console.log("· the live reference capture is skipped — the comparison uses the Figma export or the history set");
+} else if (referenceReady && !flag("force-reference")) {
   console.log("· the reference baseline set is already in place");
 } else {
   run("capture-baselines.mjs");
