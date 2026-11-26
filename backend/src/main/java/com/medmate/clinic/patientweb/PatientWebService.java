@@ -65,6 +65,32 @@ public class PatientWebService {
     /** How long a patient's own link lives. */
     private static final Duration LINK_LIFE = Duration.ofDays(30);
 
+    /** The operation a call-off is recorded under. */
+    private static final String OPERATION_CANCEL = "cancel";
+
+    /** The operation a rebooking is recorded under. */
+    private static final String OPERATION_REBOOK = "rebook";
+
+    /**
+     * What the patient asks for when they move their booking.
+     *
+     * <p>The doctor is optional: a patient who does not change doctors keeps
+     * the one they have. The date and the time are the clinic's own — the
+     * hour the clinic opens, on the day the patient names.
+     */
+    public record RebookRequest(
+            String doctorId,
+            @jakarta.validation.constraints.NotBlank
+                    @jakarta.validation.constraints.Pattern(
+                            regexp = "^\\d{4}-\\d{2}-\\d{2}$",
+                            message = "must be a date")
+                    String date,
+            @jakarta.validation.constraints.NotBlank
+                    @jakarta.validation.constraints.Pattern(
+                            regexp = "^([01]?\\d|2[0-3]):[0-5]\\d$",
+                            message = "must be a time")
+                    String slot) {}
+
     /** How long a verification link lives. */
     private static final Duration VERIFY_LIFE = Duration.ofDays(365);
 
@@ -81,6 +107,8 @@ public class PatientWebService {
     private final ClinicZoneService zones;
     private final ClinicProfileRepository profiles;
     private final com.medmate.clinic.grant.RoleRepository roles;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final IdempotencyService idempotency;
 
     public PatientWebService(
             RegistryClinicRepository clinics,
@@ -95,7 +123,9 @@ public class PatientWebService {
             PrescriptionMedicineRepository prescriptionMedicines,
             ClinicZoneService zones,
             ClinicProfileRepository profiles,
-            com.medmate.clinic.grant.RoleRepository roles) {
+            com.medmate.clinic.grant.RoleRepository roles,
+            org.springframework.jdbc.core.JdbcTemplate jdbc,
+            IdempotencyService idempotency) {
         this.clinics = clinics;
         this.profiles = profiles;
         this.roles = roles;
@@ -109,11 +139,13 @@ public class PatientWebService {
         this.prescriptionDiagnoses = prescriptionDiagnoses;
         this.prescriptionMedicines = prescriptionMedicines;
         this.zones = zones;
+        this.jdbc = jdbc;
+        this.idempotency = idempotency;
     }
 
     /** The booking page: the clinic, its doctors and the times. */
     @Transactional(readOnly = true)
-    public Map<String, Object> bookingPage(String slug) {
+    public Map<String, Object> bookingPage(String slug, String doctorId) {
         RegistryClinic clinic = clinicBySlug(slug);
         UUID clinicId = clinic.getId();
         ZoneId zone = zones.zoneOf(clinicId);
@@ -144,8 +176,15 @@ public class PatientWebService {
         }
 
         String firstDoctor = list.isEmpty() ? "" : String.valueOf(list.get(0).get("id"));
+        // The times are the chosen doctor's: a patient who picks a doctor is
+        // shown that doctor's free slots, not the first doctor's.
+        String chosen = doctorId == null || doctorId.isBlank() ? firstDoctor : doctorId.trim();
+        if (!chosen.isEmpty()
+                && list.stream().noneMatch(entry -> chosen.equals(entry.get("id")))) {
+            throw new NotFoundException("That doctor is not in this clinic.");
+        }
         LocalDate day = LocalDate.now(zone).plusDays(1);
-        List<Map<String, Object>> slots = slots(clinicId, firstDoctor, day, zone);
+        List<Map<String, Object>> slots = slots(clinicId, chosen, day, zone);
 
         Map<String, Object> clinicBody = new LinkedHashMap<>();
         clinicBody.put("name", clinic.getName());
@@ -153,6 +192,10 @@ public class PatientWebService {
         clinicBody.put("address", clinicAddress(clinicId));
         clinicBody.put("phone", clinicPhone(clinicId));
         clinicBody.put("slug", slug);
+        // The clinic's own zone. The times the patient picks are instants in
+        // this zone, and the client is told which zone that is rather than
+        // having to work it out from the times themselves.
+        clinicBody.put("timezone", zone.getId());
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("clinic", clinicBody);
@@ -195,6 +238,20 @@ public class PatientWebService {
 
         ZoneId zone = zones.zoneOf(clinicId);
         Instant startsAt = requestedStart(request.get("startsAt"), zone);
+
+        // The slot the patient asked for, and whether it is still free. The
+        // check and the booking are one transaction, and the doctor's own row
+        // is locked first, so two patients cannot take the same slot.
+        lockDoctor(clinicId, doctor.getId());
+        if (slotTaken(
+                clinicId,
+                doctor.getId(),
+                startsAt.atZone(zone).toLocalDate(),
+                zone,
+                startsAt.atZone(zone).toLocalTime().toString(),
+                null)) {
+            throw new ConflictException("Slot no longer available", "Pick another time.");
+        }
 
         // the clinic has met this patient before — the record is theirs. The
         // match is on the number and on the number only: the patient's record
@@ -278,15 +335,32 @@ public class PatientWebService {
      *
      * <p>The link the patient holds is the credential, so the link must be live:
      * an expired or revoked link is refused like every other patient route.
-     * Calling off twice is the same as calling off once.
+     * Calling off twice is the same as calling off once — and a request that
+     * carries a key is answered with the first answer, so a retry after a
+     * dropped connection does not read as a second call-off.
      */
     @Transactional
-    public Map<String, Object> cancel(String linkKey) {
+    public Map<String, Object> cancel(String linkKey, String idempotencyKey) {
         PublicLink link = liveLink(linkKey);
         if (!PublicLink.KIND_BOOKING.equals(link.getKind())) {
             throw new NotFoundException("This link is not valid. Ask the clinic for a new one.");
         }
         Visit visit = visitForLink(link);
+        UUID clinicId = visit.getClinicId();
+
+        // A request that was sent before: the first answer is the answer.
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<IdempotencyService.Stored> first =
+                    idempotency.find(clinicId, OPERATION_CANCEL, idempotencyKey);
+            if (first.isPresent()) {
+                if (!visit.getId().toString().equals(first.get().fingerprint())) {
+                    throw new ConflictException(
+                            "That did not work",
+                            "This idempotency key was already used for a different request.");
+                }
+                return first.get().response();
+            }
+        }
 
         if (!"cancelled".equals(visit.getStatus())) {
             visit.setStatus("cancelled");
@@ -304,7 +378,238 @@ public class PatientWebService {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("cancelled", true);
         body.put("token", visit.getToken());
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            idempotency.remember(
+                    clinicId,
+                    OPERATION_CANCEL,
+                    idempotencyKey,
+                    visit.getId(),
+                    visit.getId().toString(),
+                    body);
+        }
         return body;
+    }
+
+    /**
+     * The patient moves the booking to another time.
+     *
+     * <p>The link the patient holds is the credential, and it stays the
+     * credential: the link key does not change, and neither does the patient's
+     * place in the queue. What changes is the time — and the old time is
+     * given up in the same transaction that takes the new one, so a slot that
+     * is already taken leaves the old booking exactly where it was.
+     *
+     * <p>The slot is an instant in the clinic's own zone: the hour the clinic
+     * opens, on the day the patient names.
+     */
+    @Transactional
+    public Map<String, Object> rebook(String linkKey, RebookRequest request, String idempotencyKey) {
+        PublicLink link = liveLink(linkKey);
+        if (!PublicLink.KIND_BOOKING.equals(link.getKind())) {
+            throw new NotFoundException("This link is not valid. Ask the clinic for a new one.");
+        }
+        Visit visit = visitForLink(link);
+        UUID clinicId = visit.getClinicId();
+        ZoneId zone = zones.zoneOf(clinicId);
+
+        LocalDate day;
+        LocalTime time;
+        try {
+            day = LocalDate.parse(request.date().trim());
+            time = LocalTime.parse(request.slot().trim());
+        } catch (RuntimeException notATime) {
+            throw new IllegalArgumentException("Pick a date and a time for the new booking.");
+        }
+
+        // The doctor: the one that was asked for, or the one the booking is
+        // already with.
+        Appointment current = appointmentFor(visit);
+        UUID doctorId =
+                request.doctorId() == null || request.doctorId().isBlank()
+                        ? (current == null ? null : current.getDoctorId())
+                        : parseUuid(request.doctorId());
+        if (doctorId == null) {
+            throw new NotFoundException("Choose a doctor to continue.");
+        }
+        Staff doctor =
+                staff.findByIdAndClinicId(doctorId, clinicId)
+                        .orElseThrow(() -> new NotFoundException("Choose a doctor to continue."));
+
+        Instant startsAt = day.atTime(time).atZone(zone).toInstant();
+        String fingerprint = fingerprint(doctorId, day, time);
+
+        // A request that was sent before: the first answer is the answer.
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<IdempotencyService.Stored> first =
+                    idempotency.find(clinicId, OPERATION_REBOOK, idempotencyKey);
+            if (first.isPresent()) {
+                if (!fingerprint.equals(first.get().fingerprint())) {
+                    throw new ConflictException(
+                            "That did not work",
+                            "This idempotency key was already used for a different request.");
+                }
+                return first.get().response();
+            }
+        }
+
+        // The booking already sits in the slot that was asked for: the same
+        // request again, and the same answer.
+        if (current != null
+                && doctorId.equals(current.getDoctorId())
+                && startsAt.equals(current.getStartsAt())) {
+            return rebookResult(link, visit, current, doctor);
+        }
+
+        // The lock, then the check, then the write: one transaction, and the
+        // slot is taken or it is not. Nothing is cancelled until the new slot
+        // is known to be free.
+        lockDoctor(clinicId, doctorId);
+        if (slotTaken(
+                clinicId,
+                doctorId,
+                day,
+                zone,
+                time.toString(),
+                visit.getId())) {
+            throw new ConflictException("Slot no longer available", "Pick another time.");
+        }
+
+        // The old slot is given up.
+        for (Appointment appointment :
+                appointments.findByClinicIdAndVisitIdOrderByStartsAtAsc(clinicId, visit.getId())) {
+            appointment.setStatus("cancelled");
+            appointments.save(appointment);
+        }
+
+        // The new slot is taken.
+        Appointment appointment = new Appointment();
+        appointment.setId(UUID.randomUUID());
+        appointment.setClinicId(clinicId);
+        appointment.setPatientId(visit.getPatientId());
+        appointment.setDoctorId(doctorId);
+        appointment.setVisitId(visit.getId());
+        appointment.setStartsAt(startsAt);
+        appointment.setEndsAt(startsAt.plusSeconds(900));
+        appointment.setMode("in_clinic");
+        appointment.setStatus("booked");
+        appointment.setSource("booking");
+        appointment.setReason(visit.getReason());
+        appointment.setCreatedAt(Instant.now());
+        appointments.save(appointment);
+
+        Map<String, Object> body = rebookResult(link, visit, appointment, doctor);
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            idempotency.remember(
+                    clinicId, OPERATION_REBOOK, idempotencyKey, visit.getId(), fingerprint, body);
+        }
+        return body;
+    }
+
+    /**
+     * The answer to a rebook, or to the same rebook asked again.
+     *
+     * <p>The link key is not in this answer: it is the patient's credential,
+     * it does not change when the booking moves, and it must never be drawn.
+     * The token here is the queue slip, the one the patient shows at the
+     * desk — the same slip the call-off returns.
+     */
+    private Map<String, Object> rebookResult(
+            PublicLink link, Visit visit, Appointment appointment, Staff doctor) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("cancelled", true);
+        body.put("token", visit.getToken());
+        body.put("queueToken", visit.getToken());
+        body.put("startsAt", appointment.getStartsAt().toString());
+        body.put("doctor", doctor.getFullName());
+        body.put("clinic", clinicName(visit.getClinicId()));
+        return body;
+    }
+
+    /** The clinic's own name. */
+    private String clinicName(UUID clinicId) {
+        return clinics.findById(clinicId).map(RegistryClinic::getName).orElse("");
+    }
+
+    /** The fingerprint of a request: what it asked for, and nothing else. */
+    private static String fingerprint(UUID doctorId, LocalDate day, LocalTime time) {
+        String text = doctorId + "|" + day + "|" + time;
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException notASha) {
+            throw new IllegalStateException("SHA-256 is not available", notASha);
+        }
+    }
+
+    /**
+     * The appointments that hold the slots of one doctor on one day.
+     *
+     * <p>One query serves both the booking page's list of free times and the
+     * check that a time is still free, so the two can never disagree about
+     * which slot is taken.
+     */
+    private List<Appointment> takenAppointments(
+            UUID clinicId, UUID doctorId, LocalDate day, ZoneId zone) {
+        if (doctorId == null) {
+            return List.of();
+        }
+        Instant from = day.atStartOfDay(zone).toInstant();
+        Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+        List<Appointment> rows = new ArrayList<>();
+        for (Appointment appointment :
+                appointments.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
+                        clinicId, doctorId, from, to)) {
+            // A cancelled booking does not take the slot.
+            if ("cancelled".equals(appointment.getStatus())) {
+                continue;
+            }
+            rows.add(appointment);
+        }
+        return rows;
+    }
+
+    /**
+     * Whether the slot is already taken.
+     *
+     * <p>The slot is compared by the rule the booking page uses: the hour the
+     * clinic opens, in the clinic's own time.
+     */
+    private boolean slotTaken(
+            UUID clinicId,
+            UUID doctorId,
+            LocalDate day,
+            ZoneId zone,
+            String slot,
+            UUID otherVisitId) {
+        for (Appointment appointment : takenAppointments(clinicId, doctorId, day, zone)) {
+            if (otherVisitId != null && otherVisitId.equals(appointment.getVisitId())) {
+                // The patient's own booking does not stand in the way of the
+                // patient's own booking.
+                continue;
+            }
+            if (appointment.getStartsAt().atZone(zone).toLocalTime().toString().equals(slot)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Lock the doctor's own row, so two bookings for the same doctor cannot
+     * both take the same slot.
+     *
+     * <p>The lock is on the doctor and not on the day's appointments: the row
+     * is always there, and it is the same row whether or not the doctor has
+     * any appointment yet — which locking the day's appointments would not
+     * be. The second booking waits for the first to finish, and then reads
+     * the slot it has just been given.
+     */
+    private void lockDoctor(UUID clinicId, UUID doctorId) {
+        jdbc.query(
+                "select id from staff where id = ? and clinic_id = ? for update",
+                (rs, row) -> rs.getObject(1),
+                doctorId,
+                clinicId);
     }
 
     /** The patient's place in the queue. */
@@ -524,18 +829,8 @@ public class PatientWebService {
         // Counting the doctor's whole book made every slot read as taken.
         Set<String> taken = new java.util.HashSet<>();
         UUID doctor = parseUuid(doctorId);
-        if (doctor != null) {
-            Instant from = day.atStartOfDay(zone).toInstant();
-            Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
-            for (Appointment appointment :
-                    appointments.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
-                            clinicId, doctor, from, to)) {
-                if ("cancelled".equals(appointment.getStatus())) {
-                    // A cancelled booking does not take the slot.
-                    continue;
-                }
-                taken.add(appointment.getStartsAt().atZone(zone).toLocalTime().toString());
-            }
+        for (Appointment appointment : takenAppointments(clinicId, doctor, day, zone)) {
+            taken.add(appointment.getStartsAt().atZone(zone).toLocalTime().toString());
         }
 
         for (String hour : HOURS) {

@@ -23,7 +23,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class ClinicAuthFilter extends OncePerRequestFilter {
 
     private static final String[] PUBLIC_PATHS = {
-        "/api/auth/otp", "/api/auth/verify", "/api/auth/unlock", "/api/auth/signup", "/actuator/health"
+        "/api/auth/otp", "/api/auth/verify", "/api/auth/unlock", "/api/auth/signup",
+        "/api/auth/pre-signup", "/actuator/health"
     };
 
     /**

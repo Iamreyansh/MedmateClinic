@@ -14,4 +14,7 @@ public interface PatientRepository extends JpaRepository<Patient, UUID> {
 
     /** The patient with this number, in this clinic. The join is exact. */
     Optional<Patient> findFirstByClinicIdAndPhoneDigits(UUID clinicId, String phoneDigits);
+
+    /** The patients of a page, read in one query. */
+    List<Patient> findByClinicIdAndIdIn(UUID clinicId, List<UUID> ids);
 }

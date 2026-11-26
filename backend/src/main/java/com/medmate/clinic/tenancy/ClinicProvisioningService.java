@@ -86,11 +86,61 @@ public class ClinicProvisioningService {
                 log.info("seeding the demo clinic's day");
                 runScript(clinic, schema, "db/demo/V302__demo_today.sql");
             }
+            // The lab bench and the templates. The bench is guarded by the
+            // state of the bench itself — the history seed left it with
+            // reported results only, and it is the orders nobody has touched
+            // that the screen is missing — and the templates by the table
+            // being empty.
+            Integer bench =
+                    jdbc.queryForObject(
+                            "select count(*) from " + schema + ".lab_orders where status in ('ordered', 'to_collect')",
+                            Integer.class);
+            Integer protocols =
+                    jdbc.queryForObject("select count(*) from " + schema + ".templates", Integer.class);
+            if ((bench != null && bench == 0) || (protocols != null && protocols == 0)) {
+                log.info("seeding the demo clinic's bench and templates");
+                runScript(clinic, schema, "db/demo/V303__demo_lab_and_templates.sql");
+            }
+            // The doctors' rooms. The column is the staff table's own, and it
+            // is added by the staff administration migration, so it is only
+            // set when the column is there: a clinic that never chose a room
+            // keeps none, and the seed does not invent one.
+            if (hasRoomColumn(schema)) {
+                Integer rooms =
+                        jdbc.queryForObject(
+                                "select count(*) from " + schema + ".staff where room is not null and room <> ''",
+                                Integer.class);
+                if (rooms == null || rooms == 0) {
+                    log.info("seeding the demo clinic's rooms");
+                    jdbc.update(
+                            "update "
+                                    + schema
+                                    + ".staff set room = case full_name "
+                                    + "when 'Dr. Ananya Rao' then 'Room 2' "
+                                    + "when 'Dr. Vikram Shenoy' then 'Room 3' "
+                                    + "when 'Dr. Meghana Iyer' then 'Room 1' "
+                                    + "else room end "
+                                    + "where full_name in ('Dr. Ananya Rao', 'Dr. Vikram Shenoy', 'Dr. Meghana Iyer') "
+                                    + "and (room is null or room = '')");
+                }
+            }
         } catch (java.io.IOException | java.sql.SQLException e) {
             throw new IllegalStateException("could not load the demo data", e);
         } finally {
             resolver.clear();
         }
+    }
+
+    /** Whether the staff table has a room to give. */
+    private boolean hasRoomColumn(String schema) {
+        JdbcTemplate jdbc = new JdbcTemplate(pool);
+        Integer columns =
+                jdbc.queryForObject(
+                        "select count(*) from information_schema.columns where table_schema = ? "
+                                + "and table_name = 'staff' and column_name = 'room'",
+                        Integer.class,
+                        schema);
+        return columns != null && columns > 0;
     }
 
     /** Run one development script inside the clinic's own schema. */

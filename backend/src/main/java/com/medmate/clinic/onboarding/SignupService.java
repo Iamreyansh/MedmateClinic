@@ -39,6 +39,8 @@ public class SignupService {
     private final GrantService grants;
     private final RoleRepository roles;
     private final JwtService jwt;
+    private final PreSignupService preSignup;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private final SecureRandom random = new SecureRandom();
 
@@ -49,7 +51,9 @@ public class SignupService {
             StaffRepository staff,
             GrantService grants,
             RoleRepository roles,
-            JwtService jwt) {
+            JwtService jwt,
+            PreSignupService preSignup,
+            org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.clinics = clinics;
         this.routing = routing;
         this.provisioning = provisioning;
@@ -57,6 +61,8 @@ public class SignupService {
         this.grants = grants;
         this.roles = roles;
         this.jwt = jwt;
+        this.preSignup = preSignup;
+        this.jdbc = jdbc;
     }
 
     /**
@@ -81,6 +87,14 @@ public class SignupService {
         String mobile = digits(request.mobile());
         if (mobile.length() != 10) {
             throw new IllegalArgumentException("Enter a 10-digit mobile number.");
+        }
+
+        // The owner's number is proved before the clinic is created. The proof
+        // is spent by the sign-up that uses it, so one verified number cannot
+        // create two clinics.
+        if (!preSignup.claim(mobile)) {
+            throw new PreSignupVerificationException(
+                    "Verify the mobile number before creating the clinic.");
         }
 
         UUID clinicId = UUID.randomUUID();
@@ -117,6 +131,15 @@ public class SignupService {
         owner.setActive(true);
         owner.setCreatedAt(Instant.now());
         staff.save(owner);
+
+        // The role the sign-up collected. A manager and a doctor are both the
+        // owner of the clinic, and the client has to be able to tell them
+        // apart: the dashboard greets a doctor as "Dr.".
+        jdbc.update(
+                "update staff set profile_role = ? where id = ? and clinic_id = ?",
+                profileRole(request.role()),
+                owner.getId(),
+                clinicId);
 
         ClinicPrincipal principal =
                 new ClinicPrincipal(
@@ -196,6 +219,12 @@ public class SignupService {
             digits = digits.substring(2);
         }
         return digits;
+    }
+
+    /** The role the sign-up collected, as it is kept: a doctor or a manager. */
+    private static String profileRole(String role) {
+        String value = role == null ? "" : role.trim().toLowerCase(java.util.Locale.ENGLISH);
+        return "manager".equals(value) ? "manager" : "doctor";
     }
 
     /** The clinic's initials. */

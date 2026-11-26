@@ -54,6 +54,7 @@ public class BillingService {
     private final ClinicProfileRepository profiles;
     private final RegistryClinicRepository clinics;
     private final ClinicZoneService zones;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public BillingService(
             InvoiceRepository invoices,
@@ -62,7 +63,8 @@ public class BillingService {
             VisitRepository visits,
             ClinicProfileRepository profiles,
             RegistryClinicRepository clinics,
-            ClinicZoneService zones) {
+            ClinicZoneService zones,
+            org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.invoices = invoices;
         this.patients = patients;
         this.staff = staff;
@@ -70,116 +72,89 @@ public class BillingService {
         this.profiles = profiles;
         this.clinics = clinics;
         this.zones = zones;
+        this.jdbc = jdbc;
     }
 
     /** The till: what came in today, what is still owed, and the bill on screen. */
     @Transactional(readOnly = true)
-    public Map<String, Object> till(ClinicPrincipal principal, String date) {
+    public Map<String, Object> till(
+            ClinicPrincipal principal,
+            String date,
+            String from,
+            String to,
+            String status,
+            String mode,
+            int limit,
+            int offset) {
         if (!principal.can("billing")) {
             throw new ForbiddenException("You cannot open billing.");
         }
         UUID clinicId = principal.clinicIdAsUuid();
         ZoneId zone = zones.zoneOf(clinicId);
         LocalDate day = parseDate(date, LocalDate.now(zone));
-        Instant from = day.atStartOfDay(zone).toInstant();
-        Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+        Instant dayFrom = day.atStartOfDay(zone).toInstant();
+        Instant dayTo = day.plusDays(1).atStartOfDay(zone).toInstant();
 
-        List<Invoice> todays = invoices.findByClinicIdAndCreatedAtBetweenOrderByCreatedAtDesc(clinicId, from, to);
-        List<Invoice> pending = new ArrayList<>();
-        for (Invoice invoice : todays) {
-            if ("unpaid".equals(invoice.getStatus())) {
-                pending.add(invoice);
+        // The page the caller asked for. A page is never empty and never
+        // bigger than the cap.
+        int pageSize = Math.max(1, Math.min(limit <= 0 ? DEFAULT_LIMIT : limit, MAX_LIMIT));
+        int skip = Math.max(0, offset);
+
+        String wanted = status == null ? "" : status.trim().toLowerCase(java.util.Locale.ENGLISH);
+        String statusFilter = statusFilter(wanted);
+        String payMode = mode == null || mode.isBlank() ? null : mode.trim().toLowerCase(java.util.Locale.ENGLISH);
+
+        // The window the bills are taken from: the days the caller named, or
+        // every bill the clinic has when they named none.
+        Instant windowFrom = null;
+        Instant windowTo = null;
+        if (from != null && !from.isBlank()) {
+            windowFrom = parseDate(from, day).atStartOfDay(zone).toInstant();
+        }
+        if (to != null && !to.isBlank()) {
+            windowTo = parseDate(to, day).plusDays(1).atStartOfDay(zone).toInstant();
+        }
+        if (windowFrom == null && windowTo == null && "today".equals(wanted)) {
+            windowFrom = dayFrom;
+            windowTo = dayTo;
+        }
+
+        // The rows of the page, and the count of the rows the page is a page
+        // of. Both are counted in the database: the filter and the count are
+        // one statement, so they can never disagree.
+        Page page = page(clinicId, statusFilter, payMode, windowFrom, windowTo, pageSize, skip);
+
+        // The people the bills belong to, read once for the whole page.
+        List<UUID> patientIds = new ArrayList<>();
+        for (Map<String, Object> row : page.rows()) {
+            Object id = row.get("patientId");
+            if (id != null) {
+                patientIds.add(UUID.fromString(String.valueOf(id)));
             }
         }
+        Map<UUID, Map<String, Object>> people = patientCards(clinicId, patientIds);
 
-        BigDecimal collected = BigDecimal.ZERO;
-        BigDecimal pendingAmount = BigDecimal.ZERO;
-        BigDecimal refundedAmount = BigDecimal.ZERO;
-        int paidBills = 0;
-        int refundedBills = 0;
-        for (Invoice invoice : todays) {
-            String status = invoice.getStatus() == null ? "unpaid" : invoice.getStatus();
-            switch (status) {
-                case "paid" -> {
-                    collected = collected.add(zero(invoice.getTotal()));
-                    paidBills++;
-                }
-                case "refunded" -> {
-                    refundedAmount = refundedAmount.add(zero(invoice.getTotal()));
-                    refundedBills++;
-                }
-                default -> pendingAmount = pendingAmount.add(zero(invoice.getTotal()));
-            }
-        }
-
-        List<Map<String, Object>> byMode = new ArrayList<>();
-        for (String mode : List.of("cash", "upi", "card")) {
-            BigDecimal amount = BigDecimal.ZERO;
-            int count = 0;
-            for (Invoice invoice : todays) {
-                if ("paid".equals(invoice.getStatus()) && mode.equals(invoice.getPayMode())) {
-                    amount = amount.add(zero(invoice.getTotal()));
-                    count++;
-                }
-            }
-            Map<String, Object> card = new LinkedHashMap<>();
-            card.put("mode", mode);
-            card.put("label", label(mode));
-            card.put("amount", amount);
-            card.put("bills", count);
-            byMode.add(card);
-        }
-        Map<String, Object> pendingCard = new LinkedHashMap<>();
-        pendingCard.put("mode", "pending");
-        pendingCard.put("label", "Pending");
-        pendingCard.put("amount", pendingAmount);
-        pendingCard.put("bills", pending.size());
-        byMode.add(pendingCard);
-
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("collected", collected);
-        summary.put("bills", paidBills);
-        summary.put("pendingCount", pending.size());
-        summary.put("pendingAmount", pendingAmount);
-        summary.put("refundCount", refundedBills);
-        summary.put("refundAmount", refundedAmount);
-        summary.put("dayBills", todays.size());
-
-        List<Map<String, Object>> pendingItems = new ArrayList<>();
-        for (Invoice invoice : pending) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("invoiceId", invoice.getId().toString());
-            item.put("number", invoice.getNumber());
-            item.put("amount", invoice.getTotal());
-            item.put("createdAt", invoice.getCreatedAt() == null ? null : invoice.getCreatedAt().toString());
-            item.put("patient", patientCard(invoice.getPatientId()));
-            item.put("description", describe(invoice));
-            pendingItems.add(item);
-        }
-
-        // The bills raised today, each with its status, so the till's tabs
-        // (Today / All / To collect / Paid / Refunded) filter on something.
         List<Map<String, Object>> bills = new ArrayList<>();
-        for (Invoice invoice : todays) {
-            if (bills.size() >= MAX_BILLS) {
-                break;
-            }
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("invoiceId", invoice.getId().toString());
-            item.put("number", invoice.getNumber());
-            item.put("status", invoice.getStatus() == null ? "unpaid" : invoice.getStatus());
-            item.put("amount", invoice.getTotal());
-            item.put("payMode", invoice.getPayMode());
-            item.put(
-                    "paidAt",
-                    invoice.getPaidAt() == null ? null : invoice.getPaidAt().toString());
-            item.put(
-                    "createdAt",
-                    invoice.getCreatedAt() == null ? null : invoice.getCreatedAt().toString());
-            item.put("visitId", invoice.getVisitId() == null ? null : invoice.getVisitId().toString());
-            item.put("patient", patientCard(invoice.getPatientId()));
+        for (Map<String, Object> row : page.rows()) {
+            Map<String, Object> item = new LinkedHashMap<>(row);
+            Object patientId = item.remove("patientId");
+            UUID id = patientId == null ? null : UUID.fromString(String.valueOf(patientId));
+            item.put("patient", id == null ? new LinkedHashMap<String, Object>() : people.getOrDefault(id, new LinkedHashMap<>()));
             bills.add(item);
         }
+
+        Map<String, Object> summary = summary(clinicId, dayFrom, dayTo);
+        List<Map<String, Object>> byMode = byMode(clinicId, dayFrom, dayTo, summary);
+        List<Map<String, Object>> pending = pending(clinicId, dayFrom, dayTo);
+
+        // The receipt card: the bill of the day. The screen shows the bill it
+        // is about to take the money for, and a null card left it empty.
+        Invoice first = firstOfDay(clinicId, dayFrom, dayTo);
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("total", page.total());
+        meta.put("limit", pageSize);
+        meta.put("offset", skip);
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("day", day.toString());
@@ -187,13 +162,272 @@ public class BillingService {
         body.put("bills", bills);
         body.put("summary", summary);
         body.put("byMode", byMode);
-        body.put("pending", pendingItems);
-        // The receipt card: the bill of the day. The screen shows the bill it
-        // is about to take the money for, and a null card left it empty.
-        body.put("bill", todays.isEmpty() ? null : billCard(clinicId, todays.get(0), zone));
+        body.put("pending", pending);
+        body.put("bill", first == null ? null : billCard(clinicId, first, zone));
         body.put("clinic", clinicCard(clinicId));
+        body.put("meta", meta);
         return body;
     }
+
+    /**
+     * The rows of a page of bills, and the count of the rows it is a page of.
+     *
+     * <p>The filter, the count, the page and the order are all in the
+     * database: a clinic with years of bills behind it must not answer with
+     * every bill it ever raised, and it must not answer with a count that
+     * does not match the rows.
+     */
+    private Page page(
+            UUID clinicId,
+            String status,
+            String mode,
+            Instant from,
+            Instant to,
+            int limit,
+            int offset) {
+        StringBuilder where = new StringBuilder(" where clinic_id = ?");
+        List<Object> args = new ArrayList<>();
+        args.add(clinicId);
+        if (from != null) {
+            where.append(" and created_at >= ?");
+            args.add(Timestamp.from(from));
+        }
+        if (to != null) {
+            where.append(" and created_at < ?");
+            args.add(Timestamp.from(to));
+        }
+        if (status != null) {
+            where.append(" and status = ?");
+            args.add(status);
+        }
+        if (mode != null) {
+            where.append(" and pay_mode = ?");
+            args.add(mode);
+        }
+
+        Long total =
+                jdbc.queryForObject(
+                        "select count(*) from invoices" + where, Long.class, args.toArray());
+
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(limit);
+        pageArgs.add(offset);
+        List<Map<String, Object>> rows =
+                jdbc.query(
+                        "select id, number, status, total, pay_mode, paid_at, created_at, visit_id, "
+                                + "patient_id, lines -> 0 ->> 'name' as description "
+                                + "from invoices"
+                                + where
+                                + " order by created_at desc limit ? offset ?",
+                        (rs, row) -> {
+                            Map<String, Object> item = new LinkedHashMap<>();
+                            item.put("invoiceId", rs.getString("id"));
+                            item.put("number", rs.getString("number"));
+                            item.put("status", rs.getString("status"));
+                            item.put("amount", rs.getBigDecimal("total"));
+                            item.put("payMode", rs.getString("pay_mode"));
+                            item.put("paidAt", instant(rs.getTimestamp("paid_at")));
+                            item.put("createdAt", instant(rs.getTimestamp("created_at")));
+                            item.put("visitId", rs.getString("visit_id"));
+                            item.put("description", rs.getString("description"));
+                            item.put("patientId", rs.getString("patient_id"));
+                            return item;
+                        },
+                        pageArgs.toArray());
+        return new Page(rows, total == null ? 0 : total);
+    }
+
+    /**
+     * The day's money, counted in the database.
+     *
+     * <p>The till shows four numbers: what came in, what is still owed, what
+     * was given back and how many bills the day had. They are counted where
+     * the bills are, not by reading every bill into memory.
+     */
+    private Map<String, Object> summary(UUID clinicId, Instant from, Instant to) {
+        Map<String, Object> row =
+                jdbc.queryForMap(
+                        "select count(*) filter (where status = 'paid') as paid_bills, "
+                                + "coalesce(sum(total) filter (where status = 'paid'), 0) as collected, "
+                                + "count(*) filter (where status = 'unpaid') as pending_count, "
+                                + "coalesce(sum(total) filter (where status = 'unpaid'), 0) as pending_amount, "
+                                + "count(*) filter (where status = 'refunded') as refund_count, "
+                                + "coalesce(sum(total) filter (where status = 'refunded'), 0) as refund_amount, "
+                                + "count(*) as day_bills "
+                                + "from invoices where clinic_id = ? and created_at >= ? and created_at < ?",
+                        clinicId,
+                        Timestamp.from(from),
+                        Timestamp.from(to));
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("collected", row.get("collected"));
+        summary.put("bills", ((Number) row.get("paid_bills")).longValue());
+        summary.put("pendingCount", ((Number) row.get("pending_count")).longValue());
+        summary.put("pendingAmount", row.get("pending_amount"));
+        summary.put("refundCount", ((Number) row.get("refund_count")).longValue());
+        summary.put("refundAmount", row.get("refund_amount"));
+        summary.put("dayBills", ((Number) row.get("day_bills")).longValue());
+        return summary;
+    }
+
+    /**
+     * The money by the way it was paid, counted in the database.
+     *
+     * <p>The till shows four bars: cash, UPI and card, and the last one being
+     * what has not come in yet.
+     */
+    private List<Map<String, Object>> byMode(
+            UUID clinicId, Instant from, Instant to, Map<String, Object> summary) {
+        Map<String, long[]> counts = new LinkedHashMap<>();
+        Map<String, BigDecimal> amounts = new LinkedHashMap<>();
+        jdbc.query(
+                "select pay_mode, count(*) as bills, coalesce(sum(total), 0) as amount from invoices "
+                        + "where clinic_id = ? and created_at >= ? and created_at < ? and status = 'paid' "
+                        + "group by pay_mode",
+                (rs, row) -> {
+                    String mode = rs.getString("pay_mode");
+                    counts.put(mode, new long[] {rs.getLong("bills")});
+                    amounts.put(mode, rs.getBigDecimal("amount"));
+                    return null;
+                },
+                clinicId,
+                Timestamp.from(from),
+                Timestamp.from(to));
+
+        List<Map<String, Object>> byMode = new ArrayList<>();
+        for (String mode : List.of("cash", "upi", "card")) {
+            Map<String, Object> card = new LinkedHashMap<>();
+            card.put("mode", mode);
+            card.put("label", label(mode));
+            card.put("amount", amounts.getOrDefault(mode, BigDecimal.ZERO));
+            card.put("bills", counts.containsKey(mode) ? counts.get(mode)[0] : 0);
+            byMode.add(card);
+        }
+
+        Map<String, Object> pendingCard = new LinkedHashMap<>();
+        pendingCard.put("mode", "pending");
+        pendingCard.put("label", "Pending");
+        pendingCard.put("amount", summary.get("pendingAmount"));
+        pendingCard.put("bills", summary.get("pendingCount"));
+        byMode.add(pendingCard);
+        return byMode;
+    }
+
+    /** The bills of today that are still owed. */
+    private List<Map<String, Object>> pending(UUID clinicId, Instant from, Instant to) {
+        List<Map<String, Object>> rows =
+                jdbc.query(
+                        "select id, number, total, created_at, patient_id, lines -> 0 ->> 'name' as description "
+                                + "from invoices where clinic_id = ? and created_at >= ? and created_at < ? "
+                                + "and status = 'unpaid' order by created_at desc limit ?",
+                        (rs, row) -> {
+                            Map<String, Object> item = new LinkedHashMap<>();
+                            item.put("invoiceId", rs.getString("id"));
+                            item.put("number", rs.getString("number"));
+                            item.put("amount", rs.getBigDecimal("total"));
+                            item.put("createdAt", instant(rs.getTimestamp("created_at")));
+                            item.put("description", rs.getString("description"));
+                            item.put("patientId", rs.getString("patient_id"));
+                            return item;
+                        },
+                        clinicId,
+                        Timestamp.from(from),
+                        Timestamp.from(to),
+                        DEFAULT_LIMIT);
+
+        List<UUID> patientIds = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Object id = row.get("patientId");
+            if (id != null) {
+                patientIds.add(UUID.fromString(String.valueOf(id)));
+            }
+        }
+        Map<UUID, Map<String, Object>> people = patientCards(clinicId, patientIds);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> item = new LinkedHashMap<>(row);
+            Object patientId = item.remove("patientId");
+            UUID id = patientId == null ? null : UUID.fromString(String.valueOf(patientId));
+            item.put(
+                    "patient",
+                    id == null ? new LinkedHashMap<String, Object>() : people.getOrDefault(id, new LinkedHashMap<>()));
+            items.add(item);
+        }
+        return items;
+    }
+
+    /**
+     * The people of a page of bills, read once for the whole page.
+     *
+     * <p>One query for the page, not one for every row: a list of bills that
+     * reads its patients one at a time is a list that gets slower the longer
+     * it gets.
+     */
+    private Map<UUID, Map<String, Object>> patientCards(UUID clinicId, List<UUID> patientIds) {
+        Map<UUID, Map<String, Object>> cards = new LinkedHashMap<>();
+        if (patientIds.isEmpty()) {
+            return cards;
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(patientIds.size(), "?"));
+        List<Object> args = new ArrayList<>();
+        args.add(clinicId);
+        args.addAll(patientIds);
+        jdbc.query(
+                "select id, full_name, age, sex, phone, abha from patients "
+                        + "where clinic_id = ? and id in ("
+                        + placeholders
+                        + ")",
+                (rs, row) -> {
+                    Map<String, Object> card = new LinkedHashMap<>();
+                    card.put("id", rs.getString("id"));
+                    card.put("name", rs.getString("full_name"));
+                    card.put("age", rs.getObject("age"));
+                    card.put("sex", rs.getString("sex"));
+                    card.put("phone", rs.getString("phone") == null ? "" : rs.getString("phone"));
+                    card.put("abha", rs.getString("abha") == null ? "" : rs.getString("abha"));
+                    card.put("initials", initials(rs.getString("full_name")));
+                    cards.put(UUID.fromString(rs.getString("id")), card);
+                    return null;
+                },
+                args.toArray());
+        return cards;
+    }
+
+    /** The first bill of the day, as the receipt card is printed from it. */
+    private Invoice firstOfDay(UUID clinicId, Instant from, Instant to) {
+        List<UUID> ids =
+                jdbc.query(
+                        "select id from invoices where clinic_id = ? and created_at >= ? and created_at < ? "
+                                + "order by created_at desc limit 1",
+                        (rs, row) -> rs.getObject("id", UUID.class),
+                        clinicId,
+                        Timestamp.from(from),
+                        Timestamp.from(to));
+        if (ids.isEmpty()) {
+            return null;
+        }
+        return invoices.findByIdAndClinicId(ids.get(0), clinicId).orElse(null);
+    }
+
+    /** The status the tab asks for, as it is kept in the table. */
+    private static String statusFilter(String status) {
+        return switch (status) {
+            case "to_collect", "unpaid" -> "unpaid";
+            case "paid" -> "paid";
+            case "refunded" -> "refunded";
+            case "", "all", "today" -> null;
+            default -> throw new IllegalArgumentException("That is not a bill status.");
+        };
+    }
+
+    /** The moment a timestamp holds, as the API sends instants. */
+    private static String instant(java.sql.Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant().toString();
+    }
+
+    /** A page of rows, and the count of the rows it is a page of. */
+    private record Page(List<Map<String, Object>> rows, long total) {}
 
     /** One bill, as it is printed. */
     @Transactional(readOnly = true)
@@ -478,8 +712,11 @@ public class BillingService {
         events.add(event);
     }
 
-    /** The most bills one page of the till holds. */
-    private static final int MAX_BILLS = 200;
+    /** The bills one page of the till holds when the caller does not say. */
+    private static final int DEFAULT_LIMIT = 50;
+
+    /** The most bills one page of the till may hold. */
+    private static final int MAX_LIMIT = 200;
 
     private Map<String, Object> patientCard(UUID patientId) {
         Map<String, Object> card = new LinkedHashMap<>();

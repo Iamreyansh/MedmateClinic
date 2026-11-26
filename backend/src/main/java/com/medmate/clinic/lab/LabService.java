@@ -33,8 +33,15 @@ public class LabService {
     /** The partner labs the clinic sends samples to. */
     private static final List<String> PARTNERS = List.of("Tenet Diagnostics", "MediDocs");
 
-    /** The bench's own vocabulary: an order that nobody has touched is waiting to be collected. */
-    private static final String[] OPEN_STATUSES = {"to_collect", "in_lab", "sent_out"};
+    /**
+     * The bench's own vocabulary: an order that nobody has touched is waiting
+     * to be collected.
+     *
+     * <p>An order that has been signed but not yet collected is on the bench
+     * too: it is unreported work, and a bench that hid it left the technician
+     * with less to do than the doctor had asked for.
+     */
+    private static final String[] OPEN_STATUSES = {"ordered", "to_collect", "in_lab", "sent_out"};
 
     /** How many rows one page of the bench holds. */
     public static final int PAGE_SIZE = 50;
@@ -45,11 +52,17 @@ public class LabService {
     private final LabOrderRepository orders;
     private final PatientRepository patients;
     private final StaffRepository staff;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    public LabService(LabOrderRepository orders, PatientRepository patients, StaffRepository staff) {
+    public LabService(
+            LabOrderRepository orders,
+            PatientRepository patients,
+            StaffRepository staff,
+            org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.orders = orders;
         this.patients = patients;
         this.staff = staff;
+        this.jdbc = jdbc;
     }
 
     /** The bench: the samples on it, and what has been reported. */
@@ -93,7 +106,7 @@ public class LabService {
         List<Map<String, Object>> reported = new ArrayList<>();
 
         if (wanted == null || "reported".equals(wanted)) {
-            for (LabOrder order : rows(clinicId, "reported", fetch)) {
+            for (LabOrder order : reportedRows(clinicId, fetch)) {
                 reported.add(order(order, clinicId, people, everyone));
             }
         }
@@ -112,9 +125,13 @@ public class LabService {
         open = page(open, from, page);
         reported = page(reported, from, page);
 
+        // How many of the reported results were out of range. The count is
+        // made in the database and over every reported result, not over the
+        // page in front of the technician: a card that says zero while three
+        // abnormal results sit in the list is a card that lies.
         int abnormalToday = 0;
-        for (Map<String, Object> row : reported) {
-            if (Boolean.TRUE.equals(row.get("abnormal"))) {
+        for (ReportedValue result : reportedValues(clinicId)) {
+            if (result.critical() || !referenceNormal(result.value(), result.low(), result.high())) {
                 abnormalToday++;
             }
         }
@@ -137,10 +154,33 @@ public class LabService {
         return body;
     }
 
+    /** The reported results that carry a reading, with the range they were read against. */
+    private List<ReportedValue> reportedValues(UUID clinicId) {
+        return jdbc.query(
+                "select result_value, reference_low, reference_high, critical from lab_orders "
+                        + "where clinic_id = ? and status = 'reported' and (result_value is not null or critical)",
+                (rs, row) ->
+                        new ReportedValue(
+                                rs.getString("result_value"),
+                                rs.getString("reference_low"),
+                                rs.getString("reference_high"),
+                                rs.getBoolean("critical")),
+                clinicId);
+    }
+
+    /** A reported result, with the range it was read against. */
+    private record ReportedValue(String value, String low, String high, boolean critical) {}
+
     /** One page of a status. */
     private List<LabOrder> rows(UUID clinicId, String status, int limit) {
         return orders.findByClinicIdAndStatusOrderByOrderedAtAsc(
                 clinicId, status, org.springframework.data.domain.PageRequest.of(0, limit));
+    }
+
+    /** One page of the reported results, the newest first. */
+    private List<LabOrder> reportedRows(UUID clinicId, int limit) {
+        return orders.findByClinicIdAndStatusOrderByOrderedAtDesc(
+                clinicId, "reported", org.springframework.data.domain.PageRequest.of(0, limit));
     }
 
     /** The rows of one page, out of the rows that were read. */
@@ -320,9 +360,16 @@ public class LabService {
      * it sits between the bounds.
      */
     static boolean referenceNormal(LabOrder order) {
-        String value = order.getResultValue();
-        String low = order.getReferenceLow();
-        String high = order.getReferenceHigh();
+        return referenceNormal(order.getResultValue(), order.getReferenceLow(), order.getReferenceHigh());
+    }
+
+    /**
+     * Whether a reading sat inside the range it was read against.
+     *
+     * <p>The rule is in one place, so the card that counts the abnormal
+     * results and the row that is marked abnormal always agree.
+     */
+    static boolean referenceNormal(String value, String low, String high) {
         if (value == null || value.isBlank()) {
             return true;
         }
