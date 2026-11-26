@@ -25,6 +25,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const BASE_REF = args[0] ?? "origin/main";
 const BRANCH = args[1] ?? "test/e2e-fidelity";
+/**
+ * The commit the new one is a child of, when it is not the base's own sha.
+ *
+ * A branch published through the API gets a commit sha that the local
+ * repository does not have: the tree is the same, but the commit is GitHub's.
+ * The parent has to be the published commit, or the commit points at an
+ * object nobody has.
+ */
+const PARENT = args[2] ?? null;
 const MCP_URL = process.env.MCP_URL ?? "http://api:3001/api/mcp/http-integrations";
 const INTEGRATION_ID =
   process.env.INTEGRATION_ID ?? "session:49d16730-823f-4e2c-bd9a-dc22cdc0851d";
@@ -228,6 +237,7 @@ for (const file of files) {
 
 const baseCommit = git("rev-parse", `${BASE_REF}^{commit}`);
 const baseTree = git("rev-parse", `${baseCommit}^{tree}`);
+const parentCommit = PARENT ?? baseCommit;
 
 const tree = await call("POST", "/git/trees", { base_tree: baseTree, tree: treeEntries });
 const treeSha = tree?.sha;
@@ -271,7 +281,7 @@ console.log(`✓ the published tree matches the local tree (${remoteBlobs.size} 
 const commit = await call("POST", "/git/commits", {
   message: git("log", "-1", "--pretty=%B").trim(),
   tree: treeSha,
-  parents: [baseCommit],
+  parents: [parentCommit],
 });
 const commitSha = commit?.sha;
 if (!commitSha) throw new Error(`no commit sha: ${JSON.stringify(commit).slice(0, 300)}`);
