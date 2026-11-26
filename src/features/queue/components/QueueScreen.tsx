@@ -102,7 +102,9 @@ export function QueueScreen() {
       case "unassigned":
         return scoped.filter((item) => !item.doctorId);
       case "seen":
-        return scoped.filter((item) => item.status && item.status !== "waiting");
+        // a consult that is finished today, or one happening now, is a patient
+        // the doctor has seen. A no-show is neither seen nor waiting.
+        return scoped.filter((item) => item.status === "done" || item.status === "in_consult");
       case "waiting":
         return scoped.filter((item) => !item.status || item.status === "waiting");
       case "urgent":

@@ -109,7 +109,7 @@ relative `/api` and the server puts the two on one origin.
 | `REGISTRY_SCHEMA` | `registry` |
 | `CLINIC_SCHEMA_PREFIX` | `clinic_` |
 | `DEMO_ENABLED` | `false` |
-| `DEMO_CLINIC_ID` | `` |
+| `DEMO_CLINIC_ID` | — (unset; the clinic the demo data belongs to) |
 | `KIOSK_CLINIC_SLUG` | `medmate-clinic` |
 
 `AUTH_EXPOSE_CODE=true` returns the one-time code in the API response, which is

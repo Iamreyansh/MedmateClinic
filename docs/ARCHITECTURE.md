@@ -349,8 +349,9 @@ whole thing — Postgres, the API, the app.
 ## Local
 
 ```bash
-# the database
-brew services start postgresql@16
+# the database — any PostgreSQL 14 or later, running
+# macOS:          brew services start postgresql@16
+# Debian/Ubuntu: sudo service postgresql start
 createdb -O medmate medmate_clinic_api
 
 # the API
@@ -363,19 +364,35 @@ npm run dev            # http://localhost:3100
 The API runs on 8080; Vite proxies `/api` to it. Point the app at the service
 with `VITE_USE_MOCK=false`; without it the app answers from the local mock.
 
-Environment for the API:
+### The environment the service reads
+
+The table below is every variable the service reads, generated from
+`backend/.env.example` — the file that is the service's contract. Copy it to
+`backend/.env` and change what you need; the service reads the environment
+rather than the file, so export the variables (`set -a; . backend/.env; set +a`)
+instead of leaving them there. The README carries the same table.
 
 | Variable | Default |
 |---|---|
 | `DATABASE_URL` | `jdbc:postgresql://localhost:5432/medmate_clinic_api` |
-| `DATABASE_USER` / `DATABASE_PASSWORD` | `medmate` |
-| `DATABASE_SCHEMA` | `medmate` |
-| `AUTH_SECRET` | a development secret — **change it in production** |
-| `AUTH_EXPOSE_CODE` | `true` — the OTP comes back in the response; set `false` in production |
-| `CORS_ORIGINS` | `http://localhost:3100,http://127.0.0.1:3100` |
+| `DATABASE_USER` | `medmate` |
+| `DATABASE_PASSWORD` | `medmate` |
+| `DATABASE_POOL_SIZE` | `10` |
+| `SERVER_PORT` | `8080` |
+| `APP_ENV` | `development` |
+| `AUTH_SECRET` | `a development secret — **change it in production**` |
+| `AUTH_EXPOSE_CODE` | `true` |
+| `AUTH_TTL_MINUTES` | `720` |
+| `AUTH_OTP_TTL_MINUTES` | `5` |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3100,http://127.0.0.1:3100` |
+| `REGISTRY_SCHEMA` | `registry` |
+| `CLINIC_SCHEMA_PREFIX` | `clinic_` |
+| `DEMO_ENABLED` | `false` |
+| `DEMO_CLINIC_ID` | — (unset; the clinic the demo data belongs to) |
+| `KIOSK_CLINIC_SLUG` | `medmate-clinic` |
 
-The service's own fifteen variables are in `backend/.env.example`; the stack's are
-in the root `.env.example`.
+The stack's own variables — the ones `docker compose` reads — are in the root
+`.env.example`.
 
 ## Before production
 
