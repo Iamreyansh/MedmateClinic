@@ -117,11 +117,13 @@ public class QueueController {
             items.add(item);
         }
 
-        // the doctor's own speciality — the console they work in, not the first
-        // doctor in the clinic
+        // the doctor's own room — the console they work in, not the first
+        // doctor in the clinic. It is the column on the staff row, and never
+        // the speciality: a doctor sees patients in a room, and a speciality is
+        // not a room.
         String room = staffRepository.findByClinicId(clinicId).stream()
                 .filter(person -> principal.staffIdAsUuid().equals(person.getId()))
-                .map(Staff::getSpeciality)
+                .map(Staff::getRoom)
                 .filter(name -> name != null && !name.isBlank())
                 .findFirst()
                 .orElse("");

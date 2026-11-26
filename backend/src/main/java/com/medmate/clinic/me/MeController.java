@@ -80,7 +80,10 @@ public class MeController {
             doctor.put("name", person.getFullName());
             doctor.put("initials", initials(person.getFullName()));
             doctor.put("speciality", person.getSpeciality() == null ? "" : person.getSpeciality());
-            doctor.put("room", person.getSpeciality() == null ? "" : person.getSpeciality());
+            // The room the doctor works in — the column on the staff row, and
+            // never the speciality: a doctor sees patients in a room, and a
+            // speciality is not a room.
+            doctor.put("room", person.getRoom() == null ? "" : person.getRoom());
             doctor.put("registration", person.getRegistration() == null ? "" : person.getRegistration());
             doctor.put("hpr", person.getHprId() == null ? "" : person.getHprId());
             doctors.add(doctor);

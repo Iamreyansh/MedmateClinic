@@ -338,6 +338,7 @@ public class AppointmentService {
 
         // The people of the page, read once for the whole page.
         Map<UUID, Map<String, Object>> people = patientsOf(clinicId, rows);
+        Map<UUID, String> rooms = rooms(clinicId);
 
         List<Map<String, Object>> items = new ArrayList<>();
         int toCome = 0;
@@ -348,7 +349,7 @@ public class AppointmentService {
             byDay.put(date, new ArrayList<>());
         }
         for (Appointment appointment : rows) {
-            Map<String, Object> item = card(clinicId, zone, appointment, people);
+            Map<String, Object> item = card(clinicId, zone, appointment, people, rooms);
             items.add(item);
             LocalDate date = appointment.getStartsAt().atZone(zone).toLocalDate();
             List<Map<String, Object>> column = byDay.get(date);
@@ -473,7 +474,8 @@ public class AppointmentService {
             UUID clinicId,
             ZoneId zone,
             Appointment appointment,
-            Map<UUID, Map<String, Object>> people) {
+            Map<UUID, Map<String, Object>> people,
+            Map<UUID, String> rooms) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", appointment.getId().toString());
         item.put("mode", appointment.getMode());
@@ -496,7 +498,14 @@ public class AppointmentService {
         item.put("visitId", appointment.getVisitId() == null ? null : appointment.getVisitId().toString());
         item.put("patientId", appointment.getPatientId() == null ? null : appointment.getPatientId().toString());
         item.put("source", appointment.getSource());
-        item.put("room", appointment.getDoctorId() == null ? null : doctorName(clinicId, appointment.getDoctorId()));
+        // The room the doctor works in — the column on the staff row, and
+        // never the doctor's name or speciality: a doctor sees patients in a
+        // room, and a name is not a room.
+        item.put(
+                "room",
+                appointment.getDoctorId() == null
+                        ? null
+                        : rooms.getOrDefault(appointment.getDoctorId(), ""));
 
         Map<String, Object> patient = new LinkedHashMap<>();
         Map<String, Object> person =
@@ -518,12 +527,13 @@ public class AppointmentService {
             booked = booked.stream().filter(a -> doctorId.equals(a.getDoctorId())).toList();
         }
 
+        Map<UUID, String> rooms = rooms(clinicId);
         List<Map<String, Object>> items = new ArrayList<>();
         int toCome = 0;
         int done = 0;
         int noShow = 0;
         for (Appointment appointment : booked) {
-            items.add(card(clinicId, zone, appointment));
+            items.add(card(clinicId, zone, appointment, rooms));
             String status = statusOf(appointment);
             if ("booked".equals(status)) {
                 toCome++;
@@ -577,6 +587,7 @@ public class AppointmentService {
             booked = booked.stream().filter(a -> doctorId.equals(a.getDoctorId())).toList();
         }
 
+        Map<UUID, String> rooms = rooms(clinicId);
         Map<LocalDate, List<Map<String, Object>>> byDay = new HashMap<>();
         for (LocalDate date = monday; !date.isAfter(saturday); date = date.plusDays(1)) {
             byDay.put(date, new ArrayList<>());
@@ -590,7 +601,7 @@ public class AppointmentService {
             if (column == null) {
                 continue;
             }
-            column.add(card(clinicId, zone, appointment));
+            column.add(card(clinicId, zone, appointment, rooms));
             String status = statusOf(appointment);
             if ("booked".equals(status)) {
                 toCome++;
@@ -636,7 +647,8 @@ public class AppointmentService {
 
     // ---------------------------------------------------------------- cards
 
-    private Map<String, Object> card(UUID clinicId, ZoneId zone, Appointment appointment) {
+    private Map<String, Object> card(
+            UUID clinicId, ZoneId zone, Appointment appointment, Map<UUID, String> rooms) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", appointment.getId().toString());
         item.put("mode", appointment.getMode());
@@ -659,7 +671,14 @@ public class AppointmentService {
         item.put("visitId", appointment.getVisitId() == null ? null : appointment.getVisitId().toString());
         item.put("patientId", appointment.getPatientId() == null ? null : appointment.getPatientId().toString());
         item.put("source", appointment.getSource());
-        item.put("room", appointment.getDoctorId() == null ? null : doctorName(clinicId, appointment.getDoctorId()));
+        // The room the doctor works in — the column on the staff row, and
+        // never the doctor's name or speciality: a doctor sees patients in a
+        // room, and a name is not a room.
+        item.put(
+                "room",
+                appointment.getDoctorId() == null
+                        ? null
+                        : rooms.getOrDefault(appointment.getDoctorId(), ""));
 
         Map<String, Object> patient = new LinkedHashMap<>();
         patients.findById(appointment.getPatientId()).ifPresent(person -> {
@@ -723,6 +742,26 @@ public class AppointmentService {
     }
 
     /** The name of the doctor, for the booking that was made. */
+    /**
+     * The room each doctor works in.
+     *
+     * <p>The column is read through the row's own JSON, so the appointment
+     * book reads the room the doctors screen reads and never falls back to the
+     * doctor's name — which is the bug this replaced.
+     */
+    private Map<UUID, String> rooms(UUID clinicId) {
+        Map<UUID, String> rooms = new LinkedHashMap<>();
+        jdbc.query(
+                "select id, to_jsonb(s) ->> 'room' as room from staff s where clinic_id = ?",
+                (rs, row) -> {
+                    String room = rs.getString("room");
+                    rooms.put(rs.getObject("id", UUID.class), room == null ? "" : room);
+                    return null;
+                },
+                clinicId);
+        return rooms;
+    }
+
     private String doctorName(UUID clinicId, UUID doctorId) {
         if (doctorId == null) {
             return "Any doctor";

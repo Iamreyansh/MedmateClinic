@@ -171,7 +171,10 @@ public class PatientWebService {
             body.put("speciality", person.getSpeciality());
             body.put("feeInClinic", feeFor(clinicId, person));
             body.put("feeOnline", feeFor(clinicId, person).subtract(new BigDecimal("100")));
-            body.put("room", person.getSpeciality());
+            // The room the doctor works in — the column on the staff row, and
+            // never the speciality: a doctor sees patients in a room, and a
+            // speciality is not a room.
+            body.put("room", person.getRoom() == null ? "" : person.getRoom());
             list.add(body);
         }
 
@@ -652,7 +655,7 @@ public class PatientWebService {
         body.put("patient", person == null ? "" : person.getFullName());
         body.put("position", position);
         body.put("ahead", Math.max(0, position - 1));
-        body.put("room", doctor == null ? null : doctor.getSpeciality());
+        body.put("room", doctor == null ? null : doctor.getRoom());
         body.put("doctor", doctor == null ? "" : doctor.getFullName());
         body.put("due", 500);
         body.put("prescriptionUrl", prescriptionUrlFor(visit));
