@@ -137,3 +137,25 @@ from (values
 ) as rows (id, clinic_id, patient_id, token, status, mode, source, reason, detail, priority, seen_by,
            created_at, waited_minutes, consult_started_at)
 on conflict (id) do nothing;
+
+-- ------------------------------------------------------------ the doctors' rooms
+--
+-- The room a doctor works in is the column on their own staff row, and each
+-- of the development clinic's doctors has one: Dr. Ananya Rao is found in
+-- Room 2, Dr. Vikram Shenoy in Room 3, Dr. Meghana Iyer in Room 1. The front
+-- desk has no room — a person at the desk is not found in one.
+--
+-- The rooms are set here and not in the staff administration migration,
+-- because the migration runs before the demo people exist: a seed inside a
+-- migration cannot see the people it would set. The migration keeps its own
+-- backfill for a clinic whose people were already there, and both use the
+-- same mapping, so a clinic is never left with two answers.
+update staff
+set room = case
+    when full_name = 'Dr. Ananya Rao' then 'Room 2'
+    when full_name = 'Dr. Vikram Shenoy' then 'Room 3'
+    when full_name = 'Dr. Meghana Iyer' then 'Room 1'
+    else room
+end
+where full_name in ('Dr. Ananya Rao', 'Dr. Vikram Shenoy', 'Dr. Meghana Iyer')
+  and clinic_id = '${clinic_id}'::uuid;

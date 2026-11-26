@@ -232,11 +232,15 @@ create index if not exists staff_branch
 -- people are seeded after this migration has run, so this fills the rooms
 -- for a clinic whose people are already here. A room the clinic has not
 -- chosen is left empty, and the screens show a dash rather than a guess.
+--
+-- The mapping is the demo script's mapping — Dr. Ananya Rao in Room 2, Dr.
+-- Vikram Shenoy in Room 3, Dr. Meghana Iyer in Room 1 — so a clinic seeded
+-- twice is not left with two answers about where a doctor is found.
 update staff
 set room = case
-    when full_name = 'Dr. Ananya Rao' then 'Room 1'
-    when full_name = 'Dr. Vikram Shenoy' then 'Room 2'
-    when full_name = 'Dr. Meghana Iyer' then 'Room 3'
+    when full_name = 'Dr. Ananya Rao' then 'Room 2'
+    when full_name = 'Dr. Vikram Shenoy' then 'Room 3'
+    when full_name = 'Dr. Meghana Iyer' then 'Room 1'
     else room
 end
 where full_name in ('Dr. Ananya Rao', 'Dr. Vikram Shenoy', 'Dr. Meghana Iyer')
