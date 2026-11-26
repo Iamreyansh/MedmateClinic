@@ -139,13 +139,11 @@ export const ROUTES = [
     title: "Lab & diagnostics",
     kind: "staff",
     api: ["/clinic/lab"],
-    // Not compared: the demo clinic has no lab results, so the screen shows
-    // its empty state and there is nothing on it to compare with the
-    // baseline. The harness reports that as an error rather than measuring an
-    // empty card against a full screen, which is right — but then the route
-    // cannot be in the comparison at all. Seed the demo data and this is a
-    // route again.
-    diff: false,
+    // Compared again: the demo seeds (V303) brought the bench's unreported
+    // orders and its abnormal results, so the screen has content to measure
+    // instead of its empty state. It was left out of the comparison while
+    // the demo clinic had no lab results at all.
+    diff: true,
     budget: 13,
     public: false,
     expect: "content",
@@ -165,7 +163,7 @@ export const ROUTES = [
     // from the MVP as it answers today. The tolerance covers the machine the
     // declaration was measured on — a pixel percentage is not portable.
     expected: {
-      reference: { percent: 36, tolerance: 1, reason: "deliberate difference from the deployed MVP — the kiosk's own flow; the Figma baseline is the arbiter" },
+      reference: { percent: 5, tolerance: 1, reason: "the deployed MVP answers today's kiosk with the same staff card the app draws, so the two are close; the kiosk's own patient flow is a different surface, and the Figma baseline is the arbiter" },
       history: { percent: 1.7, tolerance: 2, reason: "the kiosk's entry prompt is the shipped MVP's own — the kiosk's screen is behind the staff PIN in both, so only the Figma baseline can measure it" },
     },
     public: false,
@@ -210,9 +208,10 @@ export const ROUTES = [
     title: "My templates (doctor)",
     kind: "staff",
     api: ["/clinic/templates"],
-    // Not compared: the demo clinic has no templates, so the screen shows
-    // its empty state. Seed the demo data and this is a route again.
-    diff: false,
+    // Compared again: the demo seeds (V303) brought the clinic's templates,
+    // so the screen has content to measure instead of its empty state. It
+    // was left out of the comparison while the demo clinic had none.
+    diff: true,
     budget: 13,
     public: false,
     expect: "content",
@@ -231,7 +230,7 @@ export const ROUTES = [
     // from the MVP as it answers today. The tolerance covers the machine the
     // declaration was measured on — a pixel percentage is not portable.
     expected: {
-      reference: { percent: 26, tolerance: 1, reason: "deliberate difference from the deployed MVP — the app's own six tabs; the Figma baseline is the arbiter" },
+      reference: { percent: 21, tolerance: 1, reason: "deliberate difference from the deployed MVP — the app's own six tabs; the Figma baseline is the arbiter" },
       history: { percent: 14.8, tolerance: 4, reason: "deliberate difference from the deployed MVP — the app's own six tabs; the Figma baseline is the arbiter" },
     },
     public: false,
@@ -262,7 +261,7 @@ export const ROUTES = [
     // from the MVP as it answers today. The tolerance covers the machine the
     // declaration was measured on — a pixel percentage is not portable.
     expected: {
-      reference: { percent: 24, tolerance: 1, reason: "deliberate difference from the deployed MVP — the app's own tab sets; the Figma baseline is the arbiter" },
+      reference: { percent: 21, tolerance: 1, reason: "deliberate difference from the deployed MVP — the app's own tab sets; the Figma baseline is the arbiter" },
       history: { percent: 19.2, tolerance: 4, reason: "deliberate difference from the deployed MVP — the app's own tab sets; the Figma baseline is the arbiter" },
     },
     public: false,
@@ -332,7 +331,7 @@ export const ROUTES = [
     // from the MVP as it answers today. The tolerance covers the machine the
     // declaration was measured on — a pixel percentage is not portable.
     expected: {
-      reference: { percent: 29, tolerance: 1, reason: "the local landing page is a different implementation of the deployed one" },
+      reference: { percent: 26.5, tolerance: 1, reason: "the local landing page is a different implementation of the deployed one" },
       history: { percent: 13.6, tolerance: 4, reason: "the local landing page is a different implementation of the deployed one" },
     },
     public: true,
@@ -397,6 +396,496 @@ export const ROUTES = [
     diff: false,
     public: true,
     expect: "public",
+  },
+  // ------------------------------------------------------------ the mobile app
+  //
+  // The phone app's routes, DECLARED and not compared. The only pixels this
+  // repository has of a phone screen are `history/shots/mobile-book.png` and
+  // `history/shots/mobile-login.png`, and those are the PATIENT-WEB app at a
+  // phone width — a different surface, not this app's design. They are not
+  // these routes' baseline and must never be diffed against them.
+  //
+  // The declared source is the Figma frame, under the published naming rule:
+  // `verify/baselines/figma/<baselineName(path)>.png`, 1280x720, DPR 1. No
+  // Figma frame has been exported yet, so there is no baseline to compare
+  // against and the routes are not in the comparison set. The day a frame is
+  // exported, the route is switched on and the harness measures it — and it
+  // fails closed if the frame is missing.
+  {
+    id: "m-landing",
+    path: "/m",
+    title: "Mobile — landing",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-signup",
+    path: "/m/signup",
+    title: "Mobile — sign up",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_signup.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-checkin",
+    path: "/m/checkin",
+    title: "Mobile — check in",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_checkin.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-book",
+    path: "/m/book",
+    title: "Mobile — book a visit",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_book.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-book-details",
+    path: "/m/book/details",
+    title: "Mobile — the details of the visit",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_book_details.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-book-confirmed",
+    path: "/m/book/confirmed",
+    title: "Mobile — the visit is booked",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_book_confirmed.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-manage",
+    path: "/m/manage/:key",
+    title: "Mobile — manage a booking",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_manage___key.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-visit-link",
+    path: "/m/visit",
+    title: "Mobile — the visit needs a link",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_visit.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-visit",
+    path: "/m/visit/:key",
+    title: "Mobile — the live visit",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_visit___key.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-symptoms-link",
+    path: "/m/symptoms",
+    title: "Mobile — the symptoms form needs a link",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_symptoms.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-symptoms",
+    path: "/m/symptoms/:key",
+    title: "Mobile — the symptoms form",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_symptoms___key.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-legal",
+    path: "/m/legal",
+    title: "Mobile — the legal documents",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_legal.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-verify",
+    path: "/m/verify",
+    title: "Mobile — the certificate",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_verify.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-verify-certificate",
+    path: "/m/verify/certificate/:id",
+    title: "Mobile — the certificate",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_verify_certificate___id.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-verify-prescription",
+    path: "/m/verify/:id",
+    title: "Mobile — verify a prescription",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_verify___id.png — not exported yet",
+    public: true,
+    expect: "public",
+  },
+  {
+    id: "m-dashboard",
+    path: "/m/dashboard",
+    title: "Mobile — the dashboard",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_dashboard.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-console",
+    path: "/m/console",
+    title: "Mobile — the doctor's console",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_console.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-inbox",
+    path: "/m/inbox",
+    title: "Mobile — the inbox",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_inbox.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-patients",
+    path: "/m/patients",
+    title: "Mobile — the patients",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_patients.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-patient",
+    path: "/m/patients/:id",
+    title: "Mobile — the patient's record",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_patients___id.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-teleconsult",
+    path: "/m/teleconsult",
+    title: "Mobile — the teleconsult",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_teleconsult.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-templates",
+    path: "/m/templates",
+    title: "Mobile — the templates",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_templates.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-desk",
+    path: "/m/desk",
+    title: "Mobile — the reception desk",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_desk.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-billing",
+    path: "/m/billing",
+    title: "Mobile — the till",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_billing.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-schedule",
+    path: "/m/schedule",
+    title: "Mobile — the appointments",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_schedule.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-messages",
+    path: "/m/messages",
+    title: "Mobile — the messages",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_messages.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-nurse",
+    path: "/m/nurse",
+    title: "Mobile — the nurse station",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_nurse.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-lab",
+    path: "/m/lab",
+    title: "Mobile — the lab bench",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_lab.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-reports",
+    path: "/m/reports",
+    title: "Mobile — the reports",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_reports.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-doctors",
+    path: "/m/doctors",
+    title: "Mobile — the doctors",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_doctors.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-locations",
+    path: "/m/locations",
+    title: "Mobile — the locations",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_locations.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-staff",
+    path: "/m/staff",
+    title: "Mobile — the team",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_staff.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-subscription",
+    path: "/m/subscription",
+    title: "Mobile — the subscription",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_subscription.png — not exported yet",
+    public: false,
+    expect: "content",
+  },
+  {
+    id: "m-settings",
+    path: "/m/settings",
+    title: "Mobile — the settings",
+    kind: "mobile",
+    api: [],
+    // No baseline yet: the Figma frame is the declared source and it has
+    // not been exported. The recovered phone shots are the patient-web app
+    // at a phone width, which is a different surface.
+    diff: false,
+    baselineSource: "figma: verify/baselines/figma/m_settings.png — not exported yet",
+    public: false,
+    expect: "content",
   },
 ];
 

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /** Reads the appointment table. */
@@ -22,4 +23,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
     /** The appointment a visit came from. */
     List<Appointment> findByClinicIdAndVisitIdOrderByStartsAtAsc(UUID clinicId, UUID visitId);
+
+    /** One page of the book over a range of days. */
+    List<Appointment> findByClinicIdAndStartsAtBetweenOrderByStartsAtAsc(
+            UUID clinicId, Instant from, Instant to, Pageable pageable);
+
+    /** One page of one doctor's book over a range of days. */
+    List<Appointment> findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
+            UUID clinicId, UUID doctorId, Instant from, Instant to, Pageable pageable);
 }

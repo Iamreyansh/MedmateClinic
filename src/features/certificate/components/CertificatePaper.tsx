@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiGet } from "@/services/api";
+import { CLINIC_ZONE } from "@/lib/format";
 import type { VisitResponse } from "@/types/visit";
 import type { PatientRecord } from "@/types/patient";
 
@@ -142,7 +143,7 @@ export function CertificatePaper() {
 
         <p style={{ fontSize: 15.5, lineHeight: 1.75, marginTop: 18 }}>
           This is to certify that {person.sex === "F" ? "Ms." : "Mr."} {person.name}, aged {person.age}{" "}
-          years, was examined by me on {new Date().toLocaleDateString("en-IN", { dateStyle: "long" })} and
+          years, was examined by me on {new Date().toLocaleDateString("en-IN", { dateStyle: "long", timeZone: CLINIC_ZONE })} and
           is suffering from {diagnosis ? `${diagnosis.label} (${diagnosis.code ?? ""})` : "the condition noted below"}. She
           is advised rest and is fit to resume duty as advised.
         </p>

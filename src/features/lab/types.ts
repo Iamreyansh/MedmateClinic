@@ -6,7 +6,7 @@
  */
 
 /** Where a sample is in its journey. */
-export type LabStatus = "to_collect" | "in_lab" | "sent_out" | "reported";
+export type LabStatus = "ordered" | "to_collect" | "in_lab" | "sent_out" | "reported";
 
 export type LabPatient = {
   id: string;

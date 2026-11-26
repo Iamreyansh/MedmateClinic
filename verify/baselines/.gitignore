@@ -6,9 +6,14 @@
 #
 # `reference/` is captured from the deployed MVP by `verify/capture-baselines.mjs`.
 #
+# `service/` is the app's own pixels against the REAL service, for the routes
+# whose baseline was re-measured after the demo data moved. It is a record of
+# what the service renders today, not a design to compare against.
+#
 # Both are rebuilt by `node verify/prepare-baselines.mjs`. Their manifests ARE
 # tracked: the manifest is the record of what the baseline set is.
 reference/*.png
 history/*.png
 history/shots/
+service/*.png
 diffs/

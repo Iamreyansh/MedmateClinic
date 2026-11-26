@@ -508,14 +508,25 @@ class ClinicApiIT {
     @DisplayName("the patient may call the booking off, and the slot frees")
     void cancelBooking() throws Exception {
         JsonNode page = get("/api/public/doctors?clinic=" + SLUG);
-        boolean wasFree = page.get("slots").get(0).get("free").asBoolean();
+        // A time the page offers as free. The clinic's book is not empty, and
+        // a patient books one of the times that are free — so this test does
+        // not depend on which times another test has already taken.
+        JsonNode slot = null;
+        for (JsonNode entry : page.get("slots")) {
+            if (entry.get("free").asBoolean()) {
+                slot = entry;
+                break;
+            }
+        }
+        assertThat(slot).as("the page offers a time that is free: %s", page.get("slots")).isNotNull();
+        String startsAt = slot.get("startsAt").asText();
         JsonNode booked =
                 post(
                         "/api/public/booking",
                         Map.of(
                                 "clinic", SLUG,
                                 "doctorId", page.get("doctors").get(0).get("id").asText(),
-                                "startsAt", page.get("slots").get(0).get("startsAt").asText(),
+                                "startsAt", startsAt,
                                 "name", "Cancel Contract Patient",
                                 "phone", "9000000007",
                                 "age", "29",
@@ -533,11 +544,20 @@ class ClinicApiIT {
         assertThat(again.get("token").asText()).isEqualTo(cancelled.get("token").asText());
 
         // The slot is exactly as it was before the booking: a cancelled
-        // booking takes the slot back.
+        // booking takes the slot back. The same time is looked up, not the
+        // first one on the page.
         JsonNode after = get("/api/public/doctors?clinic=" + SLUG);
-        assertThat(after.get("slots").get(0).get("free").asBoolean())
+        JsonNode same = null;
+        for (JsonNode entry : after.get("slots")) {
+            if (startsAt.equals(entry.get("startsAt").asText())) {
+                same = entry;
+                break;
+            }
+        }
+        assertThat(same).as("the page still offers the time that was booked").isNotNull();
+        assertThat(same.get("free").asBoolean())
                 .as("a cancelled booking frees the slot it took")
-                .isEqualTo(wasFree);
+                .isTrue();
     }
 
     @Test
@@ -648,12 +668,30 @@ class ClinicApiIT {
     @DisplayName("a clinic signs itself up, and the booking link it hands out works")
     void signup() throws Exception {
         String name = "Sign Up Clinic " + java.util.UUID.randomUUID().toString().substring(0, 8);
+        String mobile = "9876500001";
+
+        // The owner's number is proved before the clinic is created: the
+        // sign-up begins with a code sent to a number that has no clinic
+        // yet, and the clinic is created by the sign-up that spends the
+        // proof. This is the order the app's own sign-up uses.
+        JsonNode issued = post("/api/auth/otp/pre-signup", Map.of("mobile", mobile));
+        assertThat(issued.has("code"))
+                .as("the code comes back in test mode: %s", issued)
+                .isTrue();
+        JsonNode proved =
+                post(
+                        "/api/auth/pre-signup/verify",
+                        Map.of("mobile", mobile, "code", issued.get("code").asText()));
+        assertThat(proved.get("verified").asBoolean())
+                .as("the number is proved before the clinic exists")
+                .isTrue();
+
         JsonNode signedUp =
                 post(
                         "/api/auth/signup",
                         Map.ofEntries(
                                 Map.entry("name", "Ananya Rao"),
-                                Map.entry("mobile", "9876500001"),
+                                Map.entry("mobile", mobile),
                                 Map.entry("email", "owner@contract.test"),
                                 Map.entry("clinicName", name),
                                 Map.entry("clinicKind", "clinic"),
@@ -711,18 +749,38 @@ class ClinicApiIT {
                         Integer.class,
                         schema);
         assertThat(schemas).as("the clinic has its own schema").isEqualTo(1);
+        // The migrations that were applied are the ones the service ships.
+        // The classpath is read for them, so this cannot drift from the
+        // service: a migration that is added is applied to a new clinic
+        // without this test having to be told about it.
+        java.util.List<String> shipped =
+                java.util.Arrays.stream(
+                                new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
+                                        .getResources("classpath*:db/clinic/V*.sql"))
+                        .map(resource -> resource.getFilename())
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+        int highest =
+                shipped.stream()
+                        .map(file -> Integer.parseInt(file.substring(1, file.indexOf("__"))))
+                        .max(java.util.Comparator.naturalOrder())
+                        .orElse(0);
         Integer migrations =
                 jdbc.queryForObject(
                         "select count(*) from " + schema + ".flyway_schema_history"
                                 + " where success and version is not null",
                         Integer.class);
-        assertThat(migrations).as("the clinic's schema has its migrations").isEqualTo(20);
+        assertThat(migrations)
+                .as("every migration the service ships was applied to the clinic")
+                .isEqualTo(shipped.size());
         String latest =
                 jdbc.queryForObject(
                         "select max(cast(version as integer)) from " + schema + ".flyway_schema_history"
                                 + " where success and version is not null",
                         String.class);
-        assertThat(latest).as("the clinic's schema is at the last migration").isEqualTo("204");
+        assertThat(Integer.parseInt(latest))
+                .as("the clinic's schema is at the last migration")
+                .isEqualTo(highest);
 
         // And the link the patient is given works: the clinic's booking page
         // answers for the slug the sign-up handed out.

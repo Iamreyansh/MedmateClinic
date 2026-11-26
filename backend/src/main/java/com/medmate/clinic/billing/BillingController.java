@@ -23,10 +23,23 @@ public class BillingController {
         this.current = current;
     }
 
-    /** The till: what came in today and what is still owed. */
+    /**
+     * The till: what came in today and what is still owed.
+     *
+     * <p>The bills are a page of a list, and the caller says which page and
+     * which bills: the days, the status and the way it was paid. With no
+     * filter at all, the page holds every bill the clinic has.
+     */
     @GetMapping
-    public Map<String, Object> till(@RequestParam(required = false) String date) {
-        return billing.till(current.get(), date);
+    public Map<String, Object> till(
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String mode,
+            @RequestParam(required = false, defaultValue = "50") int limit,
+            @RequestParam(required = false, defaultValue = "0") int offset) {
+        return billing.till(current.get(), date, from, to, status, mode, limit, offset);
     }
 
     /** One bill, as it is printed. */

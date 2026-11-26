@@ -34,8 +34,13 @@ export type PatientListItem = {
   followUpOn: string | null;
   /** Whether the patient is one of the signed-in doctor's own patients. */
   mine: boolean;
-  /** When the patient first came to the clinic. */
-  joinedOn: string;
+  /**
+   * When the patient first came to the clinic.
+   *
+   * The service may not send it — the list screen reads the year from
+   * `since` — so it is optional rather than a field every answer must carry.
+   */
+  joinedOn?: string;
   /** Whether the patient is new this month. */
   newThisMonth: boolean;
 };

@@ -45,7 +45,13 @@ public class AppointmentService {
     private static final int SLOTS_PER_DAY = 20;
 
     /** The most days the strip holds. */
-    private static final int MAX_SUMMARY_DAYS = 14;
+    private static final int MAX_SUMMARY_DAYS = 31;
+
+    /** The appointments one page of the book holds when the caller does not say. */
+    private static final int DEFAULT_PAGE = 50;
+
+    /** The most appointments one page of the book may hold. */
+    private static final int MAX_PAGE = 200;
 
     private final AppointmentRepository appointments;
     private final PatientRepository patients;
@@ -66,7 +72,14 @@ public class AppointmentService {
     /** The book, as the screen asked for it. */
     @Transactional(readOnly = true)
     public Map<String, Object> book(
-            ClinicPrincipal principal, String view, String date, String doctor) {
+            ClinicPrincipal principal,
+            String view,
+            String date,
+            String doctor,
+            String from,
+            String to,
+            int limit,
+            int offset) {
         if (!principal.can("appointment")) {
             throw new ForbiddenException("You cannot open the appointments.");
         }
@@ -81,7 +94,17 @@ public class AppointmentService {
         body.put("doctors", doctors);
         body.put("today", today.toString());
 
-        if ("week".equalsIgnoreCase(view)) {
+        if (from != null && !from.isBlank()) {
+            body.putAll(
+                    range(
+                            clinicId,
+                            zone,
+                            parseDate(from, today),
+                            parseDate(to, today),
+                            doctorId,
+                            limit,
+                            offset));
+        } else if ("week".equalsIgnoreCase(view)) {
             body.putAll(week(clinicId, zone, day, doctorId));
         } else {
             body.putAll(day(clinicId, zone, day, doctorId));
@@ -144,6 +167,17 @@ public class AppointmentService {
                     .orElse(null);
         }
 
+        // The slot the desk booked, and whether it is still free. The check
+        // and the booking are one transaction, and the doctor's own row is
+        // locked first, so two bookings for the same doctor cannot take the
+        // same slot.
+        if (doctorId != null) {
+            lockDoctor(clinicId, doctorId);
+            if (slotTaken(clinicId, doctorId, day, zone, time.toString(), null)) {
+                throw new ConflictException("Slot no longer available", "Pick another time.");
+            }
+        }
+
         Appointment appointment = new Appointment();
         appointment.setId(UUID.randomUUID());
         appointment.setClinicId(clinicId);
@@ -192,32 +226,33 @@ public class AppointmentService {
         int days = (int) Math.min(java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1, MAX_SUMMARY_DAYS);
 
         List<Map<String, Object>> doctorCards = doctors(clinicId);
+
+        // One query for the whole strip: the bookings of every doctor on every
+        // day of it. A query for each doctor on each day made the strip
+        // slower the longer the range was.
+        Map<String, Integer> booked = bookedByDoctorAndDay(clinicId, start, days, zone);
+
         List<Map<String, Object>> out = new ArrayList<>();
         for (int offset = 0; offset < days; offset++) {
             LocalDate day = start.plusDays(offset);
-            Instant dayFrom = day.atStartOfDay(zone).toInstant();
-            Instant dayTo = day.plusDays(1).atStartOfDay(zone).toInstant();
-
             List<Map<String, Object>> freeByDoctor = new ArrayList<>();
+            int total = 0;
             for (Map<String, Object> doctor : doctorCards) {
                 UUID doctorId = parseUuid(String.valueOf(doctor.get("id")));
-                int booked = 0;
-                if (doctorId != null) {
-                    for (Appointment appointment :
-                            appointments.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
-                                    clinicId, doctorId, dayFrom, dayTo)) {
-                        booked++;
-                    }
-                }
+                int count = doctorId == null ? 0 : booked.getOrDefault(doctorId + "|" + day, 0);
+                total += count;
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("doctorId", doctor.get("id"));
                 row.put("name", doctor.get("name"));
-                row.put("booked", booked);
-                row.put("free", Math.max(0, SLOTS_PER_DAY - booked));
+                row.put("booked", count);
+                row.put("free", Math.max(0, SLOTS_PER_DAY - count));
                 freeByDoctor.add(row);
             }
             Map<String, Object> column = new LinkedHashMap<>();
             column.put("date", day.toString());
+            // What the day holds, and what the day could hold.
+            column.put("total", total);
+            column.put("capacity", SLOTS_PER_DAY * doctorCards.size());
             column.put("freeByDoctor", freeByDoctor);
             out.add(column);
         }
@@ -227,6 +262,259 @@ public class AppointmentService {
         body.put("to", start.plusDays(days - 1).toString());
         body.put("days", out);
         return body;
+    }
+
+    /**
+     * The bookings of every doctor on every day of the strip, counted in one
+     * query.
+     *
+     * <p>The day a booking falls on is the clinic's day, not the server's: a
+     * booking at half past nine in the evening is on that day in the clinic,
+     * whatever the server's clock says.
+     */
+    private Map<String, Integer> bookedByDoctorAndDay(
+            UUID clinicId, LocalDate start, int days, ZoneId zone) {
+        Instant from = start.atStartOfDay(zone).toInstant();
+        Instant to = start.plusDays(days).atStartOfDay(zone).toInstant();
+        Map<String, Integer> counts = new HashMap<>();
+        jdbc.query(
+                "select doctor_id, day, count(*) as booked from ("
+                        + "select doctor_id, (starts_at at time zone ?::text)::date as day "
+                        + "from appointments where clinic_id = ? and starts_at >= ? and starts_at < ?"
+                        + ") booked group by doctor_id, day",
+                (rs, row) -> {
+                    UUID doctorId = rs.getObject("doctor_id", UUID.class);
+                    LocalDate day = rs.getObject("day", LocalDate.class);
+                    if (doctorId != null && day != null) {
+                        counts.put(doctorId + "|" + day, rs.getInt("booked"));
+                    }
+                    return null;
+                },
+                zone.getId(),
+                clinicId,
+                java.sql.Timestamp.from(from),
+                java.sql.Timestamp.from(to));
+        return counts;
+    }
+
+    /**
+     * The book over a range of days.
+     *
+     * <p>The caller names the days and asks for a page of the appointments in
+     * them. The rows are a page, counted in the database, and the days are
+     * the days the range covers.
+     */
+    private Map<String, Object> range(
+            UUID clinicId,
+            ZoneId zone,
+            LocalDate start,
+            LocalDate end,
+            UUID doctorId,
+            int limit,
+            int offset) {
+        if (end.isBefore(start)) {
+            end = start;
+        }
+        int days =
+                (int)
+                        Math.min(
+                                java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1,
+                                MAX_SUMMARY_DAYS);
+        Instant windowFrom = start.atStartOfDay(zone).toInstant();
+        Instant windowTo = start.plusDays(days).atStartOfDay(zone).toInstant();
+        int pageSize = Math.max(1, Math.min(limit <= 0 ? DEFAULT_PAGE : limit, MAX_PAGE));
+        int skip = Math.max(0, offset);
+        int pageIndex = skip / pageSize;
+        int pageOffset = skip % pageSize;
+
+        org.springframework.data.domain.PageRequest pageRequest =
+                org.springframework.data.domain.PageRequest.of(pageIndex, pageSize, org.springframework.data.domain.Sort.by("startsAt"));
+        List<Appointment> rows =
+                doctorId == null
+                        ? appointments.findByClinicIdAndStartsAtBetweenOrderByStartsAtAsc(
+                                clinicId, windowFrom, windowTo, pageRequest)
+                        : appointments.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
+                                clinicId, doctorId, windowFrom, windowTo, pageRequest);
+
+        // The people of the page, read once for the whole page.
+        Map<UUID, Map<String, Object>> people = patientsOf(clinicId, rows);
+        Map<UUID, String> rooms = rooms(clinicId);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        int toCome = 0;
+        int done = 0;
+        int noShow = 0;
+        Map<LocalDate, List<Map<String, Object>>> byDay = new HashMap<>();
+        for (LocalDate date = start; !date.isAfter(start.plusDays(days - 1)); date = date.plusDays(1)) {
+            byDay.put(date, new ArrayList<>());
+        }
+        for (Appointment appointment : rows) {
+            Map<String, Object> item = card(clinicId, zone, appointment, people, rooms);
+            items.add(item);
+            LocalDate date = appointment.getStartsAt().atZone(zone).toLocalDate();
+            List<Map<String, Object>> column = byDay.get(date);
+            if (column != null) {
+                column.add(item);
+            }
+            String status = statusOf(appointment);
+            if ("booked".equals(status)) {
+                toCome++;
+            } else if ("no_show".equals(status)) {
+                noShow++;
+            } else if ("done".equals(status) || "checked_in".equals(status) || "in_consult".equals(status)) {
+                done++;
+            }
+        }
+
+        List<Map<String, Object>> dayColumns = new ArrayList<>();
+        for (Map.Entry<LocalDate, List<Map<String, Object>>> entry : byDay.entrySet()) {
+            LocalDate date = entry.getKey();
+            Map<String, Object> column = new LinkedHashMap<>();
+            column.put("date", date.toString());
+            column.put("label", date.format(COLUMN_LABEL));
+            column.put(
+                    "dayName",
+                    date.getDayOfWeek().getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH));
+            column.put("booked", entry.getValue().size());
+            column.put("isToday", date.equals(LocalDate.now(zone)));
+            column.put("appointments", entry.getValue());
+            column.put("items", entry.getValue());
+            dayColumns.add(column);
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("booked", items.size());
+        summary.put("toCome", toCome);
+        summary.put("done", done);
+        summary.put("noShow", noShow);
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("total", countRange(clinicId, windowFrom, windowTo, doctorId));
+        meta.put("limit", pageSize);
+        meta.put("offset", skip);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("view", "range");
+        body.put("from", start.toString());
+        body.put("to", start.plusDays(days - 1).toString());
+        body.put("days", dayColumns);
+        body.put("appointments", items);
+        body.put("items", items);
+        body.put("summary", summary);
+        body.put("meta", meta);
+        return body;
+    }
+
+    /** How many appointments the range holds, counted in the database. */
+    private long countRange(UUID clinicId, Instant from, Instant to, UUID doctorId) {
+        String sql =
+                doctorId == null
+                        ? "select count(*) from appointments where clinic_id = ? and starts_at >= ? and starts_at < ?"
+                        : "select count(*) from appointments where clinic_id = ? and starts_at >= ? and starts_at < ? and doctor_id = ?";
+        Long count =
+                doctorId == null
+                        ? jdbc.queryForObject(
+                                sql, Long.class, clinicId, java.sql.Timestamp.from(from), java.sql.Timestamp.from(to))
+                        : jdbc.queryForObject(
+                                sql,
+                                Long.class,
+                                clinicId,
+                                java.sql.Timestamp.from(from),
+                                java.sql.Timestamp.from(to),
+                                doctorId);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * The patients of a page of appointments, read once for the whole page.
+     *
+     * <p>One query for the page, not one for every row.
+     */
+    private Map<UUID, Map<String, Object>> patientsOf(UUID clinicId, List<Appointment> rows) {
+        Map<UUID, Map<String, Object>> people = new LinkedHashMap<>();
+        List<UUID> ids = new ArrayList<>();
+        for (Appointment appointment : rows) {
+            if (appointment.getPatientId() != null && !people.containsKey(appointment.getPatientId())) {
+                ids.add(appointment.getPatientId());
+            }
+        }
+        if (ids.isEmpty()) {
+            return people;
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+        List<Object> args = new ArrayList<>();
+        args.add(clinicId);
+        args.addAll(ids);
+        jdbc.query(
+                "select id, full_name, age, sex, phone from patients where clinic_id = ? and id in ("
+                        + placeholders
+                        + ")",
+                (rs, row) -> {
+                    Map<String, Object> person = new LinkedHashMap<>();
+                    person.put("id", rs.getString("id"));
+                    person.put("name", rs.getString("full_name"));
+                    person.put("age", rs.getObject("age"));
+                    person.put("sex", rs.getString("sex"));
+                    person.put("initials", initials(rs.getString("full_name")));
+                    person.put("phone", rs.getString("phone") == null ? "" : rs.getString("phone"));
+                    people.put(UUID.fromString(rs.getString("id")), person);
+                    return null;
+                },
+                args.toArray());
+        return people;
+    }
+
+    /**
+     * One appointment, as the grid shows it.
+     *
+     * <p>The patient is read from the page, so the grid does not go back to
+     * the database for every row it draws.
+     */
+    private Map<String, Object> card(
+            UUID clinicId,
+            ZoneId zone,
+            Appointment appointment,
+            Map<UUID, Map<String, Object>> people,
+            Map<UUID, String> rooms) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", appointment.getId().toString());
+        item.put("mode", appointment.getMode());
+        item.put("status", statusOf(appointment));
+        item.put("reason", appointment.getReason() == null ? "" : appointment.getReason());
+        item.put("startsAt", appointment.getStartsAt().toString());
+        item.put(
+                "endsAt",
+                appointment.getEndsAt() == null ? null : appointment.getEndsAt().toString());
+        item.put("time", appointment.getStartsAt().atZone(zone).format(CLOCK));
+        item.put(
+                "durationMinutes",
+                appointment.getEndsAt() == null
+                        ? 20
+                        : (appointment.getEndsAt().getEpochSecond()
+                                        - appointment.getStartsAt().getEpochSecond())
+                                / 60);
+        item.put("doctorId", appointment.getDoctorId() == null ? null : appointment.getDoctorId().toString());
+        item.put("doctor", doctorName(clinicId, appointment.getDoctorId()));
+        item.put("visitId", appointment.getVisitId() == null ? null : appointment.getVisitId().toString());
+        item.put("patientId", appointment.getPatientId() == null ? null : appointment.getPatientId().toString());
+        item.put("source", appointment.getSource());
+        // The room the doctor works in — the column on the staff row, and
+        // never the doctor's name or speciality: a doctor sees patients in a
+        // room, and a name is not a room.
+        item.put(
+                "room",
+                appointment.getDoctorId() == null
+                        ? null
+                        : rooms.getOrDefault(appointment.getDoctorId(), ""));
+
+        Map<String, Object> patient = new LinkedHashMap<>();
+        Map<String, Object> person =
+                appointment.getPatientId() == null ? null : people.get(appointment.getPatientId());
+        if (person != null) {
+            patient.putAll(person);
+        }
+        item.put("patient", patient);
+        return item;
     }
 
     // ------------------------------------------------------------------ day
@@ -239,12 +527,13 @@ public class AppointmentService {
             booked = booked.stream().filter(a -> doctorId.equals(a.getDoctorId())).toList();
         }
 
+        Map<UUID, String> rooms = rooms(clinicId);
         List<Map<String, Object>> items = new ArrayList<>();
         int toCome = 0;
         int done = 0;
         int noShow = 0;
         for (Appointment appointment : booked) {
-            items.add(card(clinicId, zone, appointment));
+            items.add(card(clinicId, zone, appointment, rooms));
             String status = statusOf(appointment);
             if ("booked".equals(status)) {
                 toCome++;
@@ -298,24 +587,28 @@ public class AppointmentService {
             booked = booked.stream().filter(a -> doctorId.equals(a.getDoctorId())).toList();
         }
 
+        Map<UUID, String> rooms = rooms(clinicId);
         Map<LocalDate, List<Map<String, Object>>> byDay = new HashMap<>();
         for (LocalDate date = monday; !date.isAfter(saturday); date = date.plusDays(1)) {
             byDay.put(date, new ArrayList<>());
         }
         int toCome = 0;
         int noShow = 0;
+        int done = 0;
         for (Appointment appointment : booked) {
             LocalDate date = appointment.getStartsAt().atZone(zone).toLocalDate();
             List<Map<String, Object>> column = byDay.get(date);
             if (column == null) {
                 continue;
             }
-            column.add(card(clinicId, zone, appointment));
+            column.add(card(clinicId, zone, appointment, rooms));
             String status = statusOf(appointment);
             if ("booked".equals(status)) {
                 toCome++;
             } else if ("no_show".equals(status)) {
                 noShow++;
+            } else if ("done".equals(status) || "checked_in".equals(status) || "in_consult".equals(status)) {
+                done++;
             }
         }
 
@@ -337,6 +630,7 @@ public class AppointmentService {
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("booked", booked.size());
         summary.put("toCome", toCome);
+        summary.put("done", done);
         summary.put("noShow", noShow);
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -353,7 +647,8 @@ public class AppointmentService {
 
     // ---------------------------------------------------------------- cards
 
-    private Map<String, Object> card(UUID clinicId, ZoneId zone, Appointment appointment) {
+    private Map<String, Object> card(
+            UUID clinicId, ZoneId zone, Appointment appointment, Map<UUID, String> rooms) {
         Map<String, Object> item = new LinkedHashMap<>();
         item.put("id", appointment.getId().toString());
         item.put("mode", appointment.getMode());
@@ -376,7 +671,14 @@ public class AppointmentService {
         item.put("visitId", appointment.getVisitId() == null ? null : appointment.getVisitId().toString());
         item.put("patientId", appointment.getPatientId() == null ? null : appointment.getPatientId().toString());
         item.put("source", appointment.getSource());
-        item.put("room", appointment.getDoctorId() == null ? null : doctorName(clinicId, appointment.getDoctorId()));
+        // The room the doctor works in — the column on the staff row, and
+        // never the doctor's name or speciality: a doctor sees patients in a
+        // room, and a name is not a room.
+        item.put(
+                "room",
+                appointment.getDoctorId() == null
+                        ? null
+                        : rooms.getOrDefault(appointment.getDoctorId(), ""));
 
         Map<String, Object> patient = new LinkedHashMap<>();
         patients.findById(appointment.getPatientId()).ifPresent(person -> {
@@ -440,6 +742,26 @@ public class AppointmentService {
     }
 
     /** The name of the doctor, for the booking that was made. */
+    /**
+     * The room each doctor works in.
+     *
+     * <p>The column is read through the row's own JSON, so the appointment
+     * book reads the room the doctors screen reads and never falls back to the
+     * doctor's name — which is the bug this replaced.
+     */
+    private Map<UUID, String> rooms(UUID clinicId) {
+        Map<UUID, String> rooms = new LinkedHashMap<>();
+        jdbc.query(
+                "select id, to_jsonb(s) ->> 'room' as room from staff s where clinic_id = ?",
+                (rs, row) -> {
+                    String room = rs.getString("room");
+                    rooms.put(rs.getObject("id", UUID.class), room == null ? "" : room);
+                    return null;
+                },
+                clinicId);
+        return rooms;
+    }
+
     private String doctorName(UUID clinicId, UUID doctorId) {
         if (doctorId == null) {
             return "Any doctor";
@@ -481,6 +803,68 @@ public class AppointmentService {
         } catch (RuntimeException notADate) {
             return fallback;
         }
+    }
+
+    /**
+     * The appointments that hold the slots of one doctor on one day.
+     *
+     * <p>One query serves the free times of the day and the check that a
+     * time is still free, so the two can never disagree about which slot is
+     * taken.
+     */
+    private List<Appointment> takenAppointments(
+            UUID clinicId, UUID doctorId, LocalDate day, ZoneId zone) {
+        if (doctorId == null) {
+            return List.of();
+        }
+        Instant from = day.atStartOfDay(zone).toInstant();
+        Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+        List<Appointment> rows = new ArrayList<>();
+        for (Appointment appointment :
+                appointments.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
+                        clinicId, doctorId, from, to)) {
+            // A cancelled booking does not take the slot.
+            if ("cancelled".equals(appointment.getStatus())) {
+                continue;
+            }
+            rows.add(appointment);
+        }
+        return rows;
+    }
+
+    /** Whether the slot is already taken. */
+    private boolean slotTaken(
+            UUID clinicId,
+            UUID doctorId,
+            LocalDate day,
+            ZoneId zone,
+            String slot,
+            UUID otherVisitId) {
+        for (Appointment appointment : takenAppointments(clinicId, doctorId, day, zone)) {
+            if (otherVisitId != null && otherVisitId.equals(appointment.getVisitId())) {
+                continue;
+            }
+            if (appointment.getStartsAt().atZone(zone).toLocalTime().toString().equals(slot)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Lock the doctor's own row, so two bookings for the same doctor cannot
+     * both take the same slot.
+     *
+     * <p>The lock is on the doctor and not on the day's appointments: the row
+     * is always there, and it is the same row whether or not the doctor has
+     * any appointment yet.
+     */
+    private void lockDoctor(UUID clinicId, UUID doctorId) {
+        jdbc.query(
+                "select id from staff where id = ? and clinic_id = ? for update",
+                (rs, row) -> rs.getObject(1),
+                doctorId,
+                clinicId);
     }
 
     private static UUID parseUuid(String value) {

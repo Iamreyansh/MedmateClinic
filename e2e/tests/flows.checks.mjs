@@ -32,21 +32,34 @@ import {
  * is a test that fails for a reason that has nothing to do with what it is
  * checking.
  */
+/** The doctor the flow tests book with — the demo clinic's owner. */
+const DOCTOR_ID = "22222222-2222-4222-8222-222222222222";
+/** The slots this run has taken, so two tests never draw the same one. */
+const takenSlots = new Set();
+/** The bookings this run has made, so their slots can be given back. */
+const runBookings = [];
 async function makeBooking(token, options = {}) {
   const key = options.key ?? `e2e-booking-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const name = options.name ?? `E2E Patient ${key.slice(-6)}`;
-  // A day of its own, far enough out that the demo's own appointments do not
-  // crowd it out of the day's list.
-  const day = new Date(Date.now() + 400 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  // A slot of its own: one appointment per slot, so a second run that booked
-  // the same time would find the first run's patient there.
-  const slot = 9 * 60 + Math.floor(Math.random() * 35) * 15;
-  const hour = String(Math.floor(slot / 60)).padStart(2, "0");
-  const minute = String(slot % 60).padStart(2, "0");
+  // The times the clinic is offering. The booking page is where a patient
+  // picks a time, so the test picks it the same way: from the free slots
+  // the service itself answers with, and not from a guess. The clinic holds
+  // one visit per doctor per time, so two bookings that drew the same one
+  // would find each other there — the run's own taken set is what keeps
+  // that from happening.
+  const page = await api(`/api/public/doctors?clinic=${DEMO_SLUG}&doctorId=${DOCTOR_ID}`);
+  expect(page.status, `the booking page did not answer: ${page.text}`).toBe(200);
+  const free = (page.json?.slots ?? []).filter(
+    (slot) => slot.free && !takenSlots.has(slot.startsAt),
+  );
+  expect(free.length, "the clinic has a free time left to book").toBeGreaterThan(0);
+  const slot = free[0];
+  takenSlots.add(slot.startsAt);
+
   const payload = {
     clinic: DEMO_SLUG,
-    doctorId: "22222222-2222-4222-8222-222222222222",
-    startsAt: options.startsAt ?? `${day}T${hour}:${minute}:00Z`,
+    doctorId: DOCTOR_ID,
+    startsAt: options.startsAt ?? slot.startsAt,
     name,
     phone: "9990001111",
     age: "34",
@@ -59,6 +72,16 @@ async function makeBooking(token, options = {}) {
     headers: { "Idempotency-Key": key },
   });
   expect(result.status, `the booking was refused: ${result.text}`).toBe(200);
+  // The booking landed on the time that was asked for, with the doctor that
+  // was asked for, and with the queue slip the desk reads out. A status
+  // alone cannot tell those three failures apart.
+  expect(
+    result.json.startsAt,
+    `the booking landed on another time than the one asked for (${slot.startsAt})`,
+  ).toBe(payload.startsAt);
+  expect(result.json.doctor, "the booking landed with another doctor").toContain("Ananya");
+  expect(result.json.queueToken, "the booking carries no queue slip").toMatch(/^[A-Z]-\d+$/);
+  runBookings.push(result.json.token);
   return { key, payload, result: result.json, linkKey: result.json.token, queueToken: result.json.queueToken, name, day: payload.startsAt.slice(0, 10) };
 }
 
@@ -67,6 +90,20 @@ test.describe("critical flows", () => {
 
   test.beforeAll(async () => {
     token = await signIn();
+  });
+
+  test.afterAll(async () => {
+    // What the run took is given back, so the stack is as it was found and a
+    // second run finds the same clinic: the times this run booked, and the
+    // kiosk, which is one device with one state.
+    for (const linkKey of runBookings) {
+      await api(`/api/public/booking/${linkKey}/cancel`, { method: "POST", body: {} });
+    }
+    await api("/api/kiosk/close", {
+      method: "POST",
+      token,
+      body: { pin: "1234" },
+    });
   });
 
   /* ------------------------------------------------------------- booking */
@@ -270,8 +307,17 @@ test.describe("critical flows", () => {
     expect(session.status).toBe(200);
     expect(session.json).toHaveProperty("step");
 
-    const close = await api("/api/kiosk/close", { method: "POST", body: { pin: "1234" } });
-    expect(close.status).toBeLessThan(500);
+    // The front desk closes the kiosk with their own PIN. The demo clinic's
+    // PIN is 1234, and the close is what gives the kiosk back: a kiosk left
+    // open changes the screen every later measurement sees.
+    const close = await api("/api/kiosk/close", {
+      method: "POST",
+      token,
+      body: { pin: "1234" },
+    });
+    expect(close.status, `the kiosk did not close: ${close.text}`).toBe(200);
+    const after = await api("/api/kiosk");
+    expect(after.json?.open, "the kiosk is still open").toBe(false);
   });
 
   test("the kiosk screen renders as a standalone route", async ({ page }) => {
@@ -326,11 +372,29 @@ test.describe("critical flows", () => {
   test("signing up provisions a clinic with a booking slug that is not derivable from its name", async () => {
     const suffix = String(Date.now()).slice(-6);
     const clinicName = `E2E Clinic ${suffix}`;
+    const mobile = `9${suffix}765432`.slice(0, 10);
+
+    // The owner's number is proved before the clinic is created: the sign-up
+    // begins with a code sent to a number that has no clinic yet, and the
+    // clinic is created by the sign-up that spends the proof. This is the
+    // order the app's own sign-up uses.
+    const issued = await api("/api/auth/otp/pre-signup", {
+      method: "POST",
+      body: { mobile },
+    });
+    expect(issued.status, `the sign-up code was refused: ${issued.text}`).toBe(200);
+    expect(issued.json?.code, "the code comes back in test mode").toBeTruthy();
+    const proved = await api("/api/auth/pre-signup/verify", {
+      method: "POST",
+      body: { mobile, code: issued.json.code },
+    });
+    expect(proved.status, `the code was refused: ${proved.text}`).toBe(200);
+
     const result = await api("/api/auth/signup", {
       method: "POST",
       body: {
         name: "E2E Owner",
-        mobile: `9${suffix}765432`.slice(0, 10),
+        mobile,
         email: `owner-${suffix}@example.in`,
         clinicName,
         clinicKind: "primary",

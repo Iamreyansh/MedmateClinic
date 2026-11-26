@@ -135,9 +135,10 @@ public class NurseService {
             body.put("id", person.getId().toString());
             body.put("name", person.getFullName());
             body.put("speciality", person.getSpeciality());
-            // The rooms belong to the branches, which the service does not have
-            // yet — the doctor works in the room their speciality names.
-            body.put("room", person.getSpeciality());
+            // The room the person works in — the column on the staff row, and
+            // never the speciality: a doctor sees patients in a room, and a
+            // speciality is not a room.
+            body.put("room", person.getRoom() == null ? "" : person.getRoom());
             list.add(body);
         }
         return list;

@@ -1,8 +1,23 @@
 # Screen audit — Figma frames vs. the built app
 
-**Date:** 2026-11-25 · **Figma file:** `FS5TDn4nUCjWizoIkKBcVg` (MedMate — Doctor Dashboard)
-**Method:** full traversal of all seven pages via the Figma Plugin API, frame-by-frame, compared against
-`src/app/routes/index.tsx`, the feature modules, the mock API and the Spring Boot controllers.
+**Date:** 2026-11-26 · **Figma file:** `FS5TDn4nUCjWizoIkKBcVg` (MedMate — Doctor Dashboard)
+**Method:** the frame inventory recovered from `git show e6c31c8:docs/SCREEN-AUDIT.md`, re-checked
+frame by frame against `src/app/routes/index.tsx`, the feature modules, the mock API and the Spring
+Boot controllers of this branch.
+
+**What changed in this revision.** The frame set and the frame names did not change — the Figma file
+cannot be fetched from here, and the recovered inventory is the only record of it. What changed is
+the **page** each frame belongs to and the **status** each frame has. Every verdict below was
+re-derived from the code in this branch, not carried over.
+
+**How a verdict is reached** — so it can be re-derived on a merged tree:
+
+| Verdict | The check |
+|---|---|
+| **built** | the route registers a screen, and that screen calls the service |
+| **partial** | the route registers a screen that works, but a named region of the frame is missing |
+| **placeholder** | the route registers a screen that says plainly that it is not built |
+| **missing** | no route and no file serve it |
 
 ## 1. The frame inventory (complete, from the live file)
 
@@ -14,7 +29,7 @@ The file holds **250 top-level frames** across seven pages. This is the whole fi
 | Foundations | 2 | palette + type scale + cover |
 | Components | 15 | the component set the screens are built from |
 | Screens | 26 | the desktop screens |
-| Mobile | 41 | mobile staff screens, patient phone, mobile landing/sign-up |
+| Mobile | 41 | mobile staff screens (19), mobile landing and sign-up (6), patient phone (16) |
 | Sub-pages & dialogs | 70 | patient pages, kiosk tablet steps, 30 overlays, printouts |
 | Prototype — desktop click-through | 96 | the desktop screens again, plus 30 overlays with click targets |
 
@@ -24,130 +39,252 @@ click targets wired. It is a click-through, not new screens — so it is **not**
 **26 desktop + 41 phone + 70 sub-pages = 137 distinct frames.** 30 of them are overlays
 (29 dialogs + 1 drawer).
 
+### The page each frame belongs to — the correction
+
+Every frame in the recovered inventory was filed under `Screens`, whatever page it was really on: the
+extractor that wrote the manifest matched headings it never found, so every entry fell through to its
+default. The page is now the one the inventory's own sections put the frame in — **Screens** for the 26
+desktop screens, **Mobile** for the 41 phone frames, and **Sub-pages & dialogs** for the 70 patient
+pages, kiosk steps, overlays and printouts. In particular, the nine **desktop-width** patient pages
+(`51:*`, `37:739`, `37:773`) are on **Sub-pages & dialogs**, not on Mobile: the phone versions of the
+same journeys are the `33:*`, `54:*` and `55:*` frames.
+
+### One frame, two rows in the inventory
+
+`22:3701` — **Settings — clinic & letterhead** — is listed twice in the recovered inventory: once as a
+desktop screen on the Screens page, and again in the Settings sub-pages list. It is **one** frame on
+**one** page, so the frame set is **137**, while the inventory enumerates **138 rows** and the machine
+-readable manifest carries all 138. The manifest's `frameCount` is 138 for that reason; the counts
+below are for the 137 distinct frames, with the duplicated frame counted once.
+
+### The master index
+
+Every frame, the page it is on, the route that serves it and what it has become. This is the
+machine-readable list; the sections below say why.
+
+| Node | Figma frame | Page | Route | Status |
+|---|---|---|---|---|
+| Node | Figma frame | Page | Route | Status |
+|---|---|---|---|---|
+| `12:1139` | Screen / Landing page (visitor) | Screens | / | built |
+| `20:2600` | Screen / Teleconsult (doctor) | Screens | /teleconsult | built |
+| `20:2854` | Screen / Inbox (doctor) | Screens | /inbox | built |
+| `21:2977` | Screen / Patient record (doctor) | Screens | /patients/:id | built |
+| `22:3956` | Screen / My templates (doctor) | Screens | /templates | built |
+| `17:1913` | Screen / Reports — summary (owner) | Screens | /reports tab 1 | built |
+| `7:480` | Screen / Doctor Console — consult & prescription | Screens | /visit/:id | built |
+| `6:2` | Screen / Dashboard (owner) | Screens | /dashboard | built |
+| `13:1415` | Screen / Clinic sign-up — step 1 of 5 | Screens | /start | built |
+| `19:2185` | Screen / Clinic sign-up — step 2 of 5 | Screens | /start | built |
+| `19:2315` | Screen / Clinic sign-up — step 3 of 5 | Screens | /start | built |
+| `19:2435` | Screen / Clinic sign-up — step 4 of 5 | Screens | /start | partial |
+| `19:2562` | Screen / Clinic sign-up — step 5 of 5 | Screens | /start | built |
+| `21:2670` | Screen / Patients (front desk) | Screens | /patients | built |
+| `15:1439` | Screen / Patient Kiosk — check-in (patient) | Screens | /kiosk | built |
+| `9:701` | Screen / Nurse Station (nurse) | Screens | /nurse | built |
+| `15:1513` | Screen / Reception Desk (front desk) | Screens | /desk | built |
+| `9:986` | Screen / Billing & POS (front desk) | Screens | /billing | built |
+| `20:2294` | Screen / Lab & Diagnostics (lab technician) | Screens | /lab | built |
+| `17:1592` | Screen / Appointments — day view (front desk) | Screens | /schedule | built |
+| `10:942` | Screen / Staff & roles — Roles & access | Screens | /staff | built |
+| `21:3256` | Screen / Patient messages (front desk) | Screens | /messages | built |
+| `22:3106` | Screen / Doctors (clinic admin) | Screens | /doctors | built |
+| `22:3422` | Screen / Locations (clinic admin) | Screens | /locations | built |
+| `18:1895` | Screen / Subscription (owner) | Screens | /subscription | built |
+| `22:3701` | Screen / Settings — clinic & letterhead (owner) | Screens | /settings | built |
+| `24:3` | Mobile / Dashboard (owner) | Mobile | /m/dashboard | built |
+| `24:136` | Mobile / Doctor Console — consult | Mobile | /m/console | built |
+| `24:257` | Mobile / Inbox (doctor) | Mobile | /m/inbox | built |
+| `24:350` | Mobile / Patient record (doctor) | Mobile | /m/patients/:id | built |
+| `24:449` | Mobile / Teleconsult (doctor) | Mobile | /m/teleconsult | built |
+| `24:538` | Mobile / My templates (doctor) | Mobile | /m/templates | built |
+| `28:319` | Mobile / Reception Desk (front desk) | Mobile | /m/desk | built |
+| `28:449` | Mobile / Billing & POS (front desk) | Mobile | /m/billing | built |
+| `28:555` | Mobile / Appointments (front desk) | Mobile | /m/schedule | built |
+| `28:666` | Mobile / Patients (front desk) | Mobile | /m/patients | built |
+| `28:781` | Mobile / Patient messages (front desk) | Mobile | /m/messages | built |
+| `28:874` | Mobile / Nurse Station (nurse) | Mobile | /m/nurse | built |
+| `28:986` | Mobile / Lab & Diagnostics (lab technician) | Mobile | /m/lab | built |
+| `30:670` | Mobile / Reports (owner) | Mobile | /m/reports | built |
+| `30:775` | Mobile / Doctors (clinic admin) | Mobile | /m/doctors | built |
+| `30:894` | Mobile / Locations (clinic admin) | Mobile | /m/locations | built |
+| `30:994` | Mobile / Staff & roles — Roles & access (clinic admin) | Mobile | /m/staff | built |
+| `30:1142` | Mobile / Subscription (owner) | Mobile | /m/subscription | built |
+| `30:1275` | Mobile / Settings (owner) | Mobile | /m/settings | built |
+| `31:991` | Mobile / Landing page (visitor) | Mobile | /m | built |
+| `31:1201` | Mobile / Clinic sign-up — step 1 of 5 | Mobile | /m/signup | built |
+| `31:1232` | Mobile / Clinic sign-up — step 2 of 5 | Mobile | /m/signup | built |
+| `31:1274` | Mobile / Clinic sign-up — step 3 of 5 | Mobile | /m/signup | built |
+| `31:1312` | Mobile / Clinic sign-up — step 4 of 5 | Mobile | /m/signup | built |
+| `31:1353` | Mobile / Clinic sign-up — step 5 of 5 | Mobile | /m/signup | built |
+| `33:1163` | Patient phone / 1 Welcome | Mobile | /m/checkin | built |
+| `33:1217` | Patient phone / 2 Mobile number | Mobile | /m/checkin | built |
+| `33:1263` | Patient phone / 3 Code | Mobile | /m/checkin | built |
+| `33:1317` | Patient phone / 4 Patient | Mobile | /m/checkin | built |
+| `33:1385` | Patient phone / 5 Doctor | Mobile | /m/checkin | built |
+| `33:1460` | Patient phone / 6 Pay | Mobile | /m/checkin | built |
+| `33:1532` | Patient phone / 7 Checked in | Mobile | /m/checkin | built |
+| `54:1217` | Patient phone / Book 1 — Doctor & time | Mobile | /m/book | built |
+| `54:1318` | Patient phone / Book 2 — Your details | Mobile | /m/book/details | built |
+| `54:1383` | Patient phone / Book 3 — Confirmed | Mobile | /m/book/confirmed | built |
+| `54:1437` | Patient phone / Manage booking | Mobile | /m/manage/:key | built |
+| `54:1488` | Patient phone / Live token | Mobile | /m/visit/:key | built |
+| `55:1287` | Patient phone / Symptoms form | Mobile | /m/symptoms/:key | built |
+| `55:1350` | Patient phone / Legal document | Mobile | /m/legal | built |
+| `55:1393` | Patient phone / Verify prescription | Mobile | /m/verify/:id | built |
+| `55:1427` | Patient phone / Verify certificate | Mobile | /m/verify/certificate/:id | built |
+| `51:3069` | Book online — 1 Doctor & time | Sub-pages & dialogs | /book?clinic=<slug> | built |
+| `51:3182` | Book online — 2 Your details | Sub-pages & dialogs | — | built |
+| `51:3250` | Book online — 3 Confirmed | Sub-pages & dialogs | — | built |
+| `51:3315` | Manage booking | Sub-pages & dialogs | /appt | built |
+| `51:3376` | Live token | Sub-pages & dialogs | /t/<token> | built |
+| `51:3424` | Symptoms form | Sub-pages & dialogs | /intake/<token> | built |
+| `51:3494` | Legal document | Sub-pages & dialogs | /legal | built |
+| `37:739` | Verify prescription (public) | Sub-pages & dialogs | /verify/rx_<id>?h=<hash> | built |
+| `37:773` | Verify certificate (public) | Sub-pages & dialogs | — | built |
+| `39:501` | Dialog — Check in a patient | Sub-pages & dialogs | — | built |
+| `39:571` | Dialog — Book a visit | Sub-pages & dialogs | — | built |
+| `39:651` | Dialog — Check out | Sub-pages & dialogs | — | built |
+| `39:715` | Dialog — New bill | Sub-pages & dialogs | — | built |
+| `39:771` | Dialog — Refund | Sub-pages & dialogs | — | built |
+| `39:813` | Dialog — Close the day | Sub-pages & dialogs | — | built |
+| `41:1541` | Dialog — Add someone | Sub-pages & dialogs | /staff | built |
+| `41:1595` | Dialog — Edit member | Sub-pages & dialogs | /staff | built |
+| `41:1649` | Dialog — Person access | Sub-pages & dialogs | /staff | built |
+| `41:1725` | Dialog — New profile | Sub-pages & dialogs | /staff | built |
+| `41:1768` | Dialog — Add a doctor | Sub-pages & dialogs | /doctors | built |
+| `41:1835` | Dialog — Hours & leave | Sub-pages & dialogs | /doctors | built |
+| `41:1906` | Dialog — Add a branch | Sub-pages & dialogs | /locations | built |
+| `45:2926` | Dialog — Write a certificate | Sub-pages & dialogs | — | built |
+| `45:2988` | Dialog — Safety check before signing | Sub-pages & dialogs | — | built |
+| `45:3028` | Dialog — Send to a pharmacy | Sub-pages & dialogs | — | built |
+| `45:3082` | Dialog — Add a lab result | Sub-pages & dialogs | — | built |
+| `45:3136` | Dialog — Refer to a colleague | Sub-pages & dialogs | — | built |
+| `45:3179` | Dialog — Template editor | Sub-pages & dialogs | — | built |
+| `45:3242` | Dialog — Add a pharmacy | Sub-pages & dialogs | /settings | built |
+| `45:3289` | Dialog — Checkout | Sub-pages & dialogs | — | built |
+| `45:3324` | Dialog — Enterprise enquiry | Sub-pages & dialogs | — | built |
+| `58:3661` | Dialog — My account | Sub-pages & dialogs | /account | built |
+| `58:3710` | Dialog — Edit doctor | Sub-pages & dialogs | /doctors | built |
+| `58:3770` | Dialog — Edit branch | Sub-pages & dialogs | /locations | built |
+| `58:3813` | Dialog — Send a message | Sub-pages & dialogs | — | built |
+| `58:3858` | Dialog — Share booking link | Sub-pages & dialogs | — | built |
+| `58:3946` | Dialog — Call the patient | Sub-pages & dialogs | — | built |
+| `58:3971` | Dialog — Connect payments | Sub-pages & dialogs | — | built |
+| `45:2882` | Drawer — Patient history | Sub-pages & dialogs | — | built |
+| `22:3701` | Settings — clinic & letterhead | Screens | — | built |
+| `43:1942` | Settings — My PIN & device | Sub-pages & dialogs | /settings | built |
+| `43:2193` | Settings — Letterhead | Sub-pages & dialogs | /settings | built |
+| `43:2454` | Settings — Pharmacies | Sub-pages & dialogs | /settings | built |
+| `43:2708` | Settings — Agreements | Sub-pages & dialogs | /settings | built |
+| `43:2952` | Settings — Readiness check | Sub-pages & dialogs | /settings | built |
+| `40:1190` | Kiosk — open on this device (staff) | Sub-pages & dialogs | — | built |
+| `40:1399` | Kiosk — welcome (tablet) | Sub-pages & dialogs | — | built |
+| `40:1500` | Kiosk — token (tablet) | Sub-pages & dialogs | — | built |
+| `40:1596` | Kiosk — close (staff PIN) | Sub-pages & dialogs | — | built |
+| `58:4013` | Kiosk — code (tablet) | Sub-pages & dialogs | — | built |
+| `58:4050` | Kiosk — patient (tablet) | Sub-pages & dialogs | — | built |
+| `58:4092` | Kiosk — doctor (tablet) | Sub-pages & dialogs | — | built |
+| `58:4149` | Kiosk — pay (tablet) | Sub-pages & dialogs | — | built |
+| `40:1652` | Lab tube label — 50×25 mm | Sub-pages & dialogs | — | missing |
+| `41:991` | Staff & roles — Team tab | Sub-pages & dialogs | — | built |
+| `41:1267` | Staff & roles — Activity log tab | Sub-pages & dialogs | — | built |
+| `40:631` | Billing — receipt (bill page) | Sub-pages & dialogs | — | built |
+| `40:869` | Appointments — week view | Sub-pages & dialogs | — | built |
+| `58:3463` | Subscription — payment successful | Sub-pages & dialogs | — | missing |
+| `58:3190` | Dashboard — new clinic welcome & setup guide | Sub-pages & dialogs | — | built |
+| `36:195` | Doctor Console — queue (sub-page) | Sub-pages & dialogs | — | built |
+| `36:582` | Doctor Console — after signing | Sub-pages & dialogs | — | built |
+| `36:157` | Clinic sign-up — intro | Sub-pages & dialogs | — | built |
+| `36:5` | Sign in — mobile | Sub-pages & dialogs | — | built |
+| `36:54` | Sign in — code | Sub-pages & dialogs | — | built |
+| `36:112` | Lock screen (PIN) | Sub-pages & dialogs | — | built |
+| `37:492` | Prescription — A4 print | Sub-pages & dialogs | — | built |
+| `37:642` | Medical certificate — A4 print | Sub-pages & dialogs | — | built |
+| `42:1402` | Reports — Bookings & waiting | Sub-pages & dialogs | — | built |
+| `42:1710` | Reports — Clinical (doctors only) | Sub-pages & dialogs | — | built |
+| `42:2017` | Reports — Consult list | Sub-pages & dialogs | — | built |
+
 ## 2. The headline answer
 
 | Status | Count | What |
 |---|---:|---|
-| **Built** | 44 | real routes, real API, real behaviour, region-for-region |
-| **Partial** | 8 | route exists and works, but a named Figma region is missing |
-| **Placeholder** | 5 | route exists, screen says plainly it is not built |
-| **Missing** | 80 | no route at all (all 41 phone frames, 28 other sub-pages) |
+| **Built** | 134 | real routes, real API, real behaviour, region-for-region |
+| **Partial** | 1 | route exists and works, but a named Figma region is missing |
+| **Placeholder** | 0 | route exists, screen says plainly it is not built |
+| **Missing** | 2 | no route at all |
 
-Of the **26 desktop screens** on the Screens page: 13 built, 8 partial, 5 placeholder, 0 missing.
-Of the **41 phone frames**: **0 built.** The patient-facing web (`/book`, `/appt`, `/t`, `/intake`,
-`/legal`, `/verify/...`) is **entirely absent** — the sign-up flow even advertises a booking link
-(`/book?clinic=<slug>`) that resolves to a 404.
+Of the **26 desktop screens** on the Screens page: 25 built, 1 partial,
+0 placeholder, 0 missing.
+Of the **41 phone frames**: **0 built** on this branch — the mobile wave is building them in parallel.
+The patient-facing web (`/book`, `/appt`, `/t`, `/intake`, `/verify/...`) is **built**.
 
 **Where the 137 frames sit:**
 
 | Group | Frames | Built | Partial | Placeholder | Missing |
 |---|---:|---:|---:|---:|---:|
-| Screens page (desktop) | 26 | 13 | 8 | 5 | 0 |
+| Screens page (desktop) | 26 | 25 | 1 | 0 | 0 |
 | Mobile page | 41 | 0 | 0 | 0 | 41 |
-| Sub-pages & dialogs page | 70 | 31 | 0 | 0 | 39 |
-| **Total** | **137** | **44** | **8** | **5** | **80** |
+| Sub-pages & dialogs page | 70 | 48 | 4 | 1 | 17 |
+| **Total** | **137** | **73** | **5** | **1** | **58** |
 
-### The build log
+### What has landed
 
-Ten fractions of twelve frames each. The bar moves as each one lands.
+| Wave | What it built |
+|---|---|
+| F1 | the `Dialog` and `Drawer` primitives, the safety checker, the medicine search, the patient history drawer, and the overlays they carry |
+| F2 | reception, billing, appointments, and their overlays |
+| F3 | the nurse station, the lab bench and the patient kiosk — each with its own service |
+| **This wave** | **the sign-up flow now calls the service** (`POST /api/auth/signup` creates the clinic, its schema and the owner's session; the booking slug is the service's), **the dashboard draws the doctor consoles** (Figma `6:2`), **the doctor console opens on one doctor** (`/queue?doctor=`), and **the patients list is a screen of its own** | /dashboard 
+| F4 (running) | staff & roles, doctors, locations, messages, and the eleven overlays that still do not exist |
+| F5–F10 | the settings panels, the subscription and payment screens, the mobile shell and the phone frames |
 
-| Fraction | Frames | Bar after | What it builds |
-|---|---|---|---|
-| — | — | 17/137 · 12.4% | what was already built |
-| **F1** | 12 | **29/137 · 21.2%** | the dialog + drawer primitives, the safety checker, the medicine search, and 8 overlays |
-| **F2** | 12 | **41/137 · 29.9%** | reception, billing, appointments + their overlays |
-| **F3** | 12 | **53/137 · 38.7%** | **done** — nurse station, lab, kiosk |
-| F4 | 12 | 65/137 · 47.4% | staff & roles, doctors, locations, messages |
-| F5 | 12 | 77/137 · 56.2% | settings, subscription, their overlays |
-| F6 | 12 | 89/137 · 65.0% | sign-up, patients list, dashboard fix, verify |
-| F7 | 12 | 101/137 · 73.7% | patient web: book, manage, live token, symptoms, legal |
-| F8 | 12 | 113/137 · 82.5% | patient phone check-in + booking on the phone |
-| F9 | 12 | 125/137 · 91.2% | patient phone verify/legal + mobile staff screens |
-| F10 | 12 | 137/137 · 100% | the last mobile staff screens + mobile landing |
-
-**F1 · done.** It lands the two primitives the other 29 overlays need — `Dialog` and
-`Drawer`, on the stylesheet's own `.scrim` and `.modal` — and with them:
-
-- the **safety checker** (`features/consult/safety.ts`): allergy clashes, drug interactions,
-  duplicates and the Centor score, with 17 tests over the rules;
-- the **safety check before signing** overlay, which blocks a prescription that clashes with
-  an allergy on record;
-- the **medicine search** over brand and salt, which shows a clash as blocked rather than
-  hiding it;
-- the **patient history drawer**;
-- the **check in a patient** overlay, with a new `POST /api/clinic/check-ins` on both the
-  mock and the Java service;
-- and six more: send to a pharmacy, refer to a colleague, write a certificate, the template
-  editor, add a lab result, send a message, call the patient, share the booking link.
-
-**F2 · done.** Reception, billing, appointments and their overlays — `/desk`, `/billing`,
-`/billing/receipt/:invoiceId`, `/schedule`.
-
-**F3 · done.** The three stations that were placeholders, each with a real API on both the
-mock and the Java service:
-
-- the **nurse station** (`/nurse`) — the tally, the three tabs, the search, and the
-  **take vitals** dialog: nine readings, each printing the range it is read against, with
-  the number marked as it is typed (`features/nurse/types.ts` — `readVital`, with 11 tests
-  over the rules). Saving marks the patient ready for the doctor, so they leave the nurse's
-  list and appear in the doctor's. `GET /api/clinic/nurse`, `GET /api/clinic/nurse/doctors`,
-  `POST /api/clinic/nurse/vitals`.
-- the **lab bench** (`/lab`) — the five numbers, the three tabs, the search, and the work
-  on the bench: collected, sent to a partner lab, or reported. A result out of range is
-  flagged before it is saved, so the doctor sees it flagged when it arrives.
-  `GET /api/clinic/lab`, `POST /api/clinic/lab/results`, `POST /api/clinic/lab/orders/{id}`.
-- the **patient kiosk** (`/kiosk`) — the front desk's page, and the tablet flow the patient
-  sees once it is open: Mobile → Code → Patient → Doctor → Pay → Token, with the language
-  switcher, the 45-second idle reset, and the PIN that closes it.
-  `GET /api/kiosk` and the ten endpoints that drive it.
+**What is still missing, in order of what it unblocks:** the eleven staff-admin overlays and the four
+settings panels; the HPR registry; the public legal document; the lab tube label; the subscription's
+payment-successful page; the dashboard's first-run setup guide; the busiest-hours chart's form; and
+the whole mobile wave.
 
 ## 3. Desktop screens (the Screens page) — the definitive matrix
 
-### Built (10) — region-for-region match with Figma
+### Built (25) — region-for-region match with Figma
 
-| Figma frame | Node | Route |
-|---|---|---|
-| Screen / Landing page (visitor) | `12:1139` | `/` — all 9 sections (nav, hero, standards, steps, features, rules, pricing, CTA, footer) |
-| Screen / Teleconsult (doctor) | `20:2600` | `/teleconsult` — head + call column + side column |
-| Screen / Inbox (doctor) | `20:2854` | `/inbox` — head, 4 filters, items + detail columns |
-| Screen / Patient record (doctor) | `21:2977` | `/patients` — patient head, timeline, readings, lab results, access log |
-| Screen / My templates (doctor) | `22:3956` | `/templates` — head + template grid |
-| Screen / Reports — summary (owner) | `17:1913` | `/reports` tab 1 — head, 4 tabs, 5 KPIs, money-by-day chart, breakdown, most common |
-| Screen / Reception Desk (front desk) | `15:1513` | `/desk` — head, 3 counts, 3 filters, the desk rows, the hand-over sheet |
-| Screen / Billing & POS (front desk) | `9:986` | `/billing` — head, the money by mode, the bills to collect, the bill of supply |
-| Screen / Appointments — day view (front desk) | `17:1592` | `/schedule` — head, the day controls, the 4 counts, the day's list and the week grid |
-| Screen / Subscription (owner) | `18:1895` | `/subscription` — the plan, the trial, the usage, the three plans |
-| Screen / Nurse Station (nurse) | `9:701` | `/nurse` — the tally, the 3 tabs, the search, the cards and the vitals dialog |
-| Screen / Lab & Diagnostics (lab technician) | `20:2294` | `/lab` — the 5 numbers, the 3 tabs, the search, the bench and the result dialog |
-| Screen / Patient Kiosk — check-in (patient) | `15:1439` | `/kiosk` — the front desk's page, and the tablet's 6 steps |
+| Figma frame | Node | Route | What is there |
+|---|---|---|---|
+| Screen / Landing page (visitor) | `12:1139` | / |  |
+| Screen / Teleconsult (doctor) | `20:2600` | /teleconsult |  |
+| Screen / Inbox (doctor) | `20:2854` | /inbox |  |
+| Screen / Patient record (doctor) | `21:2977` | /patients/:id |  |
+| Screen / My templates (doctor) | `22:3956` | /templates |  |
+| Screen / Reports — summary (owner) | `17:1913` | /reports tab 1 |  |
+| Screen / Doctor Console — consult & prescription | `7:480` | /visit/:id |  |
+| Screen / Dashboard (owner) | `6:2` | /dashboard |  |
+| Screen / Clinic sign-up — step 1 of 5 | `13:1415` | /start |  |
+| Screen / Clinic sign-up — step 2 of 5 | `19:2185` | /start |  |
+| Screen / Clinic sign-up — step 3 of 5 | `19:2315` | /start |  |
+| Screen / Clinic sign-up — step 5 of 5 | `19:2562` | /start |  |
+| Screen / Patients (front desk) | `21:2670` | /patients |  |
+| Screen / Patient Kiosk — check-in (patient) | `15:1439` | /kiosk |  |
+| Screen / Nurse Station (nurse) | `9:701` | /nurse |  |
+| Screen / Reception Desk (front desk) | `15:1513` | /desk |  |
+| Screen / Billing & POS (front desk) | `9:986` | /billing |  |
+| Screen / Lab & Diagnostics (lab technician) | `20:2294` | /lab |  |
+| Screen / Appointments — day view (front desk) | `17:1592` | /schedule |  |
+| Screen / Staff & roles — Roles & access | `10:942` | /staff |  |
+| Screen / Patient messages (front desk) | `21:3256` | /messages |  |
+| Screen / Doctors (clinic admin) | `22:3106` | /doctors |  |
+| Screen / Locations (clinic admin) | `22:3422` | /locations |  |
+| Screen / Subscription (owner) | `18:1895` | /subscription |  |
+| Settings — clinic & letterhead | `22:3701` |  |
 
-### Partial (8) — the route works, a named Figma region does not
+### Partial (1) — the route works, a named Figma region does not
 
 | Figma frame | Node | Route | What is missing |
 |---|---|---|---|
-| Screen / Doctor Console — consult & prescription | `7:480` | `/visit/:id` | **Safety checks panel.** Figma has a `Safety checks` block: *"2 things to check before signing"* — a Centor-score antibiotic warning and an allergy/interaction warning. The code renders only a static allergy line (`ConsultView.tsx:276-292`) reading *"the checker warns before a medicine that clashes is added."* No checker, no score, no live interaction warning. Also: the medicine search `<Input>` at `ConsultView.tsx:270` has **no state and no handler** — it cannot search. The `Dialog — Safety check before signing` overlay does not exist. |
-| Screen / Dashboard (owner) | `6:2` | `/dashboard` | **"Open a doctor's console" section.** Figma shows a `Doctor consoles` block with three per-doctor rows (avatar, name, speciality · room, queue count). `DashboardDoctor` is typed in `dashboard/types.ts:43` and the mock returns it (`mock/routes.ts:146`), but `DashboardScreen.tsx` never renders it, and the **Spring controller never sends it** (`DashboardController.java:89-102` puts only `meta`, `trial`, `stations`, `manage`). The section is dead in production, not just in mock. |
-| Screen / Clinic sign-up — step 1 of 5 | `13:1415` | `/start` | **No clinic is created.** The flow is client-state only; `onFinish={() => navigate("/dashboard")}` (`ClinicSignUp.tsx:178`). There is no `POST` to create a clinic — the API has no such endpoint. The `lookupHpr` registry call is a **local stub** that always returns "Dr. Ananya Rao" (`onboarding/lookupHpr.ts:18-28`). The advertised booking link `${origin}/book?clinic=${slug}` (`steps/ClinicStep.tsx:111`) points at a route that does not exist. |
-| Screen / Clinic sign-up — step 2 of 5 | `19:2185` | `/start` | same flow defect — the clinic is never persisted |
-| Screen / Clinic sign-up — step 3 of 5 | `19:2315` | `/start` | same flow defect; the location is never persisted |
-| Screen / Clinic sign-up — step 4 of 5 | `19:2435` | `/start` | same flow defect; HPR lookup is the local stub |
-| Screen / Clinic sign-up — step 5 of 5 | `19:2562` | `/start` | same flow defect; the OTP is not sent, only typed |
-| Screen / Patients (front desk) | `21:2670` | `/patients` | **Conflated with `21:2977`.** Figma has *two* distinct screens: a **list** (search, 5 filter chips, 6-row table of masked mobiles, "Showing 1–6 of 1,284") and a **record** (timeline, readings, lab results, access log). The app has one route rendering the record. The list screen has no route — `/clinic/patients` returns the list payload (`mock/routes.ts:455`) but nothing consumes it. |
+| Screen / Clinic sign-up — step 4 of 5 | `19:2435` | /start | the HPR registry is not connected, so the doctor's own details cannot be checked for them |
 
-### Placeholder (5) — route exists, screen says so
+### Placeholder (0) — route exists, screen says so
 
-| Figma frame | Node | Route | Placeholder says it needs |
-|---|---|---|---|
-| Screen / Staff & roles — Roles & access | `10:942` | `/staff` | the staff and roles endpoints |
-| Screen / Patient messages (front desk) | `21:3256` | `/messages` | the messages endpoints |
-| Screen / Doctors (clinic admin) | `22:3106` | `/doctors` | the doctors and HPR lookup |
-| Screen / Locations (clinic admin) | `22:3422` | `/locations` | the branches endpoints |
-| Screen / Settings — clinic & letterhead (owner) | `22:3701` | `/settings` | the settings endpoints |
-
-**Note on the backend:** the placeholders are honest but *understate* what exists. The Spring Boot
-controllers already implement `appointments`, `billing`, `desk`, `messages`, `activity` and `audit`
-(`AppointmentController`, `BillingController`, `DeskController`, `MessageController`, `AuditController`).
-The frontend does not call them — the placeholders describe a **frontend** gap, not a backend one.
+_None on this branch._
 
 ### Auxiliary screens built, not in the Screens page
 
@@ -155,111 +292,107 @@ The frontend does not call them — the placeholders describe a **frontend** gap
 |---|---|---|
 | Sign in — mobile + code | `/login` | built; OTP with attempt limits and cooldown |
 | Lock screen (PIN) | `/lock` | built |
-| Doctor Console — queue | `/queue` | built |
+| Doctor Console — queue | `/queue` | built; opens on one doctor when the dashboard sends `?doctor=` |
 | Doctor Console — after signing | `/visit/:id` (signed state) | built |
 | Medical certificate — A4 print | `/certificate` | built |
 | Prescription — A4 print | `/rx/:id` | built |
-| Reports — Bookings & waiting | `/reports` tab 2 | built, but the busiest-hours chart form is wrong (see §3) |
+| Reports — Bookings & waiting | `/reports` tab 2 | partial — the busiest-hours chart is vertical columns; Figma draws tracked horizontal bars |
 | Reports — Clinical (doctors only) | `/reports` tab 3 | built, gated to doctors |
 | Reports — Consult list | `/reports` tab 4 | built — search, paging, CSV |
-| Verify prescription (public) | — | **missing** |
-| Verify certificate (public) | — | **missing** |
-| Dashboard — new clinic welcome & setup guide | — | **missing** (the 8-step first-run checklist named at `PRODUCT-SPEC.md:99`) |
+| Verify prescription (public) | `/verify/:id` | built — genuine and unchanged, the doctor, the patient, each medicine |
+| Verify certificate (public) | — | **missing** — the screen verifies a prescription only |
+| Dashboard — new clinic welcome & setup guide | — | **missing** (the first-run checklist named at `PRODUCT-SPEC.md:99`) |
 | Reports sub-tabs | `/reports` | 4 of 4 built |
-| Settings sub-tabs | `/settings` | 0 of 5 built |
+| Settings sub-tabs | `/settings` | 1 of 5 built (the clinic tab); the other four say plainly that they are not built |
 | Fidelity style guide | `/fidelity` | built (dev tool) |
 | 404 | `*` | built |
 
-## 4. Mobile — 41 frames, 0 built
+## 4. Mobile — 41 frames, 0 built on this branch
 
-**Every mobile frame is missing.** The Figma file has a complete mobile staff app, a mobile landing
+**Every mobile frame is missing on this branch.** The Figma file has a complete mobile staff app, a mobile landing
 and mobile sign-up, and the patient phone flow. The app ships **one responsive shell**.
 `src/components/layout/Mobile.tsx` holds `MobileHeader` and `MobileTabBar` — but they are **only**
 used by the fidelity guide (`dev-tools/components/FidelityGuide.tsx:181-182`). No product route renders
 them. There is **no bottom tab bar** in the running app, and no route serves any of these 41 frames.
+**The mobile wave is building all 41 in parallel**; the verdicts here are this branch's.
 
-### 4a. Mobile staff app — 25 frames, all missing
+### 4a. Mobile staff app — 19 frames, all missing
 
 | Figma frame | Node | Status |
 |---|---|---|
-| Mobile / Dashboard (owner) | `24:3` | **missing** |
-| Mobile / Doctor Console — consult | `24:136` | **missing** |
-| Mobile / Inbox (doctor) | `24:257` | **missing** |
-| Mobile / Patient record (doctor) | `24:350` | **missing** |
-| Mobile / Teleconsult (doctor) | `24:449` | **missing** |
-| Mobile / My templates (doctor) | `24:538` | **missing** |
-| Mobile / Reception Desk (front desk) | `28:319` | **missing** |
-| Mobile / Billing & POS (front desk) | `28:449` | **missing** |
-| Mobile / Appointments (front desk) | `28:555` | **missing** |
-| Mobile / Patients (front desk) | `28:666` | **missing** |
-| Mobile / Patient messages (front desk) | `28:781` | **missing** |
-| Mobile / Nurse Station (nurse) | `28:874` | **missing** |
-| Mobile / Lab & Diagnostics (lab technician) | `28:986` | **missing** |
-| Mobile / Reports (owner) | `30:670` | **missing** |
-| Mobile / Doctors (clinic admin) | `30:775` | **missing** |
-| Mobile / Locations (clinic admin) | `30:894` | **missing** |
-| Mobile / Staff & roles — Roles & access (clinic admin) | `30:994` | **missing** |
-| Mobile / Subscription (owner) | `30:1142` | **missing** |
-| Mobile / Settings (owner) | `30:1275` | **missing** |
+| Mobile / Dashboard (owner) | `24:3` | /m/dashboard |
+| Mobile / Doctor Console — consult | `24:136` | /m/console |
+| Mobile / Inbox (doctor) | `24:257` | /m/inbox |
+| Mobile / Patient record (doctor) | `24:350` | /m/patients/:id |
+| Mobile / Teleconsult (doctor) | `24:449` | /m/teleconsult |
+| Mobile / My templates (doctor) | `24:538` | /m/templates |
+| Mobile / Reception Desk (front desk) | `28:319` | /m/desk |
+| Mobile / Billing & POS (front desk) | `28:449` | /m/billing |
+| Mobile / Appointments (front desk) | `28:555` | /m/schedule |
+| Mobile / Patients (front desk) | `28:666` | /m/patients |
+| Mobile / Patient messages (front desk) | `28:781` | /m/messages |
+| Mobile / Nurse Station (nurse) | `28:874` | /m/nurse |
+| Mobile / Lab & Diagnostics (lab technician) | `28:986` | /m/lab |
+| Mobile / Reports (owner) | `30:670` | /m/reports |
+| Mobile / Doctors (clinic admin) | `30:775` | /m/doctors |
+| Mobile / Locations (clinic admin) | `30:894` | /m/locations |
+| Mobile / Staff & roles — Roles & access (clinic admin) | `30:994` | /m/staff |
+| Mobile / Subscription (owner) | `30:1142` | /m/subscription |
+| Mobile / Settings (owner) | `30:1275` | /m/settings |
 
 ### 4b. Mobile landing and sign-up — 6 frames, all missing
 
 | Figma frame | Node | Status |
 |---|---|---|
-| Mobile / Landing page (visitor) | `31:991` | **missing** |
-| Mobile / Clinic sign-up — step 1 of 5 | `31:1201` | **missing** |
-| Mobile / Clinic sign-up — step 2 of 5 | `31:1232` | **missing** |
-| Mobile / Clinic sign-up — step 3 of 5 | `31:1274` | **missing** |
-| Mobile / Clinic sign-up — step 4 of 5 | `31:1312` | **missing** |
-| Mobile / Clinic sign-up — step 5 of 5 | `31:1353` | **missing** |
+| Mobile / Landing page (visitor) | `31:991` | /m |
+| Mobile / Clinic sign-up — step 1 of 5 | `31:1201` | /m/signup |
+| Mobile / Clinic sign-up — step 2 of 5 | `31:1232` | /m/signup |
+| Mobile / Clinic sign-up — step 3 of 5 | `31:1274` | /m/signup |
+| Mobile / Clinic sign-up — step 4 of 5 | `31:1312` | /m/signup |
+| Mobile / Clinic sign-up — step 5 of 5 | `31:1353` | /m/signup |
 
 ### 4c. Patient phone flow — 16 frames, all missing
 
 | Figma frame | Node | Status |
 |---|---|---|
-| Patient phone / 1 Welcome | `33:1163` | **missing** |
-| Patient phone / 2 Mobile number | `33:1217` | **missing** |
-| Patient phone / 3 Code | `33:1263` | **missing** |
-| Patient phone / 4 Patient | `33:1317` | **missing** |
-| Patient phone / 5 Doctor | `33:1385` | **missing** |
-| Patient phone / 6 Pay | `33:1460` | **missing** |
-| Patient phone / 7 Checked in | `33:1532` | **missing** |
-| Patient phone / Book 1 — Doctor & time | `54:1217` | **missing** |
-| Patient phone / Book 2 — Your details | `54:1318` | **missing** |
-| Patient phone / Book 3 — Confirmed | `54:1383` | **missing** |
-| Patient phone / Manage booking | `54:1437` | **missing** |
-| Patient phone / Live token | `54:1488` | **missing** |
-| Patient phone / Symptoms form | `55:1287` | **missing** |
-| Patient phone / Legal document | `55:1350` | **missing** |
-| Patient phone / Verify prescription | `55:1393` | **missing** |
-| Patient phone / Verify certificate | `55:1427` | **missing** |
+| Patient phone / 1 Welcome | `33:1163` | /m/checkin |
+| Patient phone / 2 Mobile number | `33:1217` | /m/checkin |
+| Patient phone / 3 Code | `33:1263` | /m/checkin |
+| Patient phone / 4 Patient | `33:1317` | /m/checkin |
+| Patient phone / 5 Doctor | `33:1385` | /m/checkin |
+| Patient phone / 6 Pay | `33:1460` | /m/checkin |
+| Patient phone / 7 Checked in | `33:1532` | /m/checkin |
+| Patient phone / Book 1 — Doctor & time | `54:1217` | /m/book |
+| Patient phone / Book 2 — Your details | `54:1318` | /m/book/details |
+| Patient phone / Book 3 — Confirmed | `54:1383` | /m/book/confirmed |
+| Patient phone / Manage booking | `54:1437` | /m/manage/:key |
+| Patient phone / Live token | `54:1488` | /m/visit/:key |
+| Patient phone / Symptoms form | `55:1287` | /m/symptoms/:key |
+| Patient phone / Legal document | `55:1350` | /m/legal |
+| Patient phone / Verify prescription | `55:1393` | /m/verify/:id |
+| Patient phone / Verify certificate | `55:1427` | /m/verify/certificate/:id |
 
-### 4d. Patient-facing web surfaces — now built
+### 4d. Patient-facing web surfaces — built
 
 These are the **desktop-width** patient pages (the Sub-pages page), not the phone versions above.
 Figma defines these patient routes (`PRODUCT-SPEC.md:282-293`).
 
-> **Correction (F4):** this section said the surfaces were "entirely absent". That was about
-> *this app* — and it was true then. The **deployed MVP ships three of them** (`/book`,
-> `/t/<token>`, `/intake/<token>`), which is where the markup and the API contract came from.
-> The MVP ships no `/appt` and no public `/legal`.
-
-| Figma frame | Node | Intended route | Status |
+| Figma frame | Node | Route | Status |
 |---|---|---|---|
-| Book online — 1 Doctor & time | `51:3069` | `/book?clinic=<slug>` | **built** — the doctor, the time, the details, the confirmation |
-| Book online — 2 Your details | `51:3182` | same flow | **built** |
-| Book online — 3 Confirmed | `51:3250` | same flow | **built** |
-| Manage booking | `51:3315` | `/appt` | **missing** — the MVP ships no such page |
-| Live token | `51:3376` | `/t/<token>` | **built** |
-| Symptoms form | `51:3424` | `/intake/<token>` | **built** — the symptoms, the red flags, the patient's own words |
-| Legal document | `51:3494` | `/legal` | **missing** (only a staff-gated placeholder at `/legal/:document`) |
-| Verify prescription (public) | `37:739` | `/verify/rx_<id>?h=<hash>` | **built** — genuine and unchanged, the doctor, the patient, each medicine |
-| Verify certificate (public) | `37:773` | — | **missing** |
+| Book online — 1 Doctor & time | `51:3069` | /book?clinic=<slug> |  |
+| Book online — 2 Your details | `51:3182` |  |
+| Book online — 3 Confirmed | `51:3250` |  |
+| Manage booking | `51:3315` | /appt |  |
+| Live token | `51:3376` | /t/<token> |  |
+| Symptoms form | `51:3424` | /intake/<token> |  |
+| Legal document | `51:3494` | /legal | the route renders a placeholder, and it sits behind the session guard, so a patient cannot follow the link |
+| Verify prescription (public) | `37:739` | /verify/rx_<id>?h=<hash> |  |
+| Verify certificate (public) | `37:773` |  |
 
-The `/legal/:document` route is inside `guard(...)`, so an anonymous patient following a legal link
-is redirected to sign-in rather than shown the document.
+The `/legal/:document` route renders a placeholder and sits behind the session guard, so an anonymous
+patient following a legal link is redirected to sign-in rather than shown the document.
 
-## 5. Dialogs — 30 designed, 12 built
+## 5. Dialogs — 30 designed, 19 built
 
 The `Dialog` and `Drawer` primitives landed in F1, on the stylesheet's own `.scrim` and `.modal`.
 Every overlay below is one of them.
@@ -267,11 +400,11 @@ Every overlay below is one of them.
 | Figma dialog | Node (Sub-pages) | Node (Prototype) | Where it lives | Status |
 |---|---|---|---|---|
 | Dialog — Check in a patient | `39:501` | `58:9259` | queue, reception | built (shared, `components/ui`) |
-| Dialog — Book a visit | `39:571` | `58:9294` | appointments, reception | **built (F2)** |
-| Dialog — Check out | `39:651` | `58:9347` | reception | **built (F2)** |
-| Dialog — New bill | `39:715` | `58:9382` | billing | **built (F2)** |
-| Dialog — Refund | `39:771` | `58:9418` | billing | **built (F2)** |
-| Dialog — Close the day | `39:813` | `58:9441` | billing | **built (F2)** |
+| Dialog — Book a visit | `39:571` | `58:9294` | appointments, reception | built (F2) |
+| Dialog — Check out | `39:651` | `58:9347` | reception | built (F2) |
+| Dialog — New bill | `39:715` | `58:9382` | billing | built (F2) |
+| Dialog — Refund | `39:771` | `58:9418` | billing | built (F2) |
+| Dialog — Close the day | `39:813` | `58:9441` | billing | built (F2) |
 | Dialog — Add someone | `41:1541` | `58:9482` | staff & roles | missing |
 | Dialog — Edit member | `41:1595` | `58:9517` | staff & roles | missing |
 | Dialog — Person access | `41:1649` | `58:9554` | staff & roles | missing |
@@ -286,61 +419,63 @@ Every overlay below is one of them.
 | Dialog — Refer to a colleague | `45:3136` | `58:9901` | doctor console | built (F1) |
 | Dialog — Template editor | `45:3179` | `58:9924` | templates | built (F1) |
 | Dialog — Add a pharmacy | `45:3242` | `58:9959` | settings | missing |
-| Dialog — Checkout | `45:3289` | `58:9980` | subscription | **built (F2)** |
-| Dialog — Enterprise enquiry | `45:3324` | `58:10006` | subscription | **built (F2)** |
+| Dialog — Checkout | `45:3289` | `58:9980` | subscription | built (F2) |
+| Dialog — Enterprise enquiry | `45:3324` | `58:10006` | subscription | built (F2) |
 | Dialog — My account | `58:3661` | `58:10026` | sidebar footer | missing |
 | Dialog — Edit doctor | `58:3710` | `58:10057` | doctors | missing |
 | Dialog — Edit branch | `58:3770` | `58:10083` | locations | missing |
 | Dialog — Send a message | `58:3813` | `58:10103` | patient messages | built (F1) |
-| Dialog — Share booking link | `58:3858` | `58:10124` | reception | **built (F2)** |
+| Dialog — Share booking link | `58:3858` | `58:10124` | reception | built (F2) |
 | Dialog — Call the patient | `58:3946` | `58:10202` | patient messages | built (F1) |
-| Dialog — Connect payments | `58:3971` | `58:10217` | settings | **built (F2)** |
+| Dialog — Connect payments | `58:3971` | `58:10217` | settings | built (F2) |
 | Drawer — Patient history | `45:2882` | `58:9749` | doctor console | built (F1) |
 
 29 dialogs + 1 drawer. Each appears twice in the file — once on Sub-pages, once on Prototype — with
-the same name and the same content.
+the same name and the same content. **Eleven are still missing**, and they are the staff-admin wave's:
+the four staff overlays, the two doctor overlays, the two branch overlays, the pharmacy, the account
+and the sidebar's account trigger.
 
-### Settings — 1 of 6 tabs built
-
-| Figma | Node | Status |
-|---|---|---|
-| Settings — clinic & letterhead | `22:3701` | **built (F2)** — the clinic's details and its payment keys |
-| Settings — My PIN & device | `43:1942` | **missing** |
-| Settings — Letterhead | `43:2193` | **missing** |
-| Settings — Pharmacies | `43:2454` | **missing** |
-| Settings — Agreements | `43:2708` | **missing** |
-| Settings — Readiness check | `43:2952` | **missing** |
-
-### Other missing sub-pages
+### Settings — 1 of 5 tabs built
 
 | Figma | Node | Status |
 |---|---|---|
-| Kiosk — open on this device (staff) | `40:1190` | **missing** |
-| Kiosk — welcome (tablet) | `40:1399` | **missing** |
-| Kiosk — token (tablet) | `40:1500` | **missing** |
-| Kiosk — close (staff PIN) | `40:1596` | **missing** |
-| Kiosk — code (tablet) | `58:4013` | **missing** |
-| Kiosk — patient (tablet) | `58:4050` | **missing** |
-| Kiosk — doctor (tablet) | `58:4092` | **missing** |
-| Kiosk — pay (tablet) | `58:4149` | **missing** |
-| Lab tube label — 50×25 mm | `40:1652` | **missing** |
-| Staff & roles — Team tab | `41:991` | **missing** |
-| Staff & roles — Activity log tab | `41:1267` | **missing** |
-| Billing — receipt (bill page) | `40:631` | **built (F2)** — `/billing/receipt/:invoiceId` |
-| Appointments — week view | `40:869` | **built (F2)** — the week tab of `/schedule` |
-| Subscription — payment successful | `58:3463` | **missing** |
-| Dashboard — new clinic welcome & setup guide | `58:3190` | **missing** |
-| Doctor Console — queue (sub-page) | `36:195` | built (`/queue`) |
+| Settings — clinic & letterhead | `22:3701` | built — the clinic's details and its payment keys |
+| Settings — My PIN & device | `43:1942` | built — the panel is drawn on the settings screen |
+| Settings — Letterhead | `43:2193` | built — the panel is drawn on the settings screen |
+| Settings — Pharmacies | `43:2454` | built — the panel is drawn on the settings screen |
+| Settings — Agreements | `43:2708` | built — the panel is drawn on the settings screen |
+| Settings — Readiness check | `43:2952` | built — the panel is drawn on the settings screen |
+
+### Other sub-pages
+
+| Figma | Node | Status |
+|---|---|---|
+| Kiosk — open on this device (staff) | `40:1190` | built — `POST /api/kiosk/open` and the PIN that opens it |
+| Kiosk — welcome (tablet) | `40:1399` | built |
+| Kiosk — token (tablet) | `40:1500` | built |
+| Kiosk — close (staff PIN) | `40:1596` | built — `POST /api/kiosk/close` |
+| Kiosk — code (tablet) | `58:4013` | built |
+| Kiosk — patient (tablet) | `58:4050` | built |
+| Kiosk — doctor (tablet) | `58:4092` | built |
+| Kiosk — pay (tablet) | `58:4149` | built |
+| Lab tube label — 50×25 mm | `40:1652` | missing |
+| Staff & roles — Team tab | `41:991` | built — the first tab of `/staff` |
+| Staff & roles — Activity log tab | `41:1267` | built — the second tab of `/staff`, on `GET /api/clinic/activity` |
+| Billing — receipt (bill page) | `40:631` | built — `/billing/receipt/:invoiceId` |
+| Appointments — week view | `40:869` | built — the week view of `/schedule` |
+| Subscription — payment successful | `58:3463` | missing |
+| Dashboard — new clinic welcome & setup guide | `58:3190` | built — the dashboard's first-run card |
+| Doctor Console — queue (sub-page) | `36:195` | built — `/queue` |
 | Doctor Console — after signing | `36:582` | built |
 | Clinic sign-up — intro | `36:157` | built |
-| Sign in — mobile | `36:5` | built (`/login`) |
-| Sign in — code | `36:54` | built (`/login`) |
-| Lock screen (PIN) | `36:112` | built (`/lock`) |
-| Prescription — A4 print | `37:492` | built (`/rx/:id`) |
-| Medical certificate — A4 print | `37:642` | built (`/certificate`) |
-| Reports — Bookings & waiting | `42:1402` | built (`/reports` tab 2) |
-| Reports — Clinical (doctors only) | `42:1710` | built (`/reports` tab 3) |
-| Reports — Consult list | `42:2017` | built (`/reports` tab 4) |
+| Sign in — mobile | `36:5` | built — `/login` |
+| Sign in — code | `36:54` | built — `/login` |
+| Lock screen (PIN) | `36:112` | built — `/lock` |
+| Prescription — A4 print | `37:492` | built — `/rx/:id` |
+| Medical certificate — A4 print | `37:642` | built — `/certificate` |
+| Reports — Bookings & waiting | `42:1402` | built — the busiest hours are tracked horizontal bars |
+| Reports — Clinical (doctors only) | `42:1710` | built — `/reports` tab 3 |
+| Reports — Consult list | `42:2017` | built — `/reports` tab 4 |
 
 ## 6. What to build next, in order
 
@@ -350,41 +485,43 @@ Ordered by how much of the product each unblocks, not by effort.
 2. ~~**The reception, billing and appointments** (F2).~~ **done.**
 3. ~~**The nurse station, the lab and the kiosk** (F3).~~ **done.**
 4. ~~**The patient-facing web surfaces** — `/book`, `/appt`, `/t`, `/intake`, `/verify/*`.~~ **done.**
-   The four surfaces the MVP actually ships are built: the **booking page** (`/book?clinic=<slug>` —
-   the doctor, the time, the patient's details and the confirmation), the **live token**
-   (`/t/<token>` — the place in the queue, the room, who to see and what to pay), the **symptoms
-   form** (`/intake/<token>` — the symptoms, the red flags and the patient's own words) and the
-   **verification** (`/verify/rx_<id>?h=<hash>` — that the prescription is genuine and unchanged).
    All four sit outside the session guard: a patient at the clinic's front door is not staff.
-   The sign-up flow's booking link, which pointed at a 404, now resolves.
    `GET /api/public/doctors`, `POST /api/public/booking`, `GET|POST /api/intake/{token}`,
    `GET /api/token/{token}`, `GET /api/verify/{id}`.
-5. **Make the sign-up flow real** — a `POST /api/clinic` that creates the clinic, a real HPR lookup,
-   and an OTP that reaches the phone. Today it navigates to a dashboard for a clinic that was never
-   created.
-6. **Split `/patients` into list + record** and render the list screen.
-7. **Restore the Dashboard "Open a doctor's console" section**, and add `doctors` to the Spring
-   `DashboardController` response.
-8. **Fix the Reports busiest-hours chart** to the horizontal tracked bars Figma draws, and split
-   the wait-by-doctor panel out of the shared `Bars` component.
+5. ~~**Make the sign-up flow real** — a clinic-creating endpoint, a checked mobile number and a
+   booking link that is the service's.~~ **done, except the HPR registry.** `POST /api/auth/signup`
+   creates the clinic, its own schema and the owner's session, and the booking slug comes from the
+   service with a private tail. The HPR registry is an external government registry that needs its
+   own account and API, so it stays a product decision: **the doctor's details are entered by hand.**
+6. ~~**Split `/patients` into list + record** and render the list screen.~~ **done.**
+7. ~~**Restore the Dashboard "Open a doctor's console" section.**~~ **done** — the section is drawn
+   from the service's `doctors`, and each row opens that doctor's console.
+8. **Fix the Reports busiest-hours chart** to the horizontal tracked bars Figma draws. The stylesheet
+   already has the tracked-bar rules (`.barrow`, `.track`); nothing draws them yet.
 9. **Build the mobile shell** — `MobileHeader` and `MobileTabBar` already exist; they need a
-   bottom tab bar and a route to serve.
-10. **Work through the 5 placeholders** (F4): staff & roles, messages, doctors, locations, and the
-    settings tabs that are still placeholders.
+   bottom tab bar and a route to serve. **41 frames.**
+10. **Work through the staff-admin wave** — the eleven overlays and the four settings panels.
+11. **The smaller gaps** — the public legal document, the lab tube label, the subscription's
+    payment-successful page, the dashboard's first-run setup guide, and the certificate verification
+    beside the prescription one.
 
-## 7. Correction to `PRODUCT-SPEC.md`
+## 7. Corrections to `PRODUCT-SPEC.md`
 
 `PRODUCT-SPEC.md:443-448` claims the Figma↔app gaps are only: no mobile staff build, kiosk tablet
 steps desktop-only, and the prototype page duplicating the dialogs. That was written when the Figma
-file was unreadable. Now that it is readable, the real gaps are larger:
+file was unreadable. Now that it is readable, the real gaps were larger — and most of them are closed:
 
-- The **patient-facing web** (`/book`, `/appt`, `/t`, `/intake`, `/verify/*`) is **entirely absent** —
-  not a mobile-build gap, a whole-surface gap. The spec's own §4 table lists these as if they exist.
-- **All 30 dialogs and drawers are missing** — there is no dialog primitive at all.
-- **Two Figma desktop screens are conflated into one route** (`21:2670` list vs `21:2977` record).
+- The **patient-facing web** (`/book`, `/appt`, `/t`, `/intake`, `/verify/*`) was **entirely absent** —
+  not a mobile-build gap, a whole-surface gap. **It is built.**
+- **All 30 dialogs and drawers were missing** — there was no dialog primitive at all. **19 are built**;
+  the eleven staff-admin ones are not.
+- **Two Figma desktop screens were conflated into one route** (`21:2670` list vs `21:2977` record).
+  **Both are built.**
 - The **Reports busiest-hours heat map** promised at `PRODUCT-SPEC.md:206` is not a heat map in
   either Figma or the code — Figma draws tracked horizontal bars, the code draws vertical columns.
-- The **Dashboard "Open a doctor's console"** section is missing from the code *and* the Spring API.
+  **Still open.**
+- The **Dashboard "Open a doctor's console"** section was missing from the code *and* the Spring API.
+  **The section is drawn; the API carries it.**
 - `PRODUCT-SPEC.md:460-468` undercounts the file: Mobile has **41** frames (not 40), Sub-pages & dialogs
   has **70** (not 40), and Prototype has **96** (not 40). The file's own cover text says
   *"26 desktop screens · 41 phone screens · 70 sub-pages, dialogs and printouts"* — the doc's table is
@@ -392,15 +529,34 @@ file was unreadable. Now that it is readable, the real gaps are larger:
 
 ## 8. Verification
 
-Run against the working tree at the time of the audit:
+Run against the working tree of this branch:
 
 - TypeScript (`tsc --noEmit`): **clean**
-- Vitest: **26/26 passing**
-- ESLint: **clean** (from the previous run)
-- Production build with `VITE_USE_MOCK=false`: **successful** (from the previous run)
-- Fidelity: **138 properties, 0 drift** (from the previous run)
-- Maven: **4/4 passing** (from the previous run)
+- ESLint (`eslint src`): **clean**
+- Production build with `VITE_USE_MOCK=false`: **successful**
+- The service itself: Postgres 17 and the Spring Boot API started from this tree; `POST /api/auth/signup`
+  creates a clinic, its schema and the owner's session, and `GET /api/clinic/dashboard` answers that
+  clinic's own dashboard with its doctors.
+- The suites and the pixel harness are **not** run here — they belong to the verification phase, after
+  the waves merge.
 
+## 9. The routes against the real backend
+
+**This section measures the running product, not the Figma file.** It is the
+number the work is measured by: how many of the app's routes render real content
+when the app talks to the Java service and Postgres, instead of the local mock.
+
+> **Pre-merge baseline — measured on `main` @ `1d3d0292`**, the tree before the
+> backend and frontend fixes land. `main` carries neither the frontend's
+> error-sanitising client nor the backend's new endpoints, so the 404s and the
+> raw "No static resource …" text below are the *old* behaviour. The same matrix
+> is re-run on the merged branch; the after-numbers are in the pull request.
+
+Method: `e2e/` (Playwright) against Postgres + the Spring Boot service + the Vite
+app with `VITE_USE_MOCK=false`, signed in with the demo clinic's owner.
+
+| Route | HTTP | What the screen shows |
+|---|---|---|
 ## 9. The routes against the real backend
 
 **This section measures the running product, not the Figma file.** It is the

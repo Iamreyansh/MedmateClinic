@@ -23,6 +23,8 @@
 
 import { ApiError } from "@/services/api/client";
 import { mock } from "@/services/api/mock/router";
+import { registerMockReset } from "@/services/api/mock/reset";
+import { clinicInstant, clinicLocal } from "@/services/api/mock/clinicClock";
 import {
   appointments,
   doctors,
@@ -30,11 +32,18 @@ import {
   prescriptions,
   visits,
   type MockAppointment,
+  type MockPrescription,
   type MockVisit,
 } from "@/services/api/mock/state";
 
 /** The clinic's public booking slug. */
 const SLUG = "medmate-clinic";
+
+/** The day the patient is offered, the day after the clinic's today. */
+const BOOKING_DAY = "2026-11-26";
+
+/** The hours the clinic sees patients. */
+const HOURS = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "16:00", "16:30"];
 
 /** Where the patient's own session is kept between reloads. */
 const SESSION_KEY = "medmate.mock.patient";
@@ -46,6 +55,8 @@ const PUBLIC_CLINIC = {
   address: "12, 100 Feet Road, Indiranagar, Bengaluru 560038",
   phone: "080 4123 4567",
   slug: SLUG,
+  // the clinic's own zone, as the service sends it
+  timezone: "Asia/Kolkata",
 };
 
 /** What the patient has done, kept between reloads. */
@@ -58,22 +69,53 @@ type PatientSession = {
   intakes: Record<string, { symptoms: string[]; redFlags: string[]; notes: string; duration: string }>;
   /** The bookings already made, by idempotency key. */
   idempotent: Record<string, string>;
+  /** The bookings already called off, by link key — the queue slip of each. */
+  cancelled: Record<string, string>;
+  /** The rebooks already made, by idempotency key. */
+  rebooks: Record<string, { signature: string; result: RebookAnswer }>;
 };
+
+/** What the service answers with when a booking has moved. */
+type RebookAnswer = {
+  cancelled: boolean;
+  token: string;
+  queueToken: string;
+  startsAt: string;
+  doctor: string;
+  clinic: string;
+};
+
+/**
+ * The patient's session goes with the rest of the state.
+ *
+ * The session is kept in the browser's storage, so a test that books a visit
+ * leaves the booking in the storage for the test after it. Clearing it here
+ * puts it back the way it was.
+ */
+registerMockReset(() => {
+  try {
+    window.sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // The browser will not let us — the patient can still book.
+  }
+});
 
 /** The session, as it was left. */
 function readSession(): PatientSession {
   try {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
-    if (!raw) return { booked: {}, names: {}, intakes: {}, idempotent: {} };
+    if (!raw) return { booked: {}, names: {}, intakes: {}, idempotent: {}, cancelled: {}, rebooks: {} };
     const parsed = JSON.parse(raw) as Partial<PatientSession>;
     return {
       booked: parsed.booked ?? {},
       names: parsed.names ?? {},
       intakes: parsed.intakes ?? {},
       idempotent: parsed.idempotent ?? {},
+      cancelled: parsed.cancelled ?? {},
+      rebooks: parsed.rebooks ?? {},
     };
   } catch {
-    return { booked: {}, names: {}, intakes: {}, idempotent: {} };
+    return { booked: {}, names: {}, intakes: {}, idempotent: {}, cancelled: {}, rebooks: {} };
   }
 }
 
@@ -117,33 +159,64 @@ function feeFor(doctorId: string): number {
   return index === -1 ? 500 : 500 - index * 50;
 }
 
-/** The times the patient can take, for the day after today. */
-function slotsFor(doctorId: string): Array<{ label: string; startsAt: string; free: boolean }> {
-  const hours = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "16:00", "16:30"];
-  const taken = appointments.filter((appointment) => appointment.doctorId === doctorId).length;
+/**
+ * The public link to a prescription, as the patient opens it.
+ *
+ * The hash in the link is the secret the prescription itself carries, the
+ * way the service does it: the link is the only place the secret appears,
+ * and the document only verifies against the one it holds. It is not worked
+ * out from the prescription's id — a derivation is a formula anybody could
+ * work out, so it would not be a secret at all.
+ */
+function verifyUrlFor(prescription: MockPrescription): string {
+  return `/verify/${prescription.id}?h=${encodeURIComponent(prescription.verifyToken)}`;
+}
 
-  return hours.map((time, index) => ({
+/**
+ * The times the patient can take, for the day after today.
+ */
+function slotsFor(
+  doctorId: string,
+  day: string = BOOKING_DAY,
+): Array<{ label: string; startsAt: string; free: boolean }> {
+  // Only this doctor's appointments on this day are in the way: two doctors
+  // can hold the same time, and the same doctor at another time is free.
+  const taken = new Set(
+    appointments
+      .filter(
+        (appointment) =>
+          appointment.doctorId === doctorId && appointment.status !== "cancelled",
+      )
+      .map((appointment) => {
+        const local = clinicLocal(appointment.startsAt);
+        return local.day === day ? local.time : "";
+      })
+      .filter(Boolean),
+  );
+
+  return HOURS.map((time) => ({
     label: time,
     // an instant in the clinic's own zone, not a UTC wall-clock — so the
     // label, the comparison and the booking all agree
-    startsAt: clinicInstant("2026-11-26", time),
-    // the first few are taken by the clinic's own bookings
-    free: index >= taken,
+    startsAt: clinicInstant(day, time),
+    // the hours the doctor is already held at are not on offer
+    free: !taken.has(time),
   }));
 }
 
 /**
- * An instant, in the clinic's own zone.
+ * Whether the doctor is already held at that instant.
  *
- * The clinic books in its own time: 09:00 there is 09:00 on the wall, and
- * the instant it is must be the one the service compares against.
+ * The instant is the whole test: the same doctor at another time is free,
+ * and another doctor at the same time is free too.
  */
-function clinicInstant(day: string, time: string): string {
-  const [hour, minute] = time.split(":").map(Number);
-  // Asia/Kolkata is +05:30
-  const date = new Date(`${day}T00:00:00+05:30`);
-  date.setUTCHours(hour - 5, minute - 30, 0, 0);
-  return date.toISOString();
+function slotIsTaken(doctorId: string, startsAt: string): boolean {
+  return appointments.some(
+    (appointment) =>
+      appointment.doctorId === doctorId &&
+      appointment.startsAt === startsAt &&
+      appointment.status !== "cancelled",
+  );
 }
 
 /** The next free time, in the patient's words. */
@@ -236,14 +309,18 @@ export function registerPatientWebRoutes() {
       room: person.room,
     }));
 
-    const slots = slotsFor(doctors[0]?.id ?? "");
+    // The times are the service's own, for the doctor asked for. Without one
+    // the page opens with the first doctor's.
+    const wanted = context.query.get("doctorId");
+    const chosen = doctors.find((person) => person.id === wanted) ?? doctors[0];
+    const slots = slotsFor(chosen?.id ?? "");
 
     return {
       clinic: PUBLIC_CLINIC,
       doctors: list,
       slots,
-      day: "2026-11-26",
-      nextFree: nextFree(doctors[0]?.id ?? ""),
+      day: BOOKING_DAY,
+      nextFree: nextFree(chosen?.id ?? ""),
     };
   });
 
@@ -280,7 +357,19 @@ export function registerPatientWebRoutes() {
 
     const doctorId = String(request.doctorId ?? "");
     const doctor = doctors.find((person) => person.id === doctorId) ?? doctors[0];
-    const startsAt = String(request.startsAt ?? "2026-11-26T09:00:00Z");
+    const startsAt = String(request.startsAt ?? clinicInstant("2026-11-26", "09:00"));
+
+    // The time has to be free: somebody else may have taken it while the
+    // patient was typing their details in.
+    if (slotIsTaken(doctor.id, startsAt)) {
+      throw new ApiError(
+        409,
+        "Pick another time.",
+        undefined,
+        "api",
+        "Slot no longer available",
+      );
+    }
 
     // the clinic has met this patient before — the record is theirs
     let person = patients.find((entry) => entry.phone.replace(/\D/g, "").endsWith(phone));
@@ -356,6 +445,12 @@ export function registerPatientWebRoutes() {
   mock.on("POST", "/public/booking/:token/cancel", (_body, context) => {
     const linkKey = context.params.token;
     const session = readSession();
+
+    // A repeat is the same answer as the first one: the booking is called
+    // off, and calling it off again does not make it a second failure.
+    const already = session.cancelled[linkKey];
+    if (already) return { cancelled: true, token: already };
+
     const visitId = session.booked[linkKey];
     if (!visitId) {
       throw new ApiError(404, "This booking is no longer here. Ask the clinic for a new one.");
@@ -365,8 +460,91 @@ export function registerPatientWebRoutes() {
       visit.status = "cancelled";
     }
     delete session.booked[linkKey];
+    session.cancelled[linkKey] = visit?.token ?? "";
     writeSession(session);
-    return { cancelled: true, token: linkKey };
+    const slip = visit ? visit.token : "";
+    return { cancelled: true, token: slip };
+  });
+
+  // Move the booking to another time.
+  mock.on("POST", "/public/booking/:token/rebook", (body, context) => {
+    const linkKey = context.params.token;
+    const session = readSession();
+    const visitId = session.booked[linkKey];
+    if (!visitId) {
+      throw new ApiError(404, "This link is not valid. Ask the clinic for a new one.");
+    }
+    const visit = visits.find((entry) => entry.id === visitId);
+    if (!visit) {
+      throw new ApiError(404, "This link is not valid. Ask the clinic for a new one.");
+    }
+
+    const request = (body ?? {}) as Record<string, unknown>;
+    const date = String(request.date ?? "").trim();
+    const slot = String(request.slot ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(slot)) {
+      throw new ApiError(400, "Pick a time for the new visit.");
+    }
+
+    // The doctor the patient asked for; the one they are seeing now, when
+    // they did not ask for one.
+    const current = appointments.find((entry) => entry.visitId === visit.id);
+    const asked = String(request.doctorId ?? "").trim();
+    const doctor =
+      doctors.find((person) => person.id === asked) ??
+      doctors.find((person) => person.id === current?.doctorId) ??
+      doctors[0];
+
+    const startsAt = clinicInstant(date, slot);
+    const signature = `${doctor.id}|${date}|${slot}`;
+
+    // The same key with the same time gives the same answer; the same key
+    // with another time is refused, because that attempt already happened.
+    const key = String(context.headers["idempotency-key"] ?? "").trim();
+    const previous = key ? session.rebooks[key] : undefined;
+    if (previous) {
+      if (previous.signature === signature) return previous.result;
+      throw new ApiError(409, "Pick another time.", undefined, "api", "Slot no longer available");
+    }
+
+    // The time has to be free for that doctor.
+    if (slotIsTaken(doctor.id, startsAt)) {
+      throw new ApiError(409, "Pick another time.", undefined, "api", "Slot no longer available");
+    }
+
+    // The old booking is called off and the new one is made. The visit, the
+    // queue slip and the link key are the patient's own — a rebook does not
+    // make them new ones.
+    for (const appointment of appointments.filter((entry) => entry.visitId === visit.id)) {
+      appointment.status = "cancelled";
+    }
+    appointments.push({
+      id: `ap_${linkKey}_${appointments.length}`,
+      visitId: visit.id,
+      patientId: visit.patientId,
+      doctorId: doctor.id,
+      startsAt,
+      mode: "in_clinic",
+      status: "booked",
+      source: "booking",
+    });
+
+    const answer: RebookAnswer = {
+      cancelled: true,
+      // The slip, not the key: the key is the patient's credential, it does
+      // not change when the booking moves, and it must not be drawn.
+      token: visit.token,
+      queueToken: visit.token,
+      startsAt,
+      doctor: doctor.name,
+      clinic: PUBLIC_CLINIC.name,
+    };
+    if (key) {
+      session.rebooks[key] = { signature, result: answer };
+      writeSession(session);
+    }
+
+    return answer;
   });
 
   // The patient's place in the queue.
@@ -395,7 +573,7 @@ export function registerPatientWebRoutes() {
       room: doctor.room,
       doctor: doctor.name,
       due: 500,
-      prescriptionUrl: prescription ? `/rx/${prescription.id}` : null,
+      prescriptionUrl: prescription ? verifyUrlFor(prescription) : null,
       called: visit.status === "in_consult",
       updatedAt: new Date("2026-11-25T11:20:00Z").toISOString(),
     };
@@ -451,6 +629,7 @@ export function registerPatientWebRoutes() {
   // The prescription, as the patient verifies it.
   mock.on("GET", "/verify/:id", (_body, context) => {
     const id = context.params.id;
+    const hash = context.query.get("h") ?? "";
     const prescription = prescriptions.find(
       (entry) => entry.id === id || entry.id === `rx_${id}` || entry.id === id.replace(/^rx_/, ""),
     );
@@ -460,9 +639,14 @@ export function registerPatientWebRoutes() {
     const person = patients.find((entry) => entry.id === prescription.patientId);
     const doctor = doctors[0];
 
+    // The document is genuine only when the hash the link carries is the one
+    // the prescription holds. A changed document no longer holds it.
+    const genuine =
+      prescription.verifyToken.length > 0 && hash === prescription.verifyToken;
+
     return {
       id: prescription.id,
-      genuine: true,
+      genuine,
       doctor: {
         name: doctor.name,
         registration: doctor.registration,

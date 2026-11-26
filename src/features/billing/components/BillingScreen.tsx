@@ -3,12 +3,20 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
-import { fetchTill, payBill, refundBill, createBill, closeTheDay } from "@/features/billing/api/billing";
+import {
+  fetchTill,
+  payBill,
+  refundBill,
+  createBill,
+  closeTheDay,
+  type TillQuery,
+} from "@/features/billing/api/billing";
 import { InvoicePaper } from "@/features/billing/components/InvoicePaper";
 import { NewBillDialog } from "@/features/billing/components/NewBillDialog";
 import { RefundDialog } from "@/features/billing/components/RefundDialog";
 import { CloseTheDayDialog } from "@/features/billing/components/CloseTheDayDialog";
 import type { BillingBill, TillPayload } from "@/features/billing/types";
+import { CLINIC_ZONE } from "@/lib/format";
 
 const rupees = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 
@@ -41,6 +49,27 @@ const CHARGES = [
 /** The tabs the till offers. */
 type Tab = "today" | "all" | "collect" | "paid" | "refunded";
 
+/** How many bills a page holds. */
+const PAGE_SIZE = 50;
+
+/**
+ * What the screen asks the service for.
+ *
+ * <p>Today is the clinic's own day, spelled out as a range. All is no range
+ * at all. The three others are a status with no range, so the service answers
+ * with every bill of that status the clinic has.
+ */
+function queryFor(tab: Tab, offset: number): TillQuery {
+  if (tab === "today") {
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: CLINIC_ZONE });
+    return { from: today, to: today, limit: PAGE_SIZE, offset };
+  }
+  if (tab === "all") return { limit: PAGE_SIZE, offset };
+  if (tab === "collect") return { status: "to_collect", limit: PAGE_SIZE, offset };
+  if (tab === "paid") return { status: "paid", limit: PAGE_SIZE, offset };
+  return { status: "refunded", limit: PAGE_SIZE, offset };
+}
+
 const TABS: Array<{ value: Tab; label: string }> = [
   { value: "today", label: "Today" },
   { value: "all", label: "All" },
@@ -51,6 +80,7 @@ const TABS: Array<{ value: Tab; label: string }> = [
 
 export function BillingScreen() {
   const [payload, setPayload] = useState<TillPayload | null>(null);
+  const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [bill, setBill] = useState<BillingBill | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -63,7 +93,7 @@ export function BillingScreen() {
 
   useEffect(() => {
     let alive = true;
-    fetchTill()
+    fetchTill(queryFor(tab, offset))
       .then((data) => {
         if (!alive) return;
         setPayload(data);
@@ -76,7 +106,7 @@ export function BillingScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [tab, offset]);
 
   const summary = payload?.summary;
   const pending = payload?.pending ?? [];
@@ -346,6 +376,29 @@ export function BillingScreen() {
           void closeTheDay(count).then(() => void refreshTill());
         }}
       />
+      <div className="live-row" style={{ marginTop: 14 }}>
+        <span>
+          Showing {payload?.bills.length ?? 0} of {payload?.meta.total ?? 0}
+        </span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={offset === 0}
+            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={offset + PAGE_SIZE >= (payload?.meta.total ?? 0)}
+            onClick={() => setOffset(offset + PAGE_SIZE)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </AppShell>
   );
 }

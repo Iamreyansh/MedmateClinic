@@ -202,12 +202,18 @@ export const AGREEMENTS: Agreement[] = [
   },
 ];
 
-/** The address a patient books on: the clinic name, slugged. */
-export const bookingSlug = (clinicName: string) =>
-  clinicName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+/**
+ * The one-time code's rules, the service's own.
+ *
+ * The service counts the tries on a code and holds a number back for a while
+ * between codes, so the screen keeps the same rules: a person is never asked
+ * to guess against a number that is not being checked, and never asked for a
+ * new code before the service would send one.
+ */
+export const MAX_CODE_ATTEMPTS = 5;
+
+/** How long a number waits before it may ask for another code. */
+export const RESEND_COOLDOWN_SECONDS = 30;
 
 export const STAGE_ICONS: Record<string, IconName> = {
   you: "users",

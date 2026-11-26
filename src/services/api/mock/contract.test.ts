@@ -19,9 +19,11 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock } from "@/services/api/mock/router";
+import { resetMockState } from "@/services/api/mock/reset";
 import { auth } from "@/services/api/client";
 import "@/services/api/mock/routes";
 
@@ -95,6 +97,25 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "POST", path: "/intake/A-014" },
   { method: "GET", path: "/verify/rx_vs_kavya" },
   { method: "POST", path: "/public/booking/A-014/cancel" },
+  { method: "GET", path: "/clinic/admin/members" },
+  { method: "GET", path: "/clinic/admin/members/mem_ananya/access" },
+  { method: "GET", path: "/clinic/admin/profiles" },
+  { method: "GET", path: "/clinic/admin/doctors/schedules" },
+  { method: "GET", path: "/clinic/admin/doctors/dr_ananya/schedule" },
+  { method: "GET", path: "/clinic/admin/doctors/by-hpr/HPR123" },
+  { method: "GET", path: "/clinic/admin/locations" },
+  { method: "GET", path: "/clinic/admin/pharmacies" },
+  { method: "GET", path: "/clinic/admin/roles" },
+  { method: "GET", path: "/clinic/admin/screens" },
+  { method: "GET", path: "/clinic/admin/settings" },
+  { method: "GET", path: "/clinic/admin/settings/device" },
+  { method: "GET", path: "/clinic/admin/settings/agreements" },
+  { method: "GET", path: "/clinic/admin/settings/readiness" },
+  { method: "GET", path: "/clinic/admin/account" },
+  { method: "GET", path: "/clinic/admin/activity" },
+  { method: "POST", path: "/auth/otp/pre-signup" },
+  { method: "POST", path: "/auth/pre-signup/verify" },
+  { method: "POST", path: "/public/booking/A-014/rebook" },
 ];
 
 /**
@@ -122,6 +143,76 @@ const SERVICE_CONTROLLERS: Array<{
   file: string;
   paths: Array<{ method: string; path: string }>;
 }> = [
+  {
+    file: "admin/doctor/AdminDoctorController.java",
+    paths: [
+      { method: "POST", path: "/clinic/admin/doctors" },
+      { method: "PUT", path: "/clinic/admin/doctors/:id" },
+      { method: "GET", path: "/clinic/admin/doctors/:id/schedule" },
+      { method: "PUT", path: "/clinic/admin/doctors/:id/schedule" },
+      { method: "GET", path: "/clinic/admin/doctors/schedules" },
+      { method: "GET", path: "/clinic/admin/doctors/by-hpr/:id" },
+    ],
+  },
+  {
+    file: "admin/location/AdminLocationController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/locations" },
+      { method: "POST", path: "/clinic/admin/locations" },
+      { method: "PUT", path: "/clinic/admin/locations/:id" },
+      { method: "DELETE", path: "/clinic/admin/locations/:id" },
+    ],
+  },
+  {
+    file: "admin/member/AdminMemberController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/members" },
+      { method: "POST", path: "/clinic/admin/members" },
+      { method: "PUT", path: "/clinic/admin/members/:id" },
+      { method: "GET", path: "/clinic/admin/members/:id/access" },
+      { method: "PUT", path: "/clinic/admin/members/:id/access" },
+    ],
+  },
+  {
+    file: "admin/pharmacy/AdminPharmacyController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/pharmacies" },
+      { method: "POST", path: "/clinic/admin/pharmacies" },
+      { method: "PUT", path: "/clinic/admin/pharmacies/:id" },
+      { method: "DELETE", path: "/clinic/admin/pharmacies/:id" },
+    ],
+  },
+  {
+    file: "admin/profile/AdminProfileController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/profiles" },
+      { method: "POST", path: "/clinic/admin/profiles" },
+      { method: "PUT", path: "/clinic/admin/profiles/:id" },
+      { method: "DELETE", path: "/clinic/admin/profiles/:id" },
+    ],
+  },
+  {
+    file: "admin/settings/AdminSettingsController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/settings" },
+      { method: "PUT", path: "/clinic/admin/settings" },
+      { method: "GET", path: "/clinic/admin/settings/device" },
+      { method: "PUT", path: "/clinic/admin/settings/pin" },
+      { method: "GET", path: "/clinic/admin/settings/agreements" },
+      { method: "PUT", path: "/clinic/admin/settings/agreements/:id" },
+      { method: "GET", path: "/clinic/admin/settings/readiness" },
+      { method: "GET", path: "/clinic/admin/account" },
+      { method: "PUT", path: "/clinic/admin/account" },
+      { method: "GET", path: "/clinic/admin/activity" },
+    ],
+  },
+  {
+    file: "admin/staff/AdminRolesController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/roles" },
+      { method: "GET", path: "/clinic/admin/screens" },
+    ],
+  },
   {
     file: "audit/AuditController.java",
     paths: [
@@ -237,6 +328,8 @@ const SERVICE_CONTROLLERS: Array<{
     file: "onboarding/SignupController.java",
     paths: [
       { method: "POST", path: "/auth/signup" },
+      { method: "POST", path: "/auth/otp/pre-signup" },
+      { method: "POST", path: "/auth/pre-signup/verify" },
     ],
   },
   {
@@ -252,6 +345,7 @@ const SERVICE_CONTROLLERS: Array<{
       { method: "GET", path: "/public/doctors" },
       { method: "POST", path: "/public/booking" },
       { method: "POST", path: "/public/booking/:id/cancel" },
+      { method: "POST", path: "/public/booking/:id/rebook" },
       { method: "GET", path: "/token/:id" },
       { method: "GET", path: "/intake/:id" },
       { method: "POST", path: "/intake/:id" },
@@ -364,6 +458,12 @@ const NAMED_ARRAYS: Array<{ method: string; path: string; key: string }> = [
   { method: "GET", path: "/clinic/reports", key: "tabs" },
   { method: "GET", path: "/clinic/subscription", key: "usage" },
   { method: "GET", path: "/clinic/settings", key: "locations" },
+  { method: "GET", path: "/clinic/admin/members", key: "items" },
+  { method: "GET", path: "/clinic/admin/profiles", key: "items" },
+  { method: "GET", path: "/clinic/admin/locations", key: "items" },
+  { method: "GET", path: "/clinic/admin/pharmacies", key: "items" },
+  { method: "GET", path: "/clinic/admin/doctors/schedules", key: "items" },
+  { method: "GET", path: "/clinic/admin/activity", key: "items" },
 ];
 
 /**
@@ -377,6 +477,8 @@ const FIELDS: Array<{
   path: string;
   keys: string[];
   note?: string;
+  /** The query the endpoint needs, when it needs one to answer at all. */
+  query?: string;
 }> = [
   {
     method: "GET",
@@ -402,6 +504,22 @@ const FIELDS: Array<{
   { method: "GET", path: "/clinic/appointments/summary", keys: ["days"] },
   { method: "GET", path: "/clinic/billing", keys: ["bills"] },
   { method: "GET", path: "/clinic/queue", keys: ["averageConsultMinutes"] },
+  { method: "GET", path: "/clinic/admin/members", keys: ["items", "meta"], note: "the list and the count of it" },
+  { method: "GET", path: "/clinic/admin/profiles", keys: ["items", "meta"] },
+  { method: "GET", path: "/clinic/admin/locations", keys: ["items", "meta"] },
+  { method: "GET", path: "/clinic/admin/pharmacies", keys: ["items", "meta"] },
+  { method: "GET", path: "/clinic/admin/roles", keys: ["items", "meta"], note: "the roles under `items`, each one carrying its capabilities" },
+  { method: "GET", path: "/clinic/admin/account", keys: ["items", "meta"], note: "the one account, under `items`, with the count of it" },
+  {
+    method: "GET",
+    path: "/public/doctors",
+    keys: ["clinic", "doctors", "slots", "day", "nextFree"],
+    // The service needs the clinic's slug: the page is reached through the
+    // clinic's own booking link, and the link carries the slug.
+    query: "?clinic=medmate-clinic",
+    note: "the clinic carries its own timezone",
+  },
+  { method: "GET", path: "/clinic/lab", keys: ["counts"], note: "toCollect, inLab, sentOut, reportedToday, abnormalToday" },
 ];
 
 /** Sign in, so the endpoints behind the session answer. */
@@ -413,7 +531,11 @@ async function signIn() {
 }
 
 beforeEach(() => {
-  // each test starts with no session, so the guard is really tested
+  // Each test starts with no session, so the guard is really tested, and
+  // with the clinic the fixtures describe: a booking made by the test
+  // before it is put back, so a test says what it means rather than being
+  // arranged around the order the tests happen to run in.
+  resetMockState();
   auth.set(null);
 });
 
@@ -461,6 +583,11 @@ describe("the mock's paths", () => {
  * there is nothing to compare against, and the table stands on its own.
  */
 function controllerSource(file: string): string | null {
+  // The service lives in this repository now, so the tree is where its
+  // controllers are read from — the branch the app used to be checked
+  // against is only the fallback for a checkout that does not carry it.
+  const inTree = path.join(root, "backend/src/main/java/com/medmate/clinic", file);
+  if (existsSync(inTree)) return readFileSync(inTree, "utf8");
   const inBranch = spawnSync(
     "git",
     ["show", `origin/fix/backend:backend/src/main/java/com/medmate/clinic/${file}`],
@@ -475,8 +602,14 @@ function pathsOf(source: string): Array<{ method: string; path: string }> {
   const base = source.match(/@RequestMapping\("([^"]+)"\)/)?.[1] ?? "";
   const paths: Array<{ method: string; path: string }> = [];
 
-  for (const match of source.matchAll(/@(Get|Post)Mapping(?:\("([^"]*)"\))?/g)) {
-    const method = match[1] === "Get" ? "GET" : "POST";
+  for (const match of source.matchAll(/@(Get|Post|Patch|Delete|Put)Mapping(?:\("([^"]*)"\))?/g)) {
+    const method = {
+      Get: "GET",
+      Post: "POST",
+      Patch: "PATCH",
+      Delete: "DELETE",
+      Put: "PUT",
+    }[match[1] as "Get"];
     const suffix = match[2] ?? "";
     const path = `${base}${suffix}`
       .replace(/^\/api/, "")
@@ -572,8 +705,11 @@ describe("the fields in the payload", () => {
     await signIn();
   });
 
-  it.each(FIELDS)("$method $path carries its fields", async ({ method, path, keys }) => {
-    const answer = (await mock.handle(method, path, undefined)) as Record<string, unknown>;
+  it.each(FIELDS)("$method $path carries its fields", async ({ method, path, keys, query }) => {
+    const answer = (await mock.handle(method, `${path}${query ?? ""}`, undefined)) as Record<
+      string,
+      unknown
+    >;
     for (const key of keys) {
       expect(answer, `${method} ${path} is missing "${key}"`).toHaveProperty(key);
     }
@@ -1178,16 +1314,26 @@ describe("the clinic's settings", () => {
 
 describe("the patient-facing web", () => {
   it("books a visit with a random link key and a queue slip", async () => {
-    const booking = (await mock.handle("POST", "/public/booking", {
-      clinic: "medmate-clinic",
-      doctorId: "dr_ananya",
-      startsAt: "2026-11-26T09:00:00Z",
-      name: "Naveen Iyer",
-      phone: "9845012345",
-      age: "30",
-      sex: "M",
-      reason: "Fever",
-    })) as { token: string; queueToken: string; liveUrl: string };
+    // The key the caller sent is kept, and a booking that carries one is
+    // answered before the service looks at the clock: the first booking is
+    // returned, so this test does not race the booking that took the slot.
+    const booking = (await mock.handle(
+      "POST",
+      "/public/booking",
+      {
+        clinic: "medmate-clinic",
+        doctorId: "dr_ananya",
+        // The clinic's nine o'clock, as a true instant: 09:00 at the clinic
+        // is 03:30Z, and it is the first time the booking page offers.
+        startsAt: "2026-11-26T03:30:00.000Z",
+        name: "Naveen Iyer",
+        phone: "9845012345",
+        age: "30",
+        sex: "M",
+        reason: "Fever",
+      },
+      { headers: { "idempotency-key": "key-naveen" } },
+    )) as { token: string; queueToken: string; liveUrl: string };
 
     // the link key is not the queue slip, and it is not guessable
     expect(booking.token).not.toBe(booking.queueToken);
@@ -1195,13 +1341,37 @@ describe("the patient-facing web", () => {
     expect(booking.liveUrl).toContain(booking.token);
   });
 
-  it("a booking with a body-only clinic slug succeeds", async () => {
-    const booking = (await mock.handle("POST", "/public/booking", {
-      clinic: "medmate-clinic",
-      name: "Naveen Iyer",
-      phone: "9845019999",
-    })) as { token: string };
-    expect(booking.token).toBeTruthy();
+  it("a booking without a key for a slot that is taken is refused", async () => {
+    // The slot is taken here, by this test: the clinic's nine o'clock on the
+    // booking day is booked, and the patient books it again without an
+    // idempotency key.
+    await mock.handle(
+      "POST",
+      "/public/booking",
+      {
+        clinic: "medmate-clinic",
+        doctorId: "dr_ananya",
+        startsAt: "2026-11-26T03:30:00.000Z",
+        name: "Naveen Iyer",
+        phone: "9845012345",
+      },
+      { headers: { "idempotency-key": "key-naveen" } },
+    );
+
+    // The service checks the slot before it books, so the second booking for
+    // the same time is a 409 with the service's own title and detail — not a
+    // second visit at the same hour.
+    await expect(
+      mock.handle("POST", "/public/booking", {
+        clinic: "medmate-clinic",
+        name: "Naveen Iyer",
+        phone: "9845019999",
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      title: "Slot no longer available",
+      message: "Pick another time.",
+    });
   });
 
   it("the same idempotency key gives the same booking back", async () => {
@@ -1224,5 +1394,350 @@ describe("the patient-facing web", () => {
 
   it("an unknown link is not found", async () => {
     await expect(mock.handle("GET", "/token/nope", undefined)).rejects.toThrow();
+  });
+});
+
+/**
+ * The clinic's own admin endpoints.
+ *
+ * The panel that manages the team, the doctors, the branches, the
+ * pharmacies, the profiles and the settings talks to these, and the
+ * service answers them with the same envelope the mock does: a list under
+ * `items` and the count of it under `meta`.
+ */
+describe("the clinic's admin endpoints", () => {
+  beforeEach(async () => {
+    await signIn();
+  });
+
+  it("answers a list with the items and the count of them", async () => {
+    for (const path of [
+      "/clinic/admin/members",
+      "/clinic/admin/profiles",
+      "/clinic/admin/locations",
+      "/clinic/admin/pharmacies",
+      "/clinic/admin/doctors/schedules",
+      "/clinic/admin/activity",
+    ]) {
+      const answer = (await mock.handle("GET", path, undefined)) as {
+        items: unknown[];
+        meta: { total: number };
+      };
+      expect(Array.isArray(answer.items), `${path} answers a list under items`).toBe(true);
+      expect(answer.meta.total, `${path} counts its own list`).toBe(answer.items.length);
+    }
+  });
+
+  it("answers the roles with the capabilities each one carries", async () => {
+    const answer = (await mock.handle("GET", "/clinic/admin/roles", undefined)) as {
+      items: Array<{ id: string; name: string; capabilities: Record<string, unknown> }>;
+    };
+    expect(answer.items.length).toBeGreaterThan(0);
+    for (const role of answer.items) {
+      expect(role.capabilities, `${role.name} carries its capabilities`).toBeTruthy();
+    }
+  });
+
+  it("refuses to remove the clinic's main branch", async () => {
+    // The branch is the one the clinic itself calls its main, and the list
+    // says which it is: the test never names an id the fixture owns.
+    const branches = (await mock.handle("GET", "/clinic/admin/locations", undefined)) as {
+      items: Array<{ id: string; primary: boolean }>;
+    };
+    const main = branches.items.find((branch) => branch.primary);
+    if (!main) throw new Error("the clinic has no main branch");
+
+    // The refusal is the service's envelope: a title a person reads, a
+    // detail that says what to do instead, and the status that says it.
+    await expect(
+      mock.handle("DELETE", `/clinic/admin/locations/${main.id}`, undefined),
+    ).rejects.toMatchObject({
+      status: 409,
+      title: "Not allowed",
+      message: "This is the clinic's main branch. Make another branch the main one first.",
+    });
+  });
+
+  it("refuses to remove a branch that is not in this clinic", async () => {
+    // A different rule from the one above, and it is pinned here so that
+    // neither of them is thinner than it looks: an id the clinic does not
+    // hold is not found, and the service answers the same way.
+    await expect(
+      mock.handle("DELETE", "/clinic/admin/locations/br_not_in_this_clinic", undefined),
+    ).rejects.toMatchObject({
+      status: 404,
+      title: "Not found",
+      message: "That branch is not in this clinic.",
+    });
+  });
+
+  it("refuses a body that is not one", async () => {
+    await expect(
+      mock.handle("POST", "/clinic/admin/members", { name: "A" }),
+    ).rejects.toMatchObject({ title: "Check the form" });
+  });
+});
+
+/**
+ * The patient's own booking.
+ *
+ * The link key is the patient's credential: it is in the URL and nowhere
+ * else. A cancel or a rebook answers with the queue slip — the short thing
+ * the desk reads out — and never with the key, because a response that
+ * carries it puts the credential somewhere a screen might show it.
+ */
+describe("the patient's own booking", () => {
+  it("never answers a cancel or a rebook with the link key", async () => {
+    const booked = (await mock.handle(
+      "POST",
+      "/public/booking",
+      {
+        clinic: "medmate-clinic",
+        doctorId: "dr_ananya",
+        startsAt: "2026-11-26T11:00:00Z",
+        name: "Leela Iyer",
+        phone: "9845017777",
+      },
+      { headers: { "idempotency-key": "key-leela" } },
+    )) as { token: string; queueToken: string };
+    const linkKey = booked.token;
+    const slip = booked.queueToken;
+    expect(linkKey).not.toBe(slip);
+    expect(slip).toMatch(/^[A-Z]-\d+$/);
+
+    const cancelled = (await mock.handle(
+      "POST",
+      `/public/booking/${linkKey}/cancel`,
+      undefined,
+      { headers: { "idempotency-key": "key-cancel-leela" } },
+    )) as { cancelled: boolean; token: string };
+    expect(cancelled.cancelled).toBe(true);
+    expect(cancelled.token).toBe(slip);
+    expect(cancelled.token, "a cancel never carries the link key").not.toBe(linkKey);
+
+    const second = (await mock.handle(
+      "POST",
+      "/public/booking",
+      {
+        clinic: "medmate-clinic",
+        doctorId: "dr_ananya",
+        startsAt: "2026-11-26T11:30:00Z",
+        name: "Leela Iyer",
+        phone: "9845017778",
+      },
+      { headers: { "idempotency-key": "key-leela-two" } },
+    )) as { token: string; queueToken: string };
+    const rebooked = (await mock.handle(
+      "POST",
+      `/public/booking/${second.token}/rebook`,
+      { date: "2026-11-27", slot: "09:00" },
+      { headers: { "idempotency-key": "key-rebook-leela" } },
+    )) as {
+      cancelled: boolean;
+      token: string;
+      queueToken: string;
+      startsAt: string;
+      doctor: string;
+      clinic: string;
+    };
+    expect(rebooked.cancelled).toBe(true);
+    expect(rebooked.token, "a rebook carries the slip").toBe(second.queueToken);
+    expect(rebooked.queueToken, "a rebook carries the slip").toBe(second.queueToken);
+    expect(rebooked.token, "a rebook never carries the link key").not.toBe(second.token);
+    expect(rebooked.startsAt).toBeTruthy();
+    expect(rebooked.doctor).toBeTruthy();
+    expect(rebooked.clinic).toBeTruthy();
+  });
+
+  it("answers a rebook the same way when it is asked twice", async () => {
+    const booked = (await mock.handle(
+      "POST",
+      "/public/booking",
+      {
+        clinic: "medmate-clinic",
+        doctorId: "dr_ananya",
+        startsAt: "2026-11-26T12:00:00Z",
+        name: "Nila Iyer",
+        phone: "9845016666",
+      },
+      { headers: { "idempotency-key": "key-nila" } },
+    )) as { token: string };
+    const body = { date: "2026-11-27", slot: "09:30" };
+    const first = (await mock.handle(
+      "POST",
+      `/public/booking/${booked.token}/rebook`,
+      body,
+      { headers: { "idempotency-key": "key-rebook-nila" } },
+    )) as { token: string; startsAt: string };
+    const second = (await mock.handle(
+      "POST",
+      `/public/booking/${booked.token}/rebook`,
+      body,
+      { headers: { "idempotency-key": "key-rebook-nila" } },
+    )) as { token: string; startsAt: string };
+    expect(second).toEqual(first);
+  });
+
+  it("refuses a rebook onto a slot that is held, and an unknown link", async () => {
+    const booked = (await mock.handle(
+      "POST",
+      "/public/booking",
+      {
+        clinic: "medmate-clinic",
+        doctorId: "dr_ananya",
+        startsAt: "2026-11-26T12:30:00Z",
+        name: "Ola Iyer",
+        phone: "9845015555",
+      },
+      { headers: { "idempotency-key": "key-ola" } },
+    )) as { token: string };
+
+    // the demo clinic holds ten o'clock for this doctor that day
+    await expect(
+      mock.handle(
+        "POST",
+        `/public/booking/${booked.token}/rebook`,
+        { date: "2026-11-26", slot: "10:00" },
+        { headers: { "idempotency-key": "key-rebook-ola" } },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      title: "Slot no longer available",
+      message: "Pick another time.",
+    });
+
+    await expect(
+      mock.handle(
+        "POST",
+        "/public/booking/no-such-link/rebook",
+        { date: "2026-11-27", slot: "09:00" },
+        { headers: { "idempotency-key": "key-rebook-nobody" } },
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+/** The service's own vocabulary, on the rows the console's tabs slice on. */
+describe("the queue's own words", () => {
+  beforeEach(async () => {
+    await signIn();
+  });
+
+  it("gives every row one of the four statuses the service sends", async () => {
+    const queue = (await mock.handle("GET", "/clinic/queue", undefined)) as {
+      items: Array<{ status: string }>;
+    };
+    expect(queue.items.length).toBeGreaterThan(0);
+    for (const row of queue.items) {
+      expect(["waiting", "in_consult", "done", "no_show"]).toContain(row.status);
+    }
+  });
+
+  it("carries the doctor's name and id on the row", async () => {
+    const queue = (await mock.handle("GET", "/clinic/queue", undefined)) as {
+      items: Array<{ doctorId: string | null; doctorName: string | null }>;
+    };
+    for (const row of queue.items) {
+      expect(row).toHaveProperty("doctorId");
+      expect(row).toHaveProperty("doctorName");
+    }
+  });
+});
+
+/** The bench: what is on it, what came back, and in which order. */
+describe("the lab bench", () => {
+  beforeEach(async () => {
+    await signIn();
+  });
+
+  it("counts the bench the way the service counts it", async () => {
+    const lab = (await mock.handle("GET", "/clinic/lab", undefined)) as {
+      counts: {
+        toCollect: number;
+        inLab: number;
+        sentOut: number;
+        reportedToday: number;
+        abnormalToday: number;
+      };
+      open: Array<{ status: string }>;
+      reported: Array<{ reportedAt: string | null; abnormal: boolean }>;
+    };
+    expect(typeof lab.counts.toCollect).toBe("number");
+    expect(typeof lab.counts.inLab).toBe("number");
+    expect(typeof lab.counts.sentOut).toBe("number");
+    expect(typeof lab.counts.reportedToday).toBe("number");
+    expect(typeof lab.counts.abnormalToday).toBe("number");
+    // the count is made over every reported result, not over the page
+    expect(lab.counts.reportedToday).toBe(lab.reported.length);
+    expect(lab.counts.abnormalToday).toBe(lab.reported.filter((row) => row.abnormal).length);
+    for (const order of lab.open) {
+      expect(["ordered", "to_collect", "in_lab", "sent_out"]).toContain(order.status);
+    }
+  });
+
+  it("lists the reported results newest first", async () => {
+    const lab = (await mock.handle("GET", "/clinic/lab", undefined)) as {
+      reported: Array<{ reportedAt: string | null }>;
+    };
+    const times = lab.reported.map((row) => row.reportedAt ?? "");
+    const sorted = [...times].sort().reverse();
+    expect(times).toEqual(sorted);
+  });
+});
+
+/** The templates the doctor applies in the console. */
+describe("the templates", () => {
+  beforeEach(async () => {
+    await signIn();
+  });
+
+  it("answers with the clinic's own templates", async () => {
+    const answer = (await mock.handle("GET", "/clinic/templates", undefined)) as {
+      items: Array<{ id: string; name: string; lines: string[] }>;
+    };
+    expect(answer.items.length).toBe(4);
+    for (const template of answer.items) {
+      expect(template.name).toBeTruthy();
+      expect(Array.isArray(template.lines)).toBe(true);
+    }
+  });
+});
+
+/** The till's tabs, and the statuses the service accepts. */
+describe("the till's statuses", () => {
+  beforeEach(async () => {
+    await signIn();
+  });
+
+  it("takes the statuses the service takes, and the two shorthands", async () => {
+    for (const status of ["to_collect", "paid", "refunded", "today", "all"]) {
+      const answer = (await mock.handle(
+        "GET",
+        `/clinic/billing?status=${status}`,
+        undefined,
+      )) as { bills: unknown[]; meta: { total: number; limit: number; offset: number } };
+      expect(Array.isArray(answer.bills), `status=${status} answers a list`).toBe(true);
+      expect(answer.meta.total).toBe(answer.bills.length);
+    }
+  });
+
+  it("refuses a status the service does not know", async () => {
+    await expect(
+      mock.handle("GET", "/clinic/billing?status=whatever", undefined),
+    ).rejects.toMatchObject({ status: 400, message: "That is not a bill status." });
+  });
+
+  it("keeps the day bills a number and the count in the meta", async () => {
+    const answer = (await mock.handle("GET", "/clinic/billing", undefined)) as {
+      bills: unknown[];
+      summary: { dayBills: number };
+      meta: { total: number; limit: number; offset: number };
+    };
+    expect(typeof answer.summary.dayBills).toBe("number");
+    expect(typeof answer.meta.total).toBe("number");
+    expect(typeof answer.meta.limit).toBe("number");
+    expect(typeof answer.meta.offset).toBe("number");
+    expect(answer).not.toHaveProperty("total");
+    expect(answer).not.toHaveProperty("page");
   });
 });

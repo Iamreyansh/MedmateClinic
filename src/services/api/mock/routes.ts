@@ -24,6 +24,8 @@ import { registerPatientWebRoutes } from "@/services/api/mock/patientWebRoutes";
 import { registerMessageRoutes } from "@/services/api/mock/messageRoutes";
 import { registerActivityRoutes } from "@/services/api/mock/activityRoutes";
 import { registerSettingsRoutes } from "@/services/api/mock/settingsRoutes";
+import { registerAdminRoutes } from "@/services/api/mock/adminRoutes";
+import { registerPreSignupRoutes } from "@/services/api/mock/preSignupRoutes";
 import {
   appointments,
   capabilities,
@@ -192,6 +194,7 @@ mock.on("GET", "/clinic/dashboard", () => {
   trial,
   stations,
   doctors: doctors.map((person) => ({
+    id: person.id,
     initials: person.initials,
     name: person.name,
     speciality: person.speciality,
@@ -207,24 +210,30 @@ mock.on("GET", "/clinic/dashboard", () => {
 mock.on("GET", "/clinic/queue", () => {
   requireSession();
   const waiting = visits.filter((item) => item.status === "waiting");
-  const items = waiting.map((item) => {
+  // Every row the console's tabs read: the ones waiting, the ones in
+  // consult, the ones seen today and the ones who did not come.
+  const items = visits.map((item) => {
     const person = patient(item.patientId);
     return {
       token: item.token,
       /** The doctor the patient is waiting for, when one is named. */
       doctorId: item.seenBy ?? null,
       doctorName: item.seenBy ? doctors.find((entry) => entry.id === item.seenBy)?.name ?? null : null,
-      /** `waiting` or `seen`. */
-      status: item.status === "waiting" ? "waiting" : "seen",
+      /** The service's own vocabulary: waiting, in_consult, done, no_show. */
+      status: item.status,
       kind: item.token.startsWith("A") ? "A" : "B",
       patient: person,
       reason: item.reason,
       detail: item.detail,
       wait: item.priority === "urgent" ? "Urgent" : "Waiting",
-      waiting: waiting.findIndex((other) => other.id === item.id) + 1,
+      waiting:
+        item.status === "waiting" ? waiting.findIndex((other) => other.id === item.id) + 1 : null,
+      // The reading the nurse took. The service sends the key whether or
+      // not there is a reading, and null when there is none — a row with no
+      // reading has a blank line, not a missing field.
       vitals: vitalsFor(item.id)
         ? `Temp ${vitalsFor(item.id)?.tempF} °F · SpO₂ ${vitalsFor(item.id)?.spo2}%`
-        : undefined,
+        : null,
     };
   });
   const room = signedInUser.name.includes("Ananya") ? "Room 2" : "Room 1";
@@ -236,10 +245,10 @@ mock.on("GET", "/clinic/queue", () => {
 
   return {
     items,
-    next: items[0] ?? null,
+    next: items.find((item) => item.status === "waiting") ?? null,
     room,
     averageConsultMinutes,
-    meta: `${room} · ${items.length} waiting · 9 seen today · average consult 8 min`,
+    meta: `${room} · ${waiting.length} waiting · ${items.length - waiting.length} seen today · average consult 8 min`,
   };
 });
 
@@ -514,6 +523,7 @@ mock.on("POST", "/clinic/visits/:id/consult", (body, context) => {
     safetyAlertKind: null,
     safetyOverridden: false,
     safetyOverrideReason: null,
+    verifyToken: `vt_${found.id}_${Math.random().toString(36).slice(2, 10)}`,
     diagnoses: [],
     medicines: [],
     tests: [],
@@ -573,7 +583,7 @@ mock.on("POST", "/clinic/prescriptions/:id/sign", (body, context) => {
   // the consult is over
   const visit = findVisit(prescription.visitId);
   if (visit) {
-    visit.status = "seen";
+    visit.status = "done";
     visit.seenBy = signedInUser.id;
     visit.waitedMinutes = 24;
     visit.consultMinutes = 8;
@@ -762,3 +772,5 @@ registerPatientWebRoutes();
 registerMessageRoutes();
 registerActivityRoutes();
 registerSettingsRoutes();
+registerAdminRoutes();
+registerPreSignupRoutes();

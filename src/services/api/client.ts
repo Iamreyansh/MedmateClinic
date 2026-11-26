@@ -16,6 +16,16 @@ export class ApiError extends Error {
      * and a harness reports them differently.
      */
     readonly kind: "api" | "service" = "api",
+    /**
+     * The service's own heading for the failure, when it wrote one.
+     *
+     * It is kept apart from the message on purpose: the message is what a
+     * person reads, and this is the service's summary of it. It only gets
+     * here when it passes the same checks the message does — a framework's
+     * own words, a class name or a stack frame never reaches a clinician
+     * through it.
+     */
+    readonly title?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -33,7 +43,7 @@ export class ApiError extends Error {
 }
 
 export type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
   /** Extra headers the request carries. */
@@ -184,6 +194,20 @@ function safeCode(problem: unknown): string | undefined {
   return typeof code === "string" && code ? code : undefined;
 }
 
+/**
+ * The service's own heading for a failure, when it wrote one for a person.
+ *
+ * It goes through the same checks as the message: the framework's own titles
+ * and anything that reads like the server's internals are dropped, and the
+ * heading is left undefined rather than passed on.
+ */
+export function safeTitle(problem: unknown): string | undefined {
+  const body = (problem ?? {}) as Problem;
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  if (!title || looksLikeServerText(title)) return undefined;
+  return title;
+}
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, signal, headers: extra } = options;
 
@@ -226,7 +250,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     if (!isJson) {
       throw new ApiError(response.status, SERVICE_MISSING, undefined, "service");
     }
-    throw new ApiError(response.status, safeMessage(response.status, problem), safeCode(problem));
+    throw new ApiError(
+      response.status,
+      safeMessage(response.status, problem),
+      safeCode(problem),
+      "api",
+      safeTitle(problem),
+    );
   }
 
   if (response.status === 204) return undefined as T;

@@ -12,6 +12,7 @@
 
 import type { IconName } from "@/components/ui/Icon";
 import type { IconTone } from "@/lib/design/tokens";
+import { restorableArray, restorableObject } from "@/services/api/mock/reset";
 
 // ------------------------------------------------------------------ the clinic
 
@@ -41,13 +42,13 @@ export const clinic: MockClinic = {
 
 export const location = "Indiranagar";
 
-export const signedInUser: MockUser = {
+export const signedInUser: MockUser = restorableObject({
   id: "dr_ananya",
   name: "Dr. Ananya Rao",
   initials: "AR",
   detail: "Owner · General Medicine",
   tone: "doctor",
-};
+});
 
 /** What the signed-in person may open, and how far. */
 export const capabilities: Record<string, "view" | "use"> = {
@@ -141,7 +142,7 @@ export type MockPatient = {
   since: string;
 };
 
-export const patients: MockPatient[] = [
+export const patients: MockPatient[] = restorableArray([
   {
     id: "pt_kavya",
     name: "Kavya Nair",
@@ -220,7 +221,7 @@ export const patients: MockPatient[] = [
     visits: 1,
     since: "2026",
   },
-];
+]);
 
 export const patient = (id: string): MockPatient =>
   patients.find((item) => item.id === id) ?? patients[0];
@@ -243,7 +244,37 @@ export type MockVisit = {
   createdAt: string;
 };
 
-export const visits: MockVisit[] = [
+export const visits: MockVisit[] = restorableArray([
+  {
+    id: "vs_fathima",
+    token: "A-014",
+    patientId: "pt_fathima",
+    status: "in_consult",
+    mode: "in_clinic",
+    source: "walk_in",
+    reason: "Antenatal check · 28 weeks",
+    detail: "BP 128/84 · weight 62 kg",
+    priority: null,
+    seenBy: "dr_ananya",
+    waitedMinutes: 22,
+    consultMinutes: null,
+    createdAt: "2026-11-25T09:48:00Z",
+  },
+  {
+    id: "vs_diya",
+    token: "A-015",
+    patientId: "pt_diya",
+    status: "no_show",
+    mode: "in_clinic",
+    source: "appointment",
+    reason: "Follow-up · knee pain",
+    detail: "Did not come",
+    priority: null,
+    seenBy: null,
+    waitedMinutes: null,
+    consultMinutes: null,
+    createdAt: "2026-11-25T06:00:00Z",
+  },
   {
     id: "vs_kavya",
     token: "A-014",
@@ -308,7 +339,7 @@ export const visits: MockVisit[] = [
     id: "vs_diya",
     token: "T-104",
     patientId: "pt_diya",
-    status: "seen",
+    status: "done",
     mode: "in_clinic",
     source: "walk_in",
     reason: "Viral fever",
@@ -323,7 +354,7 @@ export const visits: MockVisit[] = [
     id: "vs_fathima",
     token: "T-101",
     patientId: "pt_fathima",
-    status: "seen",
+    status: "done",
     mode: "in_clinic",
     source: "walk_in",
     reason: "Child's cough",
@@ -334,7 +365,7 @@ export const visits: MockVisit[] = [
     consultMinutes: 11,
     createdAt: "2026-11-25T09:32:00Z",
   },
-];
+]);
 
 export const visit = (id: string): MockVisit | undefined =>
   visits.find((item) => item.id === id || item.token === id);
@@ -363,7 +394,46 @@ export type MockVitals = {
   recordedBy: string | null;
 };
 
-export const vitals: MockVitals[] = [
+export const vitals: MockVitals[] = restorableArray([
+  {
+    // The patient in consult had her readings taken before she was called
+    // in: the doctor reads them beside her name on the console.
+    id: "vt_fathima",
+    visitId: "vs_fathima",
+    recordedAt: "2026-11-25T09:40:00Z",
+    tempF: 98.4,
+    bp: "128/84",
+    pulse: 92,
+    spo2: 99,
+    weightKg: 62,
+    sugarMg: 104,
+    note: "Antenatal check · BP 128/84",
+    priority: null,
+    breathRate: 18,
+    heightCm: 154,
+    sentTo: "dr_ananya",
+    recordedBy: "Mary Joseph",
+  },
+  {
+    // Ishaan was measured at the desk, and the reading is the one the demo
+    // clinic seeds for her: the same patient, the same numbers, on both
+    // sides of the mock.
+    id: "vt_ishaan",
+    visitId: "vs_ishaan",
+    recordedAt: "2026-11-25T09:25:00Z",
+    tempF: 100.9,
+    bp: "112/72",
+    pulse: 90,
+    spo2: 96,
+    weightKg: 26,
+    sugarMg: 98,
+    note: "Rash for three days",
+    priority: null,
+    breathRate: 20,
+    heightCm: 96,
+    sentTo: "dr_vikram",
+    recordedBy: "Mary Joseph",
+  },
   {
     id: "vt_kavya",
     visitId: "vs_kavya",
@@ -398,7 +468,7 @@ export const vitals: MockVitals[] = [
     sentTo: "dr_vikram",
     recordedBy: "Mary Joseph",
   },
-];
+]);
 
 export const vitalsFor = (visitId: string): MockVitals | undefined =>
   vitals.find((item) => item.visitId === visitId);
@@ -494,7 +564,7 @@ export type MockConsultation = {
   status: string;
 };
 
-export const consultations: MockConsultation[] = [];
+export const consultations: MockConsultation[] = restorableArray([]);
 
 export type MockPrescription = {
   id: string;
@@ -508,13 +578,22 @@ export type MockPrescription = {
   safetyAlertKind: string | null;
   safetyOverridden: boolean;
   safetyOverrideReason: string | null;
+  /**
+   * The secret the verification link carries.
+   *
+   * The service stores one on the prescription and compares the hash the link
+   * holds against it, so a document that was changed after it was signed no
+   * longer verifies. The mock keeps one too, rather than deriving it from the
+   * id: a derivation is a formula anybody could work out.
+   */
+  verifyToken: string;
   /** The lines the doctor wrote. Kept on the prescription, as the API does. */
   diagnoses: Array<{ code: string; label: string; kind: string }>;
   medicines: Array<Record<string, string | undefined>>;
   tests: Array<{ name: string }>;
 };
 
-export const prescriptions: MockPrescription[] = [];
+export const prescriptions: MockPrescription[] = restorableArray([]);
 
 export type MockInvoice = {
   id: string;
@@ -532,7 +611,7 @@ export type MockInvoice = {
   discount?: number;
 };
 
-export const invoices: MockInvoice[] = [
+export const invoices: MockInvoice[] = restorableArray([
   {
     id: "inv_0148",
     visitId: "vs_kavya",
@@ -599,7 +678,7 @@ export const invoices: MockInvoice[] = [
     payMode: "card",
     paidAt: "2026-11-25T10:02:00Z",
   },
-];
+]);
 
 export type MockLabOrder = {
   id: string;
@@ -630,7 +709,28 @@ export type MockLabOrder = {
   note: string | null;
 };
 
-export const labOrders: MockLabOrder[] = [
+export const labOrders: MockLabOrder[] = restorableArray([
+  {
+    // Written by the doctor and not collected yet. The service counts it as
+    // open work, so the bench here carries one too: a bench that hid the
+    // unreported orders left the technician looking at an empty bench.
+    id: "lo_ishaan_lipid",
+    visitId: "vs_ishaan",
+    prescriptionId: "rx_vs_ishaan",
+    patientId: "pt_ishaan",
+    testName: "Lipid profile",
+    status: "ordered",
+    sampleNo: null,
+    partner: null,
+    orderedBy: "dr_ananya",
+    collectedAt: null,
+    reportedAt: null,
+    value: null,
+    reference: null,
+    abnormal: false,
+    critical: false,
+    note: null,
+  },
   {
     id: "lo_kavya_cbc",
     visitId: "vs_kavya",
@@ -721,7 +821,7 @@ export const labOrders: MockLabOrder[] = [
     critical: true,
     note: "Haemoglobin is critically low. Please call the patient.",
   },
-];
+]);
 
 export type MockAppointment = {
   id: string;
@@ -734,13 +834,13 @@ export type MockAppointment = {
   source: string;
 };
 
-export const appointments: MockAppointment[] = [
+export const appointments: MockAppointment[] = restorableArray([
   {
     id: "ap_1",
     visitId: "vs_kavya",
     patientId: "pt_kavya",
     doctorId: "dr_ananya",
-    startsAt: "2026-11-25T10:00:00Z",
+    startsAt: "2026-11-25T04:30:00Z",
     mode: "in_clinic",
     status: "checked_in",
     source: "booking",
@@ -750,7 +850,7 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_rohit",
     doctorId: "dr_ananya",
-    startsAt: "2026-11-25T10:30:00Z",
+    startsAt: "2026-11-25T05:00:00Z",
     mode: "in_clinic",
     status: "booked",
     source: "booking",
@@ -760,7 +860,7 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_ishaan",
     doctorId: "dr_vikram",
-    startsAt: "2026-11-25T11:00:00Z",
+    startsAt: "2026-11-25T05:30:00Z",
     mode: "in_clinic",
     status: "booked",
     source: "booking",
@@ -770,7 +870,7 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_meera",
     doctorId: "dr_meghana",
-    startsAt: "2026-11-25T11:30:00Z",
+    startsAt: "2026-11-25T06:00:00Z",
     mode: "online",
     status: "booked",
     source: "booking",
@@ -780,7 +880,7 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_suresh",
     doctorId: "dr_ananya",
-    startsAt: "2026-11-25T12:00:00Z",
+    startsAt: "2026-11-25T06:30:00Z",
     mode: "in_clinic",
     status: "booked",
     source: "booking",
@@ -790,7 +890,7 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_lakshmi",
     doctorId: "dr_ananya",
-    startsAt: "2026-11-25T17:00:00Z",
+    startsAt: "2026-11-25T11:30:00Z",
     mode: "in_clinic",
     status: "booked",
     source: "booking",
@@ -800,7 +900,7 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_arjun",
     doctorId: "dr_vikram",
-    startsAt: "2026-11-26T10:00:00Z",
+    startsAt: "2026-11-26T04:30:00Z",
     mode: "in_clinic",
     status: "booked",
     source: "booking",
@@ -810,7 +910,7 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_kavya",
     doctorId: "dr_meghana",
-    startsAt: "2026-11-27T16:00:00Z",
+    startsAt: "2026-11-27T10:30:00Z",
     mode: "online",
     status: "booked",
     source: "booking",
@@ -820,12 +920,25 @@ export const appointments: MockAppointment[] = [
     visitId: null,
     patientId: "pt_ishaan",
     doctorId: "dr_ananya",
-    startsAt: "2026-11-24T09:30:00Z",
+    startsAt: "2026-11-24T04:00:00Z",
     mode: "in_clinic",
     status: "no_show",
     source: "booking",
   },
-];
+  {
+    // Ten o'clock on the booking day is already held for Dr. Ananya: the
+    // clinic's book is full at that hour, and the patient is offered the
+    // times that are left.
+    id: "ap_10",
+    visitId: null,
+    patientId: "pt_fathima",
+    doctorId: "dr_ananya",
+    startsAt: "2026-11-26T04:30:00.000Z",
+    mode: "in_clinic",
+    status: "booked",
+    source: "booking",
+  },
+]);
 
 // ------------------------------------------------------------------- billing
 

@@ -42,7 +42,20 @@ export default tseslint.config(
             { from: "shell", allow: ["shell", "app", "feature", "shared", "infra", "store"] },
             {
               from: "feature",
-              allow: ["shell", "shared", "infra", "store", "${to.feature}"],
+              // "${to.feature}" was the one thing here that never matched:
+              // the allow list holds element TYPE names, and the target's
+              // type is always the literal "feature" — so the captured
+              // folder name was compared against a type and could not win.
+              // The captured value is compared with the captured value, so
+              // "a feature may import itself" is the rule the config says
+              // it is: the source's own folder name against the target's.
+              allow: [
+                "shell",
+                "shared",
+                "infra",
+                "store",
+                ["feature", { feature: "${from.feature}" }],
+              ],
             },
             { from: "shared", allow: ["shared", "infra"] },
             { from: "infra", allow: ["infra", "shared"] },

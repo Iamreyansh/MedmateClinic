@@ -3,8 +3,11 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { TextArea } from "@/components/ui/Input";
 import { Icon } from "@/components/ui/Icon";
+import { ErrorState, LoadingState } from "@/components/ui/ScreenStates";
 import { cn } from "@/lib/cn";
 import { fetchIntake, submitIntake } from "@/features/patient-web/api/patientWeb";
+import { InvalidLinkCard } from "@/features/patient-web/components/InvalidLinkCard";
+import { patientFailure, type PatientFailure } from "@/features/patient-web/lib/errors";
 import type { IntakeForm } from "@/features/patient-web/types";
 
 /** The symptoms the patient can pick. */
@@ -42,19 +45,25 @@ const DURATIONS = ["Today", "2–3 days", "About a week", "More than a week"];
  * The patient fills it in before the visit, so the doctor reads it before the
  * patient is in the room. The red flags are the ones that mean the patient
  * should not wait for a slot.
+ *
+ * The confirmation says what the service says: the form is filled in when the
+ * service says it is filled in, and not before.
  */
 export function IntakeScreen() {
   const { token = "" } = useParams();
   const [form, setForm] = useState<IntakeForm | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<PatientFailure | null>(null);
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [redFlags, setRedFlags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [duration, setDuration] = useState("");
+  /** The service says the form is filled in. */
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    if (!token) return;
     let alive = true;
     fetchIntake(token)
       .then((data) => {
@@ -64,15 +73,26 @@ export function IntakeScreen() {
         setRedFlags(data.redFlags);
         setNotes(data.notes);
         setDuration(data.duration);
+        setFailure(null);
       })
       .catch((reason: unknown) => {
         if (!alive) return;
-        setError(reason instanceof Error ? reason.message : "Could not open the form");
+        const failed = patientFailure(reason, "Could not open the form");
+        setFailure(failed);
+        if (failed.invalidLink) {
+          // A link the clinic has to replace leaves nothing behind: the form
+          // is cleared, not only hidden.
+          setForm(null);
+          setSymptoms([]);
+          setRedFlags([]);
+          setNotes("");
+          setDuration("");
+        }
       });
     return () => {
       alive = false;
     };
-  }, [token]);
+  }, [token, attempt]);
 
   const toggle = (list: string[], setList: (next: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]);
@@ -80,16 +100,40 @@ export function IntakeScreen() {
 
   const send = async () => {
     setBusy(true);
-    setError(null);
+    setFailure(null);
     try {
-      await submitIntake(token, { symptoms, redFlags, notes, duration });
-      setSent(true);
+      const result = await submitIntake(token, { symptoms, redFlags, notes, duration });
+      // The confirmation is the service's own answer: the form is filled in
+      // when the service says it is.
+      if (result.filled) {
+        setSent(true);
+      } else {
+        setFailure({
+          message: "We could not save your answers yet. Try again in a moment.",
+          unreachable: false,
+          invalidLink: false,
+          conflict: false,
+        });
+      }
     } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "Could not send the form");
+      const failed = patientFailure(reason, "Could not send the form");
+      setFailure(failed);
+      if (failed.invalidLink) {
+        setForm(null);
+        setSymptoms([]);
+        setRedFlags([]);
+        setNotes("");
+        setDuration("");
+      }
     } finally {
       setBusy(false);
     }
   };
+
+  const filled = Boolean(form?.filled) || sent;
+
+  /** The form is on its way, and there is nothing to show yet. */
+  const loading = Boolean(token) && !form && !failure;
 
   return (
     <div className="intake-page">
@@ -104,13 +148,32 @@ export function IntakeScreen() {
       </div>
 
       <div className="intake-wrap">
-        {error ? (
+        {failure?.invalidLink ? (
+          <InvalidLinkCard onRetry={() => setAttempt((count) => count + 1)} />
+        ) : null}
+
+        {!failure?.invalidLink && failure && !filled ? (
+          <ErrorState
+            message={failure.message}
+            title={failure.unreachable ? "The clinic is not answering" : "Something went wrong"}
+            onRetry={() => void send()}
+          />
+        ) : null}
+
+        {!failure?.invalidLink && loading && !form ? <LoadingState title="Opening the form…" /> : null}
+
+        {!failure?.invalidLink && !filled && form && form.open === false ? (
           <div className="card">
-            <p className="err">{error}</p>
+            <div className="note gold">
+              <Icon name="alert" size={18} />
+              <div>
+                This form is closed. Ask the front desk to open it for you.
+              </div>
+            </div>
           </div>
         ) : null}
 
-        {!error && sent ? (
+        {!failure?.invalidLink && filled && form ? (
           <div className="card center" style={{ textAlign: "center" }}>
             <span className="kiosk-ic ok">
               <Icon name="check" size={28} />
@@ -124,7 +187,7 @@ export function IntakeScreen() {
           </div>
         ) : null}
 
-        {!error && !sent && form ? (
+        {!failure?.invalidLink && !filled && form ? (
           <>
             <div className="intake-lead">
               This helps the doctor before you come in. It takes a minute.
@@ -140,6 +203,7 @@ export function IntakeScreen() {
                     key={entry}
                     type="button"
                     className={cn("chip", duration === entry && "on")}
+                    aria-pressed={duration === entry}
                     onClick={() => setDuration(entry)}
                   >
                     {entry}
@@ -158,6 +222,7 @@ export function IntakeScreen() {
                     key={entry}
                     type="button"
                     className={cn("chip", symptoms.includes(entry) && "on")}
+                    aria-pressed={symptoms.includes(entry)}
                     onClick={() => toggle(symptoms, setSymptoms, entry)}
                   >
                     {entry}
@@ -176,7 +241,8 @@ export function IntakeScreen() {
                   <button
                     key={entry}
                     type="button"
-                    className={cn("chip red-flag", redFlags.includes(entry) && "on")}
+                    className={cn("chip", "red-flag", redFlags.includes(entry) && "on")}
+                    aria-pressed={redFlags.includes(entry)}
                     onClick={() => toggle(redFlags, setRedFlags, entry)}
                   >
                     {entry}
@@ -200,9 +266,9 @@ export function IntakeScreen() {
               <div className="field">
                 <TextArea
                   id="intake-notes"
-                  rows={4}
+                  rows={3}
                   value={notes}
-                  placeholder="Tell the doctor in your own words."
+                  placeholder="In your own words"
                   onChange={(event) => setNotes(event.target.value)}
                 />
               </div>
@@ -210,8 +276,8 @@ export function IntakeScreen() {
 
             <Button
               className="block"
-              style={{ marginTop: 14 }}
-              disabled={busy || symptoms.length === 0}
+              style={{ marginTop: 16 }}
+              disabled={busy}
               onClick={() => void send()}
             >
               {busy ? "Sending…" : "Send to the doctor"}
@@ -222,4 +288,3 @@ export function IntakeScreen() {
     </div>
   );
 }
-

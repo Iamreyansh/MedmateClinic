@@ -1,4 +1,4 @@
-import { auth } from "@/services/api/client";
+import { ApiError, auth } from "@/services/api/client";
 
 /**
  * The session guard.
@@ -9,6 +9,8 @@ import { auth } from "@/services/api/client";
  */
 export function requireSession(): void {
   if (!auth.get()) {
-    throw new Error("Please sign in again.");
+    // The service's own envelope for a missing session: a 401, with a title
+    // the screen can show and a sentence a person can read.
+    throw new ApiError(401, "Please sign in again.", undefined, "api", "Please sign in");
   }
 }

@@ -6,6 +6,7 @@
  */
 
 import { mock } from "@/services/api/mock/router";
+import { clinicInstant, clinicLocal, clinicTimeOf } from "@/services/api/mock/clinicClock";
 import { appointments, doctors, patients } from "@/services/api/mock/state";
 import { requireSession } from "@/services/api/mock/guard";
 
@@ -22,7 +23,9 @@ function doctorCards() {
 /** The appointments on one day. */
 function onDay(day: string) {
   return appointments
-    .filter((item) => item.startsAt.startsWith(day))
+    // the day is the clinic's day: an instant at 04:30Z is ten o'clock on
+    // the clinic's wall, and it belongs to that day
+    .filter((item) => clinicLocal(item.startsAt).day === day)
     .map((item) => {
       const person = patients.find((entry) => entry.id === item.patientId) ?? patients[0];
       const doctor = doctors.find((entry) => entry.id === item.doctorId);
@@ -32,7 +35,8 @@ function onDay(day: string) {
         status: item.status,
         reason: item.source === "booking" ? "Booked visit" : "Walk-in",
         startsAt: item.startsAt,
-        time: item.startsAt.slice(11, 16),
+        // the label is the clinic's own clock, beside the instant
+        time: clinicTimeOf(item.startsAt),
         doctorId: item.doctorId,
         doctor: doctor ? doctor.name : "Any doctor",
         patient: {
@@ -83,7 +87,7 @@ export function registerScheduleRoutes() {
     const from = context.query.get("from") ?? "2026-11-25";
     const to = context.query.get("to") ?? "2026-11-25";
     const days = daysBetween(from, to).map((date) => {
-      const booked = appointments.filter((item) => item.startsAt.startsWith(date));
+      const booked = appointments.filter((item) => clinicLocal(item.startsAt).day === date);
       return {
         date,
         freeByDoctor: doctors.map((doctor) => {
@@ -113,15 +117,24 @@ export function registerScheduleRoutes() {
         const day = new Date(start);
         day.setUTCDate(day.getUTCDate() + offset);
         const key = day.toISOString().slice(0, 10);
+        const column = onDay(key);
         days.push({
           date: key,
           label: day.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", timeZone: "UTC" }),
-          appointments: onDay(key),
+          dayName: day.toLocaleDateString("en-IN", { weekday: "short", timeZone: "UTC" }),
+          booked: column.length,
+          isToday: key === "2026-11-25",
+          appointments: column,
+          items: column,
         });
       }
       return {
         view: "week",
+        from: days[0]?.date ?? "",
+        to: days[days.length - 1]?.date ?? "",
         days,
+        appointments: days,
+        items: days,
         summary: summaryFor(days.flatMap((day) => day.appointments)),
         doctors: doctorCards(),
         today: "2026-11-25",
@@ -133,7 +146,9 @@ export function registerScheduleRoutes() {
     for (let hour = 9; hour < 20; hour += 1) {
       for (const minute of [0, 30]) {
         const label = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
-        slots.push({ time: label, label, minutes: Date.parse(`${date}T${label}:00Z`) });
+        // the slot's moment is the clinic's own: ten o'clock there is ten
+        // o'clock there
+        slots.push({ time: label, label, minutes: Date.parse(clinicInstant(date, label)) });
       }
     }
 
@@ -152,6 +167,7 @@ export function registerScheduleRoutes() {
       slotMinutes: 30,
       slots,
       appointments: list,
+      items: list,
       summary: summaryFor(list),
       doctors: doctorCards(),
       today: "2026-11-25",
@@ -196,7 +212,7 @@ export function registerScheduleRoutes() {
       patients.push(person);
     }
 
-    const startsAt = `${request.date ?? "2026-11-25"}T${request.time ?? "10:00"}:00Z`;
+    const startsAt = clinicInstant(request.date ?? "2026-11-25", request.time ?? "10:00");
     const appointment = {
       id: `ap_${appointments.length + 1}`,
       visitId: null,

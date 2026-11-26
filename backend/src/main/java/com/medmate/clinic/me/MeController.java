@@ -32,6 +32,7 @@ public class MeController {
     private final RoleRepository roleRepository;
     private final GrantService grantService;
     private final com.medmate.clinic.visit.VisitRepository visitRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     public MeController(
             CurrentClinic current,
@@ -40,7 +41,8 @@ public class MeController {
             StaffRepository staffRepository,
             RoleRepository roleRepository,
             GrantService grantService,
-            com.medmate.clinic.visit.VisitRepository visitRepository) {
+            com.medmate.clinic.visit.VisitRepository visitRepository,
+            org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.current = current;
         this.clinics = clinics;
         this.profiles = profiles;
@@ -48,6 +50,7 @@ public class MeController {
         this.roleRepository = roleRepository;
         this.grantService = grantService;
         this.visitRepository = visitRepository;
+        this.jdbc = jdbc;
     }
 
     @GetMapping("/me")
@@ -77,7 +80,10 @@ public class MeController {
             doctor.put("name", person.getFullName());
             doctor.put("initials", initials(person.getFullName()));
             doctor.put("speciality", person.getSpeciality() == null ? "" : person.getSpeciality());
-            doctor.put("room", person.getSpeciality() == null ? "" : person.getSpeciality());
+            // The room the doctor works in — the column on the staff row, and
+            // never the speciality: a doctor sees patients in a room, and a
+            // speciality is not a room.
+            doctor.put("room", person.getRoom() == null ? "" : person.getRoom());
             doctor.put("registration", person.getRegistration() == null ? "" : person.getRegistration());
             doctor.put("hpr", person.getHprId() == null ? "" : person.getHprId());
             doctors.add(doctor);
@@ -103,10 +109,34 @@ public class MeController {
                         "initials", initials(staff.getFullName()),
                         "detail", roleName + (staff.getSpeciality() == null ? "" : " · " + staff.getSpeciality()),
                         "tone", "doctor"));
+        // The role the clinic signed itself up with: a doctor or a manager.
+        // The RBAC role is the same for both, so this is what tells them
+        // apart.
+        body.put("profileRole", profileRole(clinicId, staff.getId()));
         body.put("location", profile == null || profile.getCity() == null ? clinic.getName() : profile.getCity());
         body.put("capabilities", grantService.capabilitiesFor(clinicId, staff.getRoleId()));
         body.put("navCounts", navCounts(clinicId, profile, staff));
         return body;
+    }
+
+    /**
+     * The role the clinic signed itself up with.
+     *
+     * <p>Read from the staff's own row: the column is beside the role the
+     * clinic gave the owner, and it says what the owner is rather than what
+     * the owner may do.
+     */
+    private String profileRole(UUID clinicId, UUID staffId) {
+        List<String> roles =
+                jdbc.query(
+                        "select profile_role from staff where clinic_id = ? and id = ?",
+                        (rs, row) -> rs.getString(1),
+                        clinicId,
+                        staffId);
+        if (roles.isEmpty() || roles.get(0) == null || roles.get(0).isBlank()) {
+            return "doctor";
+        }
+        return roles.get(0);
     }
 
     /**

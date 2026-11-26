@@ -115,6 +115,32 @@ points at, so it never reaches production.
 Every request is scoped by the clinic id in the token. The api never takes a
 clinic id from the caller.
 
+### The sign-up — the clinic signs itself up
+
+A clinic that has never existed before signs itself up, in five steps, and the
+service answers with everything the owner needs from that moment on:
+
+1. `POST /api/auth/otp/pre-signup` — a code goes to a number that is not yet
+   registered with a clinic, so it can be checked before there is a clinic to
+   check it against. In test mode the code comes back in the response.
+2. `POST /api/auth/pre-signup/verify` — the code is checked, and the number is
+   held as a verified pending verification.
+3. `POST /api/auth/signup` — the clinic is created: its row in the directory,
+   its own schema, its migrations, its owner as staff, and the session for that
+   owner. The service refuses the sign-up unless the submitted number has a
+   verified pending verification.
+
+The request is the sign-up form itself — one flat object, the same one the five
+steps edit — and the answer carries the clinic, the session and the **booking
+link**. The slug is the service's own, and it carries a random tail, so it can
+never be guessed and it is never the clinic's name: the frontend never builds
+one, and before the clinic exists it says the link is made with the clinic
+rather than showing a link that would answer 404.
+
+The session the sign-up opens is kept the way the rest of the app keeps it: in
+memory, and mirrored into the session storage, so a refresh does not sign the
+owner out and a closed tab does.
+
 ### One schema per clinic
 
 The registry — the directory of clinics — is the only thing the tenants share.
@@ -178,10 +204,13 @@ Simulated for now, deliberately:
   bcrypt is what a real deployment needs
 - the session lasts twelve hours and cannot be ended early: there is no logout
   endpoint and no revocation
-- the token is kept in local storage, so a script injected into the page could
-  read it; an httpOnly, same-site cookie is the safer shape
-- there is no rate limiting on the code, no attempt counting and no lockout
-- nobody is verified against Aadhaar or a medical council — the HPR lookup is a stub
+- the token is is kept in memory and mirrored into the session storage, so a closed tab
+  forgets it — but a script injected into the page can still read the session
+  storage, so an httpOnly, same-site cookie is the safer shape
+- the one-time code is rate limited — a number waits 30 seconds between codes,
+  and a code is spent after five tries
+- nobody is verified against Aadhaar or a medical council — the HPR registry is not
+  connected, so the doctor's own details are entered by hand and checked by nobody
 
 None of this blocks building the screens; it is the work to do before the service
 carries anyone's real patient data.
@@ -232,31 +261,21 @@ it from the URL the patient opened. A bare `/book` has no clinic to book with,
 and guessing one would be wrong in a multi-clinic product. This is a decision,
 not an oversight.
 
-### The errors — what is true now
+### The errors — one envelope, always
 
 `common/ApiExceptionHandler` is the one place that shapes an error, and it is
-**not** one shape for every error. It answers with `{title, detail}` for the five
-exceptions it knows about — not found, not allowed, please sign in, check the form,
-that did not work — and it has **no catch-all**. Everything else falls through to
-Spring's default error body:
+**one shape for every error**. It answers with `{title, detail}` for the five
+exceptions it knows about — not found, not allowed, please sign in, check the
+form, that did not work — and its catch-all answers everything else the same
+way, with the detail fixed to "Please try again in a moment." so an exception's
+own message and a stack trace cannot reach a caller.
 
-```json
-{"timestamp":"2026-11-25T22:35:00.021+00:00","status":500,"error":"Internal Server Error","message":"…","path":"/api/…"}
-```
+The container's error page cannot add to it either: `server.error` sets
+`include-message: never`, `include-stacktrace: never`, `include-exception:
+false` and `include-binding-errors: never`.
 
-with `server.error.include-message: always`. So today:
-
-- a **handled** error is `{title, detail}` with the right status;
-- an **unhandled** error is a 500 whose body carries the exception's message and the
-  request path — and the frontend's `ApiError` reads `problem.detail ?? problem.message`,
-  so **"This link is not valid. Ask the clinic for a new one." reaches the screen
-  verbatim**. The E2E suite asserts that no response body ever contains a Spring
-  message, and it fails today.
-
-What is needed: a catch-all handler that answers every unhandled error with
-`{title, detail}` and no message, `include-message: never`, and the unknown public
-link answered as a 404 rather than a 500. That is the backend task's work; the
-assertions are in `e2e/tests/api.spec.mjs`.
+So every error is `{title, detail}` with the right status, and the frontend's
+`ApiError` has nothing to sanitise that the service has not already sanitised.
 
 ### The access rules
 
@@ -267,19 +286,40 @@ shell hides what the person may not open. The owner always has full access; two
 rows are fixed by law rather than by configuration (diagnoses, notes and
 prescriptions belong to doctors, and a doctor sees only their own patients).
 
-**What is not true yet.** The access model is enforced on the *staff* paths: the
+**What is true now.** The access model is enforced on the *staff* paths: the
 clinic id travels in the token and the request's schema is set on the connection
-(`search_path`), so a caller never chooses its tenant. It is **not** enforced on the
-patient paths. `/api/token/`, `/api/intake/` and `/api/verify/` take a `?clinic=`
-override, and that override retargets the tenant — so a link handed out by clinic A
-can be read through clinic B's slug. The rule that is supposed to hold ("the tenant
-comes from the link row alone, never from the caller") does not hold today.
-`e2e/tests/flows.spec.mjs` has the test that proves it: it crosses the two and
-fails until the override is gone.
+(`search_path`), so a caller never chooses its tenant. It is enforced on the patient paths as well: `/api/token/`, `/api/intake/` and `/api/verify/` take no clinic parameter at all, and resolve the tenant from
+the link row alone — the tenant comes from the link, never from the caller.
 
 Two more gaps in the same area, both asserted in `e2e/`: the PIN is hashed with
 SHA-256 over the staff id rather than with PBKDF2 or argon2, and the PIN path has
 neither attempt counting nor a lockout, while the one-time code has both.
+
+### What the dashboard carries, and who may open what
+
+`GET /api/clinic/dashboard` answers with the clinic's work: the stations, the
+manage links, and **`doctors`** — one entry per doctor, with the id, the name,
+the initials, the speciality, the room, how many patients are waiting, and the
+next appointment. The dashboard draws the doctors as consoles: one row each, and
+the row opens that doctor's queue.
+
+Two rules keep the menu and the API from disagreeing:
+
+- the **dashboard** needs the `report` capability, so a nurse or a front desk
+  never sees a link that would be refused;
+- the **doctor consoles** need the `console` capability, which is a different
+  thing — a clinic administrator may open the dashboard and may not open a
+  console, so the consoles are drawn only for the people who may open one.
+
+The same map filters the manage links: the service sends every link the clinic
+has, and a doctor who may open the dashboard is not necessarily allowed to open
+the staff screen. The mapping from a path to the resource it needs is derived
+from the app's own navigation, so it cannot drift from the sidebar.
+
+The console opens on one doctor when the dashboard sends `?doctor=<staffId>`:
+the screen reads it, checks it against the clinic's own list of doctors, and
+either shows that doctor's queue or — for a doctor the clinic does not have —
+the whole queue, never an empty screen.
 
 ## The harness
 
@@ -309,8 +349,9 @@ whole thing — Postgres, the API, the app.
 ## Local
 
 ```bash
-# the database
-brew services start postgresql@16
+# the database — any PostgreSQL 14 or later, running
+# macOS:          brew services start postgresql@16
+# Debian/Ubuntu: sudo service postgresql start
 createdb -O medmate medmate_clinic_api
 
 # the API
@@ -323,26 +364,46 @@ npm run dev            # http://localhost:3100
 The API runs on 8080; Vite proxies `/api` to it. Point the app at the service
 with `VITE_USE_MOCK=false`; without it the app answers from the local mock.
 
-Environment for the API:
+### The environment the service reads
+
+The table below is every variable the service reads, generated from
+`backend/.env.example` — the file that is the service's contract. Copy it to
+`backend/.env` and change what you need; the service reads the environment
+rather than the file, so export the variables (`set -a; . backend/.env; set +a`)
+instead of leaving them there. The README carries the same table.
 
 | Variable | Default |
 |---|---|
 | `DATABASE_URL` | `jdbc:postgresql://localhost:5432/medmate_clinic_api` |
-| `DATABASE_USER` / `DATABASE_PASSWORD` | `medmate` |
-| `DATABASE_SCHEMA` | `medmate` |
-| `AUTH_SECRET` | a development secret — **change it in production** |
-| `AUTH_EXPOSE_CODE` | `true` — the OTP comes back in the response; set `false` in production |
-| `CORS_ORIGINS` | `http://localhost:3100,http://127.0.0.1:3100` |
+| `DATABASE_USER` | `medmate` |
+| `DATABASE_PASSWORD` | `medmate` |
+| `DATABASE_POOL_SIZE` | `10` |
+| `SERVER_PORT` | `8080` |
+| `APP_ENV` | `development` |
+| `AUTH_SECRET` | `a development secret — **change it in production**` |
+| `AUTH_EXPOSE_CODE` | `true` |
+| `AUTH_TTL_MINUTES` | `720` |
+| `AUTH_OTP_TTL_MINUTES` | `5` |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3100,http://127.0.0.1:3100` |
+| `REGISTRY_SCHEMA` | `registry` |
+| `CLINIC_SCHEMA_PREFIX` | `clinic_` |
+| `DEMO_ENABLED` | `false` |
+| `DEMO_CLINIC_ID` | — (unset; the clinic the demo data belongs to) |
+| `KIOSK_CLINIC_SLUG` | `medmate-clinic` |
 
-The service's own fifteen variables are in `backend/.env.example`; the stack's are
-in the root `.env.example`.
+The stack's own variables — the ones `docker compose` reads — are in the root
+`.env.example`.
 
 ## Before production
 
 - [ ] `AUTH_SECRET` set to a real secret, and `AUTH_EXPOSE_CODE=false`.
 - [ ] The audit trail still needs the prescription, payment, appointment and
       record-opened events — they are written as those endpoints are built.
-- [ ] The sign-up endpoint exists now — `POST /api/auth/signup` — and the
-      five-step flow is wired to it.
+- [ ] The sign-up flow is wired to the service — the clinic is created by
+      `POST /api/auth/signup`, and the owner's number is checked by
+      `POST /api/auth/otp/pre-signup` and `POST /api/auth/pre-signup/verify`,
+      which are landing with the registry migration for pending verifications.
+- [ ] The HPR registry is not connected: the doctor's own details are entered by
+      hand, and nothing checks them.
 - [ ] The SMS gateway for the OTP, and the DLT templates that go with it.
 - [ ] HTTPS, and the SPA served from the same origin as the API.

@@ -264,7 +264,10 @@ public class KioskService {
             body.put("id", person.getId().toString());
             body.put("name", person.getFullName());
             body.put("speciality", person.getSpeciality());
-            body.put("room", person.getSpeciality());
+            // The room the person works in — the column on the staff row, and
+            // never the speciality: a doctor sees patients in a room, and a
+            // speciality is not a room.
+            body.put("room", person.getRoom() == null ? "" : person.getRoom());
             body.put("fee", feeOf(person, index));
             body.put("waiting", index + 1);
             doctors.add(body);
