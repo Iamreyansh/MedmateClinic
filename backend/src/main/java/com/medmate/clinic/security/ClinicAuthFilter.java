@@ -246,6 +246,15 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
         // from there and routes the request itself. The filter must not treat
         // the path as a patient's link.
         if (path.startsWith("/api/public/booking")) {
+            if (path.startsWith("/api/public/booking/")) {
+                // The cancellation carries the patient's own link key, so the
+                // link says which clinic they are in.
+                String key = segmentAfter(path, "/api/public/booking/");
+                if (key == null) {
+                    throw new UnauthorizedException("This link is not valid.");
+                }
+                routing.routeByLink(key);
+            }
             return;
         }
 
@@ -254,6 +263,14 @@ public class ClinicAuthFilter extends OncePerRequestFilter {
             throw new UnauthorizedException("This link is not valid.");
         }
         routing.routeByLink(linkKey);
+    }
+
+    /** The first path segment after a prefix, if there is one. */
+    private static String segmentAfter(String path, String prefix) {
+        String rest = path.substring(prefix.length());
+        int slash = rest.indexOf('/');
+        String segment = slash == -1 ? rest : rest.substring(0, slash);
+        return segment.isEmpty() ? null : segment;
     }
 
     /** The patient's own key, taken from the path. */

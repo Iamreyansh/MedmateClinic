@@ -65,6 +65,12 @@ public class PatientWebController {
         return patientWeb.book(slug, request.asMap(), idempotencyKey);
     }
 
+    /** The patient calls the booking off. */
+    @PostMapping("/public/booking/{linkKey}/cancel")
+    public Map<String, Object> cancel(@PathVariable String linkKey) {
+        return patientWeb.cancel(linkKey);
+    }
+
     /** The patient's place in the queue. */
     @GetMapping("/token/{token}")
     public Map<String, Object> liveToken(@PathVariable String token) {

@@ -273,6 +273,40 @@ public class PatientWebService {
         return body;
     }
 
+    /**
+     * The patient calls the booking off.
+     *
+     * <p>The link the patient holds is the credential, so the link must be live:
+     * an expired or revoked link is refused like every other patient route.
+     * Calling off twice is the same as calling off once.
+     */
+    @Transactional
+    public Map<String, Object> cancel(String linkKey) {
+        PublicLink link = liveLink(linkKey);
+        if (!PublicLink.KIND_BOOKING.equals(link.getKind())) {
+            throw new NotFoundException("This link is not valid. Ask the clinic for a new one.");
+        }
+        Visit visit = visitForLink(link);
+
+        if (!"cancelled".equals(visit.getStatus())) {
+            visit.setStatus("cancelled");
+            visits.save(visit);
+            // The appointment frees the slot: a cancelled booking is not a
+            // booking any more.
+            for (Appointment appointment :
+                    appointments.findByClinicIdAndVisitIdOrderByStartsAtAsc(
+                            visit.getClinicId(), visit.getId())) {
+                appointment.setStatus("cancelled");
+                appointments.save(appointment);
+            }
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("cancelled", true);
+        body.put("token", visit.getToken());
+        return body;
+    }
+
     /** The patient's place in the queue. */
     @Transactional
     public Map<String, Object> liveToken(String linkKey) {
@@ -496,6 +530,10 @@ public class PatientWebService {
             for (Appointment appointment :
                     appointments.findByClinicIdAndDoctorIdAndStartsAtBetweenOrderByStartsAtAsc(
                             clinicId, doctor, from, to)) {
+                if ("cancelled".equals(appointment.getStatus())) {
+                    // A cancelled booking does not take the slot.
+                    continue;
+                }
                 taken.add(appointment.getStartsAt().atZone(zone).toLocalTime().toString());
             }
         }

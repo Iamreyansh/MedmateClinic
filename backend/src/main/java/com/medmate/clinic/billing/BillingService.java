@@ -157,9 +157,34 @@ public class BillingService {
             pendingItems.add(item);
         }
 
+        // The bills raised today, each with its status, so the till's tabs
+        // (Today / All / To collect / Paid / Refunded) filter on something.
+        List<Map<String, Object>> bills = new ArrayList<>();
+        for (Invoice invoice : todays) {
+            if (bills.size() >= MAX_BILLS) {
+                break;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("invoiceId", invoice.getId().toString());
+            item.put("number", invoice.getNumber());
+            item.put("status", invoice.getStatus() == null ? "unpaid" : invoice.getStatus());
+            item.put("amount", invoice.getTotal());
+            item.put("payMode", invoice.getPayMode());
+            item.put(
+                    "paidAt",
+                    invoice.getPaidAt() == null ? null : invoice.getPaidAt().toString());
+            item.put(
+                    "createdAt",
+                    invoice.getCreatedAt() == null ? null : invoice.getCreatedAt().toString());
+            item.put("visitId", invoice.getVisitId() == null ? null : invoice.getVisitId().toString());
+            item.put("patient", patientCard(invoice.getPatientId()));
+            bills.add(item);
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("day", day.toString());
         body.put("dayLabel", day.format(DAY));
+        body.put("bills", bills);
         body.put("summary", summary);
         body.put("byMode", byMode);
         body.put("pending", pendingItems);
@@ -452,6 +477,9 @@ public class BillingService {
         event.put("text", text);
         events.add(event);
     }
+
+    /** The most bills one page of the till holds. */
+    private static final int MAX_BILLS = 200;
 
     private Map<String, Object> patientCard(UUID patientId) {
         Map<String, Object> card = new LinkedHashMap<>();

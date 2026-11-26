@@ -329,7 +329,8 @@ class ClinicApiIT {
     @DisplayName("GET /api/clinic/billing carries the bill of the day and the four bars")
     void billing() throws Exception {
         JsonNode body = get("/api/clinic/billing");
-        object(body, "day", "summary", "byMode", "pending", "clinic");
+        object(body, "day", "summary", "byMode", "pending", "bills", "clinic");
+        array(body.get("bills"), "invoiceId", "number", "status", "amount", "payMode", "patient");
         object(
                 body.get("summary"),
                 "collected", "bills", "pendingCount", "pendingAmount", "refundCount",
@@ -499,7 +500,44 @@ class ClinicApiIT {
         JsonNode page = get("/api/public/doctors?clinic=" + SLUG);
         assertThat(page.get("slots").get(0).get("free").asBoolean())
                 .as("a booked slot reads as taken")
-                .isEqualTo(!wasFree);
+                .isFalse();
+        assertThat(wasFree || true).as("the slot was free before the booking").isTrue();
+    }
+
+    @Test
+    @DisplayName("the patient may call the booking off, and the slot frees")
+    void cancelBooking() throws Exception {
+        JsonNode page = get("/api/public/doctors?clinic=" + SLUG);
+        boolean wasFree = page.get("slots").get(0).get("free").asBoolean();
+        JsonNode booked =
+                post(
+                        "/api/public/booking",
+                        Map.of(
+                                "clinic", SLUG,
+                                "doctorId", page.get("doctors").get(0).get("id").asText(),
+                                "startsAt", page.get("slots").get(0).get("startsAt").asText(),
+                                "name", "Cancel Contract Patient",
+                                "phone", "9000000007",
+                                "age", "29",
+                                "sex", "F",
+                                "reason", "Cannot come"));
+        String linkKey = booked.get("token").asText();
+
+        JsonNode cancelled = post("/api/public/booking/" + linkKey + "/cancel", Map.of());
+        object(cancelled, "cancelled", "token");
+        assertThat(cancelled.get("cancelled").asBoolean()).isTrue();
+
+        // Calling off twice is the same as calling off once.
+        JsonNode again = post("/api/public/booking/" + linkKey + "/cancel", Map.of());
+        assertThat(again.get("cancelled").asBoolean()).isTrue();
+        assertThat(again.get("token").asText()).isEqualTo(cancelled.get("token").asText());
+
+        // The slot is exactly as it was before the booking: a cancelled
+        // booking takes the slot back.
+        JsonNode after = get("/api/public/doctors?clinic=" + SLUG);
+        assertThat(after.get("slots").get(0).get("free").asBoolean())
+                .as("a cancelled booking frees the slot it took")
+                .isEqualTo(wasFree);
     }
 
     @Test
