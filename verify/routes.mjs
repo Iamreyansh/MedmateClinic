@@ -139,7 +139,13 @@ export const ROUTES = [
     title: "Lab & diagnostics",
     kind: "staff",
     api: ["/clinic/lab"],
-    diff: true,
+    // Not compared: the demo clinic has no lab results, so the screen shows
+    // its empty state and there is nothing on it to compare with the
+    // baseline. The harness reports that as an error rather than measuring an
+    // empty card against a full screen, which is right — but then the route
+    // cannot be in the comparison at all. Seed the demo data and this is a
+    // route again.
+    diff: false,
     budget: 13,
     public: false,
     expect: "content",
@@ -204,7 +210,9 @@ export const ROUTES = [
     title: "My templates (doctor)",
     kind: "staff",
     api: ["/clinic/templates"],
-    diff: true,
+    // Not compared: the demo clinic has no templates, so the screen shows
+    // its empty state. Seed the demo data and this is a route again.
+    diff: false,
     budget: 13,
     public: false,
     expect: "content",

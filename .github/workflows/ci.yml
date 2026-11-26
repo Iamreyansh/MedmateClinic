@@ -256,6 +256,11 @@ jobs:
           if [ "$status" -ne 0 ]; then
             echo "::error::the pixel diff failed: $(grep -A4 'problem(s)' verify/baselines/diffs/drift.txt | tail -4 | tr '\n' ' ' | cut -c1-1200)"
           fi
+          # The table is published as an annotation too, so the numbers are
+          # readable through the API and not only through the Actions UI.
+          if [ -f verify/baselines/diffs/drift.txt ]; then
+            echo "::notice::the drift table: $(sed -n '/^route /,$p' verify/baselines/diffs/drift.txt | tr '\n' ' | ' | cut -c1-3500)"
+          fi
           {
             echo "### The pixel diff"
             echo
