@@ -19,6 +19,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock } from "@/services/api/mock/router";
@@ -95,6 +96,26 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "POST", path: "/intake/A-014" },
   { method: "GET", path: "/verify/rx_vs_kavya" },
   { method: "POST", path: "/public/booking/A-014/cancel" },
+  { method: "GET", path: "/clinic/admin/members" },
+  { method: "GET", path: "/clinic/admin/members/mem_ananya/access" },
+  { method: "GET", path: "/clinic/admin/profiles" },
+  { method: "GET", path: "/clinic/admin/doctors/schedules" },
+  { method: "GET", path: "/clinic/admin/doctors/dr_ananya/schedule" },
+  { method: "GET", path: "/clinic/admin/doctors/by-hpr/HPR123" },
+  { method: "GET", path: "/clinic/admin/locations" },
+  { method: "GET", path: "/clinic/admin/pharmacies" },
+  { method: "GET", path: "/clinic/admin/roles" },
+  { method: "GET", path: "/clinic/admin/screens" },
+  { method: "GET", path: "/clinic/admin/settings" },
+  { method: "GET", path: "/clinic/admin/settings/device" },
+  { method: "GET", path: "/clinic/admin/settings/pin" },
+  { method: "GET", path: "/clinic/admin/settings/agreements" },
+  { method: "GET", path: "/clinic/admin/settings/readiness" },
+  { method: "GET", path: "/clinic/admin/account" },
+  { method: "GET", path: "/clinic/admin/activity" },
+  { method: "POST", path: "/auth/otp/pre-signup" },
+  { method: "POST", path: "/auth/pre-signup/verify" },
+  { method: "POST", path: "/public/booking/A-014/rebook" },
 ];
 
 /**
@@ -122,6 +143,76 @@ const SERVICE_CONTROLLERS: Array<{
   file: string;
   paths: Array<{ method: string; path: string }>;
 }> = [
+  {
+    file: "admin/doctor/AdminDoctorController.java",
+    paths: [
+      { method: "POST", path: "/clinic/admin/doctors" },
+      { method: "PUT", path: "/clinic/admin/doctors/:id" },
+      { method: "GET", path: "/clinic/admin/doctors/:id/schedule" },
+      { method: "PUT", path: "/clinic/admin/doctors/:id/schedule" },
+      { method: "GET", path: "/clinic/admin/doctors/schedules" },
+      { method: "GET", path: "/clinic/admin/doctors/by-hpr/:id" },
+    ],
+  },
+  {
+    file: "admin/location/AdminLocationController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/locations" },
+      { method: "POST", path: "/clinic/admin/locations" },
+      { method: "PUT", path: "/clinic/admin/locations/:id" },
+      { method: "DELETE", path: "/clinic/admin/locations/:id" },
+    ],
+  },
+  {
+    file: "admin/member/AdminMemberController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/members" },
+      { method: "POST", path: "/clinic/admin/members" },
+      { method: "PUT", path: "/clinic/admin/members/:id" },
+      { method: "GET", path: "/clinic/admin/members/:id/access" },
+      { method: "PUT", path: "/clinic/admin/members/:id/access" },
+    ],
+  },
+  {
+    file: "admin/pharmacy/AdminPharmacyController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/pharmacies" },
+      { method: "POST", path: "/clinic/admin/pharmacies" },
+      { method: "PUT", path: "/clinic/admin/pharmacies/:id" },
+      { method: "DELETE", path: "/clinic/admin/pharmacies/:id" },
+    ],
+  },
+  {
+    file: "admin/profile/AdminProfileController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/profiles" },
+      { method: "POST", path: "/clinic/admin/profiles" },
+      { method: "PUT", path: "/clinic/admin/profiles/:id" },
+      { method: "DELETE", path: "/clinic/admin/profiles/:id" },
+    ],
+  },
+  {
+    file: "admin/settings/AdminSettingsController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/settings" },
+      { method: "PUT", path: "/clinic/admin/settings" },
+      { method: "GET", path: "/clinic/admin/settings/device" },
+      { method: "PUT", path: "/clinic/admin/settings/pin" },
+      { method: "GET", path: "/clinic/admin/settings/agreements" },
+      { method: "PUT", path: "/clinic/admin/settings/agreements/:id" },
+      { method: "GET", path: "/clinic/admin/settings/readiness" },
+      { method: "GET", path: "/clinic/admin/account" },
+      { method: "PUT", path: "/clinic/admin/account" },
+      { method: "GET", path: "/clinic/admin/activity" },
+    ],
+  },
+  {
+    file: "admin/staff/AdminRolesController.java",
+    paths: [
+      { method: "GET", path: "/clinic/admin/roles" },
+      { method: "GET", path: "/clinic/admin/screens" },
+    ],
+  },
   {
     file: "audit/AuditController.java",
     paths: [
@@ -237,6 +328,8 @@ const SERVICE_CONTROLLERS: Array<{
     file: "onboarding/SignupController.java",
     paths: [
       { method: "POST", path: "/auth/signup" },
+      { method: "POST", path: "/auth/otp/pre-signup" },
+      { method: "POST", path: "/auth/pre-signup/verify" },
     ],
   },
   {
@@ -252,6 +345,7 @@ const SERVICE_CONTROLLERS: Array<{
       { method: "GET", path: "/public/doctors" },
       { method: "POST", path: "/public/booking" },
       { method: "POST", path: "/public/booking/:id/cancel" },
+      { method: "POST", path: "/public/booking/:id/rebook" },
       { method: "GET", path: "/token/:id" },
       { method: "GET", path: "/intake/:id" },
       { method: "POST", path: "/intake/:id" },
@@ -364,6 +458,12 @@ const NAMED_ARRAYS: Array<{ method: string; path: string; key: string }> = [
   { method: "GET", path: "/clinic/reports", key: "tabs" },
   { method: "GET", path: "/clinic/subscription", key: "usage" },
   { method: "GET", path: "/clinic/settings", key: "locations" },
+  { method: "GET", path: "/clinic/admin/members", key: "items" },
+  { method: "GET", path: "/clinic/admin/profiles", key: "items" },
+  { method: "GET", path: "/clinic/admin/locations", key: "items" },
+  { method: "GET", path: "/clinic/admin/pharmacies", key: "items" },
+  { method: "GET", path: "/clinic/admin/doctors/schedules", key: "items" },
+  { method: "GET", path: "/clinic/admin/activity", key: "items" },
 ];
 
 /**
@@ -402,6 +502,14 @@ const FIELDS: Array<{
   { method: "GET", path: "/clinic/appointments/summary", keys: ["days"] },
   { method: "GET", path: "/clinic/billing", keys: ["bills"] },
   { method: "GET", path: "/clinic/queue", keys: ["averageConsultMinutes"] },
+  { method: "GET", path: "/clinic/admin/members", keys: ["items", "meta"], note: "the list and the count of it" },
+  { method: "GET", path: "/clinic/admin/profiles", keys: ["items", "meta"] },
+  { method: "GET", path: "/clinic/admin/locations", keys: ["items", "meta"] },
+  { method: "GET", path: "/clinic/admin/pharmacies", keys: ["items", "meta"] },
+  { method: "GET", path: "/clinic/admin/roles", keys: ["roles"], note: "the roles and the capabilities each one carries" },
+  { method: "GET", path: "/clinic/admin/account", keys: ["account"] },
+  { method: "GET", path: "/public/doctors", keys: ["clinic", "doctors", "slots", "day", "nextFree"], note: "the clinic carries its own timezone" },
+  { method: "GET", path: "/clinic/lab", keys: ["counts"], note: "toCollect, inLab, sentOut, reportedToday, abnormalToday" },
 ];
 
 /** Sign in, so the endpoints behind the session answer. */
@@ -461,6 +569,11 @@ describe("the mock's paths", () => {
  * there is nothing to compare against, and the table stands on its own.
  */
 function controllerSource(file: string): string | null {
+  // The service lives in this repository now, so the tree is where its
+  // controllers are read from — the branch the app used to be checked
+  // against is only the fallback for a checkout that does not carry it.
+  const inTree = path.join(root, "backend/src/main/java/com/medmate/clinic", file);
+  if (existsSync(inTree)) return readFileSync(inTree, "utf8");
   const inBranch = spawnSync(
     "git",
     ["show", `origin/fix/backend:backend/src/main/java/com/medmate/clinic/${file}`],
@@ -475,8 +588,14 @@ function pathsOf(source: string): Array<{ method: string; path: string }> {
   const base = source.match(/@RequestMapping\("([^"]+)"\)/)?.[1] ?? "";
   const paths: Array<{ method: string; path: string }> = [];
 
-  for (const match of source.matchAll(/@(Get|Post)Mapping(?:\("([^"]*)"\))?/g)) {
-    const method = match[1] === "Get" ? "GET" : "POST";
+  for (const match of source.matchAll(/@(Get|Post|Patch|Delete|Put)Mapping(?:\("([^"]*)"\))?/g)) {
+    const method = {
+      Get: "GET",
+      Post: "POST",
+      Patch: "PATCH",
+      Delete: "DELETE",
+      Put: "PUT",
+    }[match[1] as "Get"];
     const suffix = match[2] ?? "";
     const path = `${base}${suffix}`
       .replace(/^\/api/, "")

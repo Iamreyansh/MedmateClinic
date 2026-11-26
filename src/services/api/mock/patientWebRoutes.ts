@@ -23,6 +23,7 @@
 
 import { ApiError } from "@/services/api/client";
 import { mock } from "@/services/api/mock/router";
+import { clinicInstant, clinicLocal } from "@/services/api/mock/clinicClock";
 import {
   appointments,
   doctors,
@@ -188,37 +189,6 @@ function slotsFor(
 }
 
 /**
- * An instant, in the clinic's own zone.
- *
- * The clinic books in its own time: 09:00 there is 09:00 on the wall, and
- * the instant it is must be the one the service compares against.
- */
-function clinicInstant(day: string, time: string): string {
-  const [hour, minute] = time.split(":").map(Number);
-  // Asia/Kolkata is +05:30
-  const date = new Date(`${day}T00:00:00+05:30`);
-  date.setUTCHours(hour - 5, minute - 30, 0, 0);
-  return date.toISOString();
-}
-
-/** The day and the time of an instant, in the clinic's own zone. */
-function clinicLocal(instant: string): { day: string; time: string } {
-  const at = new Date(instant);
-  if (Number.isNaN(at.getTime())) return { day: "", time: "" };
-  // Asia/Kolkata is +05:30
-  const shifted = new Date(at.getTime() + 330 * 60000);
-  const day = `${shifted.getUTCFullYear()}-${two(shifted.getUTCMonth() + 1)}-${two(
-    shifted.getUTCDate(),
-  )}`;
-  return { day, time: `${two(shifted.getUTCHours())}:${two(shifted.getUTCMinutes())}` };
-}
-
-/** Two digits, so nine o'clock does not become 9:00. */
-function two(value: number): string {
-  return value < 10 ? `0${value}` : String(value);
-}
-
-/**
  * Whether the doctor is already held at that instant.
  *
  * The instant is the whole test: the same doctor at another time is free,
@@ -371,7 +341,7 @@ export function registerPatientWebRoutes() {
 
     const doctorId = String(request.doctorId ?? "");
     const doctor = doctors.find((person) => person.id === doctorId) ?? doctors[0];
-    const startsAt = String(request.startsAt ?? "2026-11-26T09:00:00Z");
+    const startsAt = String(request.startsAt ?? clinicInstant("2026-11-26", "09:00"));
 
     // The time has to be free: somebody else may have taken it while the
     // patient was typing their details in.

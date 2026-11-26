@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { CLINIC_ZONE } from "@/lib/format";
 import {
   fetchAppointments,
   fetchAppointmentSummary,
@@ -19,6 +20,23 @@ function iso(date: Date) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+/**
+ * Today at the clinic, as a date the strip can walk from.
+ *
+ * The clinic's own day, read in the clinic's own zone and held at midnight
+ * UTC, so every day the strip names is a calendar day and not an instant.
+ */
+function clinicToday(): Date {
+  const now = new Date();
+  const day = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: CLINIC_ZONE,
+  }).format(now);
+  return new Date(`${day}T00:00:00Z`);
+}
+
 /** A day, the way the strip shows it: the weekday and the date. */
 function dayLabel(day: string): string {
   const date = new Date(`${day}T00:00:00Z`);
@@ -31,7 +49,7 @@ function dayLabel(day: string): string {
 
 function shiftDays(date: Date, by: number) {
   const next = new Date(date);
-  next.setDate(next.getDate() + by);
+  next.setUTCDate(next.getUTCDate() + by);
   return next;
 }
 
@@ -70,8 +88,8 @@ export function ScheduleScreen() {
   // the strip of days: today and the fortnight after it
   useEffect(() => {
     let alive = true;
-    const from = iso(new Date());
-    const to = iso(shiftDays(new Date(), 13));
+    const from = iso(clinicToday());
+    const to = iso(shiftDays(clinicToday(), 13));
     fetchAppointmentSummary(from, to)
       .then((data) => {
         if (alive) setStrip(data.days);
@@ -115,7 +133,7 @@ export function ScheduleScreen() {
   }, []);
 
   const move = (by: number) => {
-    setDate(iso(shiftDays(new Date(date), by)));
+    setDate(iso(shiftDays(clinicToday(), by)));
   };
 
   return (
@@ -247,16 +265,23 @@ export function ScheduleScreen() {
 /** The next seven days, for the booking dialog. */
 function dayChoices() {
   const choices: Array<{ value: string; label: string }> = [];
-  const start = new Date();
+  // Today is the clinic's today, not the reader's: a doctor who opens the
+  // app in another time zone must still see the clinic's morning, and the
+  // strip's days must not move with the viewer.
+  const start = clinicToday();
   for (let offset = 0; offset < 7; offset += 1) {
     const day = new Date(start);
-    day.setDate(day.getDate() + offset);
+    day.setUTCDate(day.getUTCDate() + offset);
     choices.push({
       value: iso(day),
       label:
         offset === 0
           ? "Today"
-          : day.toLocaleDateString("en-IN", { weekday: "short", day: "numeric" }),
+          : day.toLocaleDateString("en-IN", {
+              weekday: "short",
+              day: "numeric",
+              timeZone: "UTC",
+            }),
     });
   }
   return choices;

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Icon } from "@/components/ui/Icon";
 import { apiGet } from "@/services/api";
+import { CLINIC_ZONE } from "@/lib/format";
 import type { VisitResponse } from "@/types/visit";
 
 /** The clinic's letterhead, as it prints. */
@@ -130,7 +131,11 @@ export function PrescriptionPaper() {
             {person.name} · {person.age} {person.sex}
           </b>
           <span>{person.abha}</span>
-          <span>{signed?.signedAt ? new Date(signed.signedAt).toLocaleDateString("en-IN") : "—"}</span>
+          <span>
+          {signed?.signedAt
+            ? new Date(signed.signedAt).toLocaleDateString("en-IN", { timeZone: CLINIC_ZONE })
+            : "—"}
+        </span>
           <b>{data.visit.token}</b>
         </div>
 
@@ -246,7 +251,10 @@ export function PrescriptionPaper() {
             <div>
               <span className="t-cap">Follow-up</span>
               <b>
-                {new Date(consultation.followUpAt).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                {new Date(consultation.followUpAt).toLocaleDateString("en-IN", {
+                  dateStyle: "long",
+                  timeZone: CLINIC_ZONE,
+                })}
               </b>
             </div>
           </div>
