@@ -18,7 +18,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * A clinic signs itself up.
@@ -60,8 +59,16 @@ public class SignupService {
         this.jwt = jwt;
     }
 
-    /** The clinic signs up, and the owner is signed in. */
-    @Transactional
+    /**
+     * The clinic signs up, and the owner is signed in.
+     *
+     * <p>This is deliberately not one transaction. The clinic's own tables live
+     * in the clinic's schema, and the schema is only chosen once the clinic
+     * has been created and provisioned — a transaction would take its
+     * connection before that, and the query for the clinic's roles would land
+     * in the registry schema and fail. Each write is its own transaction, and
+     * the schema is chosen before anything is read from it.
+     */
     public Map<String, Object> signUp(SignupRequest request) {
         String clinicName = request.clinicName() == null ? "" : request.clinicName().trim();
         if (clinicName.length() < 2) {
@@ -92,7 +99,9 @@ public class SignupService {
         provisioning.provision(clinic);
 
         // The owner is the first member of staff, with every grant the clinic
-        // gives.
+        // gives. The schema is chosen first: the roles, the grants and the
+        // staff are all the clinic's own tables, and they live in the clinic's
+        // schema, not in the registry's.
         routing.route(clinicId);
         Staff owner = new Staff();
         owner.setId(UUID.randomUUID());

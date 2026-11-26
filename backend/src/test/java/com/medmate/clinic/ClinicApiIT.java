@@ -644,6 +644,94 @@ class ClinicApiIT {
         assertThat(body.has("code")).as("no second code is handed out").isFalse();
     }
 
+    @Test
+    @DisplayName("a clinic signs itself up, and the booking link it hands out works")
+    void signup() throws Exception {
+        String name = "Sign Up Clinic " + java.util.UUID.randomUUID().toString().substring(0, 8);
+        JsonNode signedUp =
+                post(
+                        "/api/auth/signup",
+                        Map.ofEntries(
+                                Map.entry("name", "Ananya Rao"),
+                                Map.entry("mobile", "9876500001"),
+                                Map.entry("email", "owner@contract.test"),
+                                Map.entry("clinicName", name),
+                                Map.entry("clinicKind", "clinic"),
+                                Map.entry("registeredUnder", "Ananya Rao"),
+                                Map.entry("regNumber", "REG-1"),
+                                Map.entry("validUntil", "2027-01-01"),
+                                Map.entry("clinicEmail", "clinic@contract.test"),
+                                Map.entry("gstin", "29AAAAA0000A1Z5"),
+                                Map.entry("pan", "AAAAA0000A"),
+                                Map.entry("locName", "Main"),
+                                Map.entry("street", "1 Test Street"),
+                                Map.entry("area", "Indiranagar"),
+                                Map.entry("city", "Bengaluru"),
+                                Map.entry("pin", "560038"),
+                                Map.entry("state", "Karnataka (29)"),
+                                Map.entry("phone", "080 0000 0000"),
+                                Map.entry("rooms", "3"),
+                                Map.entry("hfr", "IN2900000001"),
+                                Map.entry("role", "doctor"),
+                                Map.entry("hpr", "HPR-1"),
+                                Map.entry("doctorName", "Dr. Ananya Rao"),
+                                Map.entry("doctorQual", "MBBS"),
+                                Map.entry("doctorReg", "KMC 00001"),
+                                Map.entry("speciality", "General Medicine"),
+                                Map.entry("fee", "500"),
+                                Map.entry("videoFee", "400"),
+                                Map.entry("signing", "aadhaar")));
+
+        object(
+                signedUp,
+                "accessToken",
+                "clinicId",
+                "clinicName",
+                "bookingSlug",
+                "bookingUrl",
+                "clinic");
+        assertThat(signedUp.get("accessToken").asText()).isNotBlank();
+        assertThat(signedUp.get("clinicName").asText()).isEqualTo(name);
+
+        String slug = signedUp.get("bookingSlug").asText();
+        // The slug is the clinic's name and a random tail, so it cannot be
+        // worked out from the clinic's name.
+        assertThat(slug).isNotEqualTo(name.toLowerCase(java.util.Locale.ENGLISH).replaceAll("[^a-z0-9]+", "-"));
+        assertThat(slug).matches(".*-[a-z0-9]{8}");
+        assertThat(signedUp.get("bookingUrl").asText()).contains(slug);
+        object(signedUp.get("clinic"), "id", "name", "initials", "bookingSlug");
+
+        // The clinic has its own schema, and its migrations were applied to it.
+        String schema =
+                "clinic_"
+                        + signedUp.get("clinicId").asText().replace("-", "").substring(0, 8);
+        Integer schemas =
+                jdbc.queryForObject(
+                        "select count(*) from information_schema.schemata where schema_name = ?",
+                        Integer.class,
+                        schema);
+        assertThat(schemas).as("the clinic has its own schema").isEqualTo(1);
+        Integer migrations =
+                jdbc.queryForObject(
+                        "select count(*) from " + schema + ".flyway_schema_history"
+                                + " where success and version is not null",
+                        Integer.class);
+        assertThat(migrations).as("the clinic's schema has its migrations").isEqualTo(20);
+        String latest =
+                jdbc.queryForObject(
+                        "select max(cast(version as integer)) from " + schema + ".flyway_schema_history"
+                                + " where success and version is not null",
+                        String.class);
+        assertThat(latest).as("the clinic's schema is at the last migration").isEqualTo("204");
+
+        // And the link the patient is given works: the clinic's booking page
+        // answers for the slug the sign-up handed out.
+        JsonNode page = get("/api/public/doctors?clinic=" + slug);
+        object(page, "clinic", "doctors", "slots", "day", "nextFree");
+        assertThat(page.get("clinic").get("slug").asText()).isEqualTo(slug);
+        assertThat(page.get("doctors").size()).as("the clinic has a doctor").isGreaterThan(0);
+    }
+
     // ---------------------------------------------------------- the kiosk
 
     @Test
