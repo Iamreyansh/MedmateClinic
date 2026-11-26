@@ -18,7 +18,6 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,6 +60,7 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "POST", path: "/clinic/billing" },
   { method: "POST", path: "/clinic/billing/close-day" },
   { method: "GET", path: "/clinic/appointments" },
+  { method: "GET", path: "/clinic/appointments/summary" },
   { method: "POST", path: "/clinic/appointments" },
   { method: "GET", path: "/clinic/subscription" },
   { method: "POST", path: "/clinic/subscription/checkout" },
@@ -94,6 +94,7 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "GET", path: "/intake/A-014" },
   { method: "POST", path: "/intake/A-014" },
   { method: "GET", path: "/verify/rx_vs_kavya" },
+  { method: "POST", path: "/public/booking/A-014/cancel" },
 ];
 
 /**
@@ -103,52 +104,231 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
  * other is a screen that works against the mock and breaks against the
  * service.
  */
-const JAVA_CONTROLLERS = [
-  "auth/AuthController.java",
-  "onboarding/SignupController.java",
-  "me/MeController.java",
-  "dashboard/DashboardController.java",
-  "queue/QueueController.java",
-  "visit/CheckInController.java",
-  "consult/VisitController.java",
-  "prescription/PrescriptionController.java",
-  "audit/AuditController.java",
-  "message/MessageController.java",
-  "inbox/InboxController.java",
-  "billing/BillingController.java",
-  "desk/DeskController.java",
-  "lab/LabController.java",
-  "nurse/NurseController.java",
-  "reports/ReportsController.java",
-  "schedule/AppointmentController.java",
-  "subscription/SubscriptionController.java",
-  "patientweb/PatientWebController.java",
-  "patient/PatientDirectoryController.java",
-  "teleconsult/TeleconsultController.java",
-  "template/TemplateController.java",
-  "clinic/ClinicSettingsController.java",
-  "kiosk/KioskController.java",
+/**
+ * The service's endpoints, controller by controller.
+ *
+ * This is the table the contract test gates on: every path the Java service
+ * declares is here, and the mock has to answer all of them. It is written down
+ * rather than read at run time because the service's controllers live on the
+ * service's own branch — a checkout of the app alone does not carry them, and
+ * a test that cannot read its own fixture is a test that fails where it
+ * cannot be fixed.
+ *
+ * The table is still checked against the service's source whenever that
+ * source is here (see "reads the service's controllers"), so it cannot drift
+ * away from what the service actually declares.
+ */
+const SERVICE_CONTROLLERS: Array<{
+  file: string;
+  paths: Array<{ method: string; path: string }>;
+}> = [
+  {
+    file: "audit/AuditController.java",
+    paths: [
+      { method: "GET", path: "/clinic/activity" },
+    ],
+  },
+  {
+    file: "auth/AuthController.java",
+    paths: [
+      { method: "POST", path: "/auth/otp" },
+      { method: "POST", path: "/auth/verify" },
+      { method: "POST", path: "/auth/unlock" },
+    ],
+  },
+  {
+    file: "billing/BillingController.java",
+    paths: [
+      { method: "GET", path: "/clinic/billing" },
+      { method: "GET", path: "/clinic/billing/:id" },
+      { method: "POST", path: "/clinic/billing/:id/pay" },
+      { method: "POST", path: "/clinic/billing/:id/refund" },
+      { method: "POST", path: "/clinic/billing" },
+      { method: "POST", path: "/clinic/billing/close-day" },
+    ],
+  },
+  {
+    file: "clinic/ClinicLocationsController.java",
+    paths: [
+      { method: "GET", path: "/clinic/locations" },
+    ],
+  },
+  {
+    file: "clinic/ClinicSettingsController.java",
+    paths: [
+      { method: "GET", path: "/clinic/settings" },
+    ],
+  },
+  {
+    file: "consult/VisitController.java",
+    paths: [
+      { method: "GET", path: "/clinic/visits/:id" },
+      { method: "POST", path: "/clinic/visits/:id/consult" },
+      { method: "POST", path: "/clinic/visits/:id/start" },
+    ],
+  },
+  {
+    file: "dashboard/DashboardController.java",
+    paths: [
+      { method: "GET", path: "/clinic/dashboard" },
+    ],
+  },
+  {
+    file: "desk/DeskController.java",
+    paths: [
+      { method: "GET", path: "/clinic/desk" },
+      { method: "POST", path: "/clinic/desk/:id/checkout" },
+      { method: "GET", path: "/clinic/desk/booking-link" },
+    ],
+  },
+  {
+    file: "inbox/InboxController.java",
+    paths: [
+      { method: "GET", path: "/clinic/inbox" },
+    ],
+  },
+  {
+    file: "kiosk/KioskController.java",
+    paths: [
+      { method: "GET", path: "/kiosk" },
+      { method: "POST", path: "/kiosk/open" },
+      { method: "POST", path: "/kiosk/close" },
+      { method: "POST", path: "/kiosk/code" },
+      { method: "POST", path: "/kiosk/verify" },
+      { method: "POST", path: "/kiosk/patient" },
+      { method: "POST", path: "/kiosk/doctor" },
+      { method: "POST", path: "/kiosk/pay" },
+      { method: "POST", path: "/kiosk/token" },
+      { method: "POST", path: "/kiosk/reset" },
+      { method: "POST", path: "/kiosk/language" },
+    ],
+  },
+  {
+    file: "lab/LabController.java",
+    paths: [
+      { method: "GET", path: "/clinic/lab" },
+      { method: "POST", path: "/clinic/lab/results" },
+      { method: "POST", path: "/clinic/lab/orders/:id" },
+    ],
+  },
+  {
+    file: "me/MeController.java",
+    paths: [
+      { method: "GET", path: "/me" },
+    ],
+  },
+  {
+    file: "message/MessageController.java",
+    paths: [
+      { method: "GET", path: "/clinic/messages" },
+      { method: "POST", path: "/clinic/messages/:id/resend" },
+    ],
+  },
+  {
+    file: "nurse/NurseController.java",
+    paths: [
+      { method: "GET", path: "/clinic/nurse" },
+      { method: "GET", path: "/clinic/nurse/doctors" },
+      { method: "GET", path: "/clinic/nurse/patients" },
+      { method: "POST", path: "/clinic/nurse/vitals" },
+    ],
+  },
+  {
+    file: "onboarding/SignupController.java",
+    paths: [
+      { method: "POST", path: "/auth/signup" },
+    ],
+  },
+  {
+    file: "patient/PatientDirectoryController.java",
+    paths: [
+      { method: "GET", path: "/clinic/patients" },
+      { method: "GET", path: "/clinic/patients/:id" },
+    ],
+  },
+  {
+    file: "patientweb/PatientWebController.java",
+    paths: [
+      { method: "GET", path: "/public/doctors" },
+      { method: "POST", path: "/public/booking" },
+      { method: "POST", path: "/public/booking/:id/cancel" },
+      { method: "GET", path: "/token/:id" },
+      { method: "GET", path: "/intake/:id" },
+      { method: "POST", path: "/intake/:id" },
+      { method: "GET", path: "/verify/:id" },
+    ],
+  },
+  {
+    file: "prescription/PrescriptionController.java",
+    paths: [
+      { method: "POST", path: "/clinic/prescriptions/:id/sign" },
+    ],
+  },
+  {
+    file: "queue/QueueController.java",
+    paths: [
+      { method: "GET", path: "/clinic/queue" },
+    ],
+  },
+  {
+    file: "reports/ReportsController.java",
+    paths: [
+      { method: "GET", path: "/clinic/reports" },
+    ],
+  },
+  {
+    file: "schedule/AppointmentController.java",
+    paths: [
+      { method: "GET", path: "/clinic/appointments" },
+      { method: "GET", path: "/clinic/appointments/summary" },
+      { method: "POST", path: "/clinic/appointments" },
+    ],
+  },
+  {
+    file: "staff/StaffDirectoryController.java",
+    paths: [
+      { method: "GET", path: "/clinic/staff" },
+    ],
+  },
+  {
+    file: "subscription/SubscriptionController.java",
+    paths: [
+      { method: "GET", path: "/clinic/subscription" },
+      { method: "POST", path: "/clinic/subscription/checkout" },
+      { method: "POST", path: "/clinic/subscription/enquiry" },
+      { method: "POST", path: "/clinic/subscription/payments" },
+    ],
+  },
+  {
+    file: "teleconsult/TeleconsultController.java",
+    paths: [
+      { method: "GET", path: "/clinic/teleconsult" },
+    ],
+  },
+  {
+    file: "template/TemplateController.java",
+    paths: [
+      { method: "GET", path: "/clinic/templates" },
+    ],
+  },
+  {
+    file: "visit/CheckInController.java",
+    paths: [
+      { method: "GET", path: "/clinic/doctors" },
+      { method: "POST", path: "/clinic/check-ins" },
+    ],
+  },
 ];
 
 /**
  * The paths only the app has.
  *
- * The service has not built them yet. They are listed so that the day it
- * does, the list is the work order — and so nobody thinks the mock invented
- * them.
+ * It is empty: every path the app calls has a counterpart in the service, so
+ * the app calls nothing the service lacks. When a path is added to one side
+ * before the other, it is listed here — with the reason — until the service
+ * catches up.
  */
-const FRONTEND_ONLY: Array<{ method: string; path: string; why: string }> = [
-  {
-    method: "GET",
-    path: "/clinic/staff",
-    why: "the service is adding the staff list, with the roles from the grants",
-  },
-  {
-    method: "GET",
-    path: "/clinic/locations",
-    why: "the service is adding the branch list, in the settings shape",
-  },
-];
+const FRONTEND_ONLY: Array<{ method: string; path: string; why: string }> = [];
 
 /**
  * The endpoints that answer with a bare array.
@@ -177,6 +357,8 @@ const NAMED_ARRAYS: Array<{ method: string; path: string; key: string }> = [
   { method: "GET", path: "/clinic/templates", key: "items" },
   { method: "GET", path: "/clinic/teleconsult", key: "waiting" },
   { method: "GET", path: "/clinic/lab", key: "open" },
+  { method: "GET", path: "/clinic/appointments/summary", key: "days" },
+  { method: "GET", path: "/clinic/billing", key: "bills" },
   { method: "GET", path: "/clinic/queue", key: "items" },
   { method: "GET", path: "/clinic/appointments", key: "appointments" },
   { method: "GET", path: "/clinic/reports", key: "tabs" },
@@ -217,6 +399,9 @@ const FIELDS: Array<{
   { method: "GET", path: "/clinic/visits/vs_kavya", keys: ["visit", "patient", "vitals", "consultation", "prescriptions"] },
   { method: "GET", path: "/me", keys: ["clinic", "user", "location", "capabilities", "navCounts"] },
   { method: "GET", path: "/clinic/dashboard", keys: ["meta", "trial", "stations", "manage"] },
+  { method: "GET", path: "/clinic/appointments/summary", keys: ["days"] },
+  { method: "GET", path: "/clinic/billing", keys: ["bills"] },
+  { method: "GET", path: "/clinic/queue", keys: ["averageConsultMinutes"] },
 ];
 
 /** Sign in, so the endpoints behind the session answer. */
@@ -264,21 +449,41 @@ describe("the mock's paths", () => {
 });
 
 /**
- * The controller's source.
+ * The service's controller, read from the service's own branch.
  *
- * The service is built on its own branch, so the branch is read when it is
- * there and the working tree is read when it is not. Either way the test
- * checks the service the app will talk to.
+ * The service is built on its own branch, and that branch is the only truth
+ * about what the service declares. The app's checkout may carry an older copy
+ * of the service's files — the app branch does not change them — so the
+ * working tree is not read here: it would compare the table against a
+ * version of the service that is not the one the app talks to.
+ *
+ * When the branch is not fetched (a checkout of the app alone, as CI does)
+ * there is nothing to compare against, and the table stands on its own.
  */
-function controllerSource(file: string): string {
-  const branch = "origin/fix/backend";
+function controllerSource(file: string): string | null {
   const inBranch = spawnSync(
     "git",
-    ["show", `${branch}:backend/src/main/java/com/medmate/clinic/${file}`],
+    ["show", `origin/fix/backend:backend/src/main/java/com/medmate/clinic/${file}`],
     { cwd: root, encoding: "utf8" },
   );
   if (inBranch.status === 0 && inBranch.stdout) return inBranch.stdout;
-  return readFileSync(path.join(root, "backend/src/main/java/com/medmate/clinic", file), "utf8");
+  return null;
+}
+
+/** The paths a controller declares, with the method each one answers. */
+function pathsOf(source: string): Array<{ method: string; path: string }> {
+  const base = source.match(/@RequestMapping\("([^"]+)"\)/)?.[1] ?? "";
+  const paths: Array<{ method: string; path: string }> = [];
+
+  for (const match of source.matchAll(/@(Get|Post)Mapping(?:\("([^"]*)"\))?/g)) {
+    const method = match[1] === "Get" ? "GET" : "POST";
+    const suffix = match[2] ?? "";
+    const path = `${base}${suffix}`
+      .replace(/^\/api/, "")
+      .replace(/\{[^}]+\}/g, ":id");
+    paths.push({ method, path });
+  }
+  return paths;
 }
 
 /**
@@ -286,48 +491,50 @@ function controllerSource(file: string): string {
  *
  * The mock is a stand-in for the service, so a path in one and not the other
  * is a screen that works against the mock and breaks against the real thing.
- * This reads the controllers and checks that every path they declare is
- * answered by the mock.
  */
 describe("the mock and the Java service answer the same paths", () => {
-  /**
-   * The paths a controller declares, with the method each one answers.
-   *
-   * The parameter is replaced with a stand-in — the mock matches the shape of
-   * a path, not the value in it.
-   */
-  function pathsOf(file: string): Array<{ method: string; path: string }> {
-    const source = controllerSource(file);
-    const base = source.match(/@RequestMapping\("([^"]+)"\)/)?.[1] ?? "";
-    const paths: Array<{ method: string; path: string }> = [];
-
-    for (const match of source.matchAll(/@(Get|Post)Mapping(?:\("([^"]*)"\))?/g)) {
-      const method = match[1] === "Get" ? "GET" : "POST";
-      const suffix = match[2] ?? "";
-      const path = `${base}${suffix}`
-        .replace(/^\/api/, "")
-        .replace(/\{[^}]+\}/g, ":id")
-        .replace(/:id/g, "sample");
-      paths.push({ method, path });
-    }
-    return paths;
-  }
-
-  it.each(JAVA_CONTROLLERS)("%s declares paths the mock answers", (file) => {
-    const paths = pathsOf(file);
-    expect(paths.length).toBeGreaterThan(0);
-
-    for (const { method, path } of paths) {
+  it.each(SERVICE_CONTROLLERS.flatMap((controller) => controller.paths))(
+    "answers $method $path",
+    ({ method, path }) => {
       expect(mock.has(method, path)).toBe(true);
-    }
-  });
+    },
+  );
 
-  it("lists every path the service has that the app only has", () => {
-    // the list is the work order: the day the service builds one of these,
-    // it is removed from the list and the mock keeps answering it
+  it("calls nothing the service lacks", () => {
+    // The list is the work order: the day the service builds one of these,
+    // it is removed from the list and the mock keeps answering it.
     for (const entry of FRONTEND_ONLY) {
       expect(mock.has(entry.method, entry.path)).toBe(true);
     }
+    expect(
+      FRONTEND_ONLY.map((entry) => `${entry.method} ${entry.path}`),
+      "the app calls nothing the service lacks",
+    ).toEqual([]);
+  });
+
+  it("reads the service's controllers when the service's branch is here", () => {
+    // The table is the gate; the service's own source, when it is here, is
+    // what keeps the table honest. Without the branch there is nothing to
+    // compare against, and the table stands on its own.
+    let checked = 0;
+    for (const controller of SERVICE_CONTROLLERS) {
+      const source = controllerSource(controller.file);
+      if (!source) continue;
+      checked += 1;
+      expect(
+        pathsOf(source)
+          .map((entry) => `${entry.method} ${entry.path}`)
+          .sort(),
+        `${controller.file} declares paths the table does not`,
+      ).toEqual(
+        controller.paths.map((entry) => `${entry.method} ${entry.path}`).sort(),
+      );
+    }
+    if (checked > 0) {
+      // the branch is here, so every controller must have been read
+      expect(checked).toBe(SERVICE_CONTROLLERS.length);
+    }
+    expect(SERVICE_CONTROLLERS.length).toBeGreaterThan(20);
   });
 });
 
@@ -417,6 +624,81 @@ describe("the fields in the payload", () => {
       usage: Array<{ label: string }>;
     };
     expect(plan.usage.map((entry) => entry.label)).toEqual(["Doctors", "Locations", "Staff"]);
+  });
+
+  it("the days ahead carry a free count for each doctor", async () => {
+    const summary = (await mock.handle(
+      "GET",
+      "/clinic/appointments/summary?from=2026-11-25&to=2026-11-28",
+      undefined,
+    )) as {
+      days: Array<{
+        date: string;
+        freeByDoctor: Array<{ doctorId: string; name: string; free: number; booked: number }>;
+      }>;
+    };
+
+    expect(summary.days.length).toBe(4);
+    expect(summary.days[0].date).toBe("2026-11-25");
+    for (const day of summary.days) {
+      expect(day.freeByDoctor.length).toBeGreaterThan(0);
+      for (const doctor of day.freeByDoctor) {
+        expect(typeof doctor.free).toBe("number");
+        expect(typeof doctor.booked).toBe("number");
+        expect(doctor.name).toBeTruthy();
+      }
+    }
+  });
+
+  it("the doctors carry what the reference's card shows", async () => {
+    const doctors = (await mock.handle("GET", "/clinic/doctors", undefined)) as Array<{
+      id: string;
+      registration: string;
+      fee: number;
+      videoFee: number;
+      hours: string | string[];
+      bookedToday: number;
+      freeToday: number;
+      nextFree: string | null;
+      waiting: number;
+    }>;
+
+    expect(doctors.length).toBeGreaterThan(0);
+    for (const doctor of doctors) {
+      expect(doctor.registration).toBeTruthy();
+      expect(typeof doctor.fee).toBe("number");
+      expect(typeof doctor.videoFee).toBe("number");
+      expect(
+        Array.isArray(doctor.hours) ? doctor.hours.length : doctor.hours.length,
+      ).toBeGreaterThan(0);
+      expect(typeof doctor.bookedToday).toBe("number");
+      expect(typeof doctor.freeToday).toBe("number");
+      expect(typeof doctor.waiting).toBe("number");
+    }
+  });
+
+  it("the till's bills carry what the tabs filter on", async () => {
+    const till = (await mock.handle("GET", "/clinic/billing", undefined)) as {
+      bills: Array<{
+        invoiceId: string;
+        number: string;
+        amount: number;
+        status: string;
+        patient: { name: string };
+      }>;
+    };
+    expect(till.bills.length).toBeGreaterThan(0);
+    for (const bill of till.bills) {
+      expect(["unpaid", "paid", "refunded"]).toContain(bill.status);
+      expect(bill.patient.name).toBeTruthy();
+    }
+  });
+
+  it("the queue says how long a consult takes", async () => {
+    const queue = (await mock.handle("GET", "/clinic/queue", undefined)) as {
+      averageConsultMinutes: number;
+    };
+    expect(typeof queue.averageConsultMinutes).toBe("number");
   });
 
   it("the till has four bars, the last one being what has not come in", async () => {

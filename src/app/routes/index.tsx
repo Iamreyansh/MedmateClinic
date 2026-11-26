@@ -36,6 +36,9 @@ import { NotFoundScreen } from "@/app/routes/NotFoundScreen";
  * the first bundle a doctor opens does not carry them. Each lazy call names
  * one screen, but they share one chunk — the feature is fetched once.
  */
+const ApptScreen = lazy(() =>
+  import("@/features/patient-web").then((module) => ({ default: module.ApptScreen })),
+);
 const BookScreen = lazy(() =>
   import("@/features/patient-web").then((module) => ({ default: module.BookScreen })),
 );
@@ -71,6 +74,7 @@ export const routes: RouteObject[] = [
   // staff and has no session, so these sit outside the guard — a booking link
   // that asked for a sign-in would be a link nobody could follow.
   { path: "/book", element: <BookScreen /> },
+  { path: "/appt", element: <ApptScreen /> },
   { path: "/t/:token", element: <LiveTokenScreen /> },
   { path: "/intake/:token", element: <IntakeScreen /> },
   { path: "/verify/:id", element: <VerifyScreen /> },

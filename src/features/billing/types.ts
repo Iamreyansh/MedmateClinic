@@ -18,7 +18,8 @@ export type PendingBill = {
   amount: number;
   createdAt: string | null;
   patient: { id: string; name: string; age: number; sex: string; phone?: string };
-  description: string;
+  /** What the bill is for — the service may leave it out. */
+  description?: string;
 };
 
 export type BillingSummary = {
@@ -31,11 +32,27 @@ export type BillingSummary = {
   dayBills: number;
 };
 
+/** One bill of the day, as the till lists it. */
+export type BillSummary = {
+  invoiceId: string;
+  number: string;
+  amount: number;
+  /** `unpaid`, `paid` or `refunded`. */
+  status: string;
+  payMode: string | null;
+  paidAt: string | null;
+  createdAt: string | null;
+  description: string;
+  patient: { id: string; name: string; age: number; sex: string; phone: string };
+};
+
 export type TillPayload = {
   day: string;
   dayLabel: string;
   summary: BillingSummary;
   byMode: PayMode[];
+  /** Every bill of the day, so the tabs can filter them. */
+  bills: BillSummary[];
   pending: PendingBill[];
   bill: BillingBill | null;
   clinic: { name: string; address: string; phone: string; gstin: string; registration: string; hfr: string };

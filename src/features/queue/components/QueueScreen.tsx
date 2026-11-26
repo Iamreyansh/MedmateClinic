@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
@@ -9,13 +9,16 @@ import { Icon } from "@/components/ui/Icon";
 import { loadQueue, loadDoctors, checkIn } from "@/features/queue/state/queueSlice";
 import { CheckInPatientDialog } from "@/components/ui/CheckInPatientDialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { clinicDate } from "@/lib/format";
 
+/** The tabs the console has. */
 const FILTERS = [
-  { label: "Waiting for you" },
-  { label: "In-clinic" },
-  { label: "Online" },
-  { label: "Finished" },
-  { label: "No-shows" },
+  { value: "mine", label: "My patients" },
+  { value: "all", label: "All doctors" },
+  { value: "unassigned", label: "Unassigned" },
+  { value: "seen", label: "Seen today" },
+  { value: "waiting", label: "Waiting for you" },
+  { value: "urgent", label: "Urgent or emergency" },
 ];
 
 /**
@@ -34,9 +37,11 @@ function vitalsLine(vitals: string | { tempF?: number; spo2?: number; pulse?: nu
 }
 
 export function QueueScreen() {
+  // who is signed in — the console's own patients are theirs
+  const userId = useAppSelector((state) => state.session.session?.user.id ?? "");
   const dispatch = useAppDispatch();
   const { status, queue, doctors, lastCheckedIn, error } = useAppSelector((state) => state.queue);
-  const [filter, setFilter] = useState(FILTERS[0].label);
+  const [filter, setFilter] = useState("mine");
   const [checkingIn, setCheckingIn] = useState(false);
 
   useEffect(() => {
@@ -45,16 +50,42 @@ export function QueueScreen() {
   }, [dispatch]);
 
   const next = queue?.next ?? null;
-  const items = queue?.items ?? [];
+  const items = useMemo(() => queue?.items ?? [], [queue]);
+
+  /**
+   * The console's six tabs.
+   *
+   * A patient who is waiting for a doctor is waiting for this doctor, unless
+   * the row says otherwise; a patient nobody has claimed is unassigned.
+   */
+  const visible = useMemo(() => {
+    switch (filter) {
+      case "all":
+        return items;
+      case "unassigned":
+        return items.filter((item) => !item.doctorId);
+      case "seen":
+        return items.filter((item) => item.status && item.status !== "waiting");
+      case "waiting":
+        return items.filter((item) => !item.status || item.status === "waiting");
+      case "urgent":
+        return items.filter((item) => item.wait === "Urgent");
+      default:
+        return items.filter((item) => !item.doctorId || item.doctorId === userId);
+    }
+  }, [items, filter, userId]);
 
   return (
     <AppShell activeHref="/queue">
       <div className="nq-bar">
         <div>
           <h1 className="t-h1">
-            Your <em>queue</em>
+            Doctor <em>console</em>
           </h1>
-          <p style={{ color: "var(--muted)", marginTop: 4 }}>{queue?.meta ?? "Loading the queue…"}</p>
+          <p style={{ color: "var(--muted)", marginTop: 4 }}>
+            {queue?.meta ??
+              `${clinicDate(new Date().toISOString())} · emergencies and urgent patients first · refreshes every 10 seconds`}
+          </p>
         </div>
         <div className="nq-btns">
           <Button variant="secondary" icon="plus" onClick={() => setCheckingIn(true)}>
@@ -75,13 +106,22 @@ export function QueueScreen() {
 
       <div className="chips" style={{ marginBottom: 14 }}>
         {FILTERS.map((entry) => (
-          <Chip key={entry.label} active={filter === entry.label} onClick={() => setFilter(entry.label)}>
+          <Chip key={entry.value} active={filter === entry.value} onClick={() => setFilter(entry.value)}>
             {entry.label}
           </Chip>
         ))}
       </div>
 
       {status === "error" ? <div className="note red">{error}</div> : null}
+
+      {queue?.averageConsultMinutes !== undefined ? (
+        <div className="ap-counts" style={{ marginBottom: 12 }}>
+          <span className="here">
+            <b>{queue.averageConsultMinutes}</b> min
+          </span>
+          <span>Your average consult</span>
+        </div>
+      ) : null}
 
       <div className="rx-grid">
         <div className="nq-list">
@@ -93,7 +133,7 @@ export function QueueScreen() {
               </p>
             </div>
           ) : (
-            items.map((item) => (
+            visible.map((item) => (
               <div key={item.token} className="nq">
                 <span
                   className="tk"

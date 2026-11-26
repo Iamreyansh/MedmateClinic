@@ -23,6 +23,13 @@ function newAttemptKey(): string {
 
 export function BookScreen() {
   const [params] = useSearchParams();
+  /**
+   * The clinic's own slug, read once from the link the patient was sent.
+   *
+   * The slug always travels with the booking link, and it is never guessed:
+   * a page without one has no clinic to book with, so the screen says so
+   * instead of picking one.
+   */
   const slug = params.get("clinic") ?? "";
 
   const [page, setPage] = useState<PublicBookingPage | null>(null);
@@ -42,11 +49,13 @@ export function BookScreen() {
   const [attemptKey, setAttemptKey] = useState(() => newAttemptKey());
 
   useEffect(() => {
+    if (!slug) return;
     let alive = true;
     fetchPublicBooking(slug)
       .then((data) => {
         if (!alive) return;
         setPage(data);
+        setError(null);
         // "any available doctor" is the first choice
         setDoctorId(data.doctors[0]?.id ?? "");
       })
@@ -60,6 +69,14 @@ export function BookScreen() {
   }, [slug]);
 
   const doctor = page?.doctors.find((entry) => entry.id === doctorId) ?? null;
+
+  /**
+   * What the patient is told.
+   *
+   * A link without a clinic has no clinic to book with, and the screen says
+   * so in its own words rather than guessing a clinic.
+   */
+  const shownError = error ?? (slug ? null : "Open your clinic's own booking link to book a visit.");
 
   const submit = async () => {
     setBusy(true);
@@ -116,9 +133,9 @@ export function BookScreen() {
           gap: 14,
         }}
       >
-        {error ? (
+        {shownError ? (
           <p className="err" role="alert">
-            {error}
+            {shownError}
           </p>
         ) : null}
 

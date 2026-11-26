@@ -37,6 +37,11 @@ export type QueueItem = {
    * read and neither is printed raw.
    */
   vitals?: string | { tempF?: number; spo2?: number; pulse?: number };
+  /** The doctor the patient is waiting for, when one is named. */
+  doctorId?: string | null;
+  doctorName?: string | null;
+  /** `waiting` or `seen`. */
+  status?: string;
   booked?: string;
 };
 
@@ -45,6 +50,8 @@ export type Queue = {
   next: QueueItem | null;
   room: string;
   meta: string;
+  /** How long a consult takes, on average. */
+  averageConsultMinutes?: number;
 };
 
 /** The icon the queue card draws, by token. */

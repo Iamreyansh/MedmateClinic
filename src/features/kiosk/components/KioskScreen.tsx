@@ -25,6 +25,8 @@ export function KioskScreen() {
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** The staff's PIN — the kiosk is opened with it, and closed with it. */
+  const [pin, setPin] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -45,7 +47,7 @@ export function KioskScreen() {
     setBusy(true);
     setError(null);
     try {
-      setSession(await openKiosk());
+      setSession(await openKiosk(pin));
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Could not open the kiosk");
     } finally {
@@ -90,11 +92,26 @@ export function KioskScreen() {
           </div>
         ) : null}
 
+        {/* the staff's PIN — the kiosk is opened with it, and closed with it */}
+        <div className="field" style={{ marginTop: 14, maxWidth: 220 }}>
+          <label htmlFor="kiosk-pin">Your 4-digit PIN</label>
+          <input
+            id="kiosk-pin"
+            className="input"
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="••••"
+            value={pin}
+            onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 4))}
+          />
+        </div>
+
         <Button
           className="block"
           style={{ marginTop: 14 }}
           icon="kiosk"
-          disabled={busy}
+          disabled={busy || pin.length !== 4}
           onClick={() => void open()}
         >
           {busy ? "Opening…" : "Open kiosk on this device"}

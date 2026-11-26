@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { SearchInput } from "@/components/ui/Input";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/ScreenStates";
 import { fetchDoctors, type ClinicDoctor } from "@/features/doctors/api/doctors";
+import { money } from "@/lib/format";
 
 /**
  * The clinic's doctors.
@@ -120,16 +121,49 @@ export function DoctorsScreen() {
               </div>
             </div>
 
+            {/* the day's numbers, as the reference's card has them */}
+            <div className="plan-meta" style={{ marginTop: 12 }}>
+              <div>
+                <b>Today</b>
+                {Array.isArray(doctor.hours) ? doctor.hours.join(" · ") : (doctor.hours ?? "—")}
+              </div>
+              <div>
+                <b>Seen</b>
+                {doctor.bookedToday ?? 0}
+              </div>
+              <div>
+                <b>Waiting</b>
+                {doctor.waiting ?? 0}
+              </div>
+              <div>
+                <b>Free</b>
+                {doctor.freeToday ?? 0}
+              </div>
+            </div>
+
             <div className="plan-meta" style={{ marginTop: 12 }}>
               <div>
                 <b>Works at</b>
                 {doctor.room ?? "—"}
               </div>
               <div>
+                <b>Fees</b>
+                {doctor.fee !== undefined ? `${money(doctor.fee)} clinic · ${money(doctor.videoFee ?? 0)} online` : "—"}
+              </div>
+              <div>
                 <b>Registration</b>
                 {doctor.registration ?? "—"}
               </div>
             </div>
+
+            {doctor.nextFree ? (
+              <div className="live-row" style={{ marginTop: 14 }}>
+                <span>Next free: {doctor.nextFree}</span>
+                <Button size="sm" variant="secondary" icon="cal">
+                  Book
+                </Button>
+              </div>
+            ) : null}
 
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <Button variant="secondary" icon="pen">

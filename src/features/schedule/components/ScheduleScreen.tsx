@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { fetchAppointments } from "@/features/schedule/api/schedule";
+import {
+  fetchAppointments,
+  fetchAppointmentSummary,
+  fetchBookingLink,
+  type DaySummary,
+} from "@/features/schedule/api/schedule";
 import { DayList, WeekGrid } from "@/features/schedule/components/ScheduleViews";
 import { BookVisitDialog } from "@/features/schedule/components/BookVisitDialog";
 import { bookAppointment } from "@/features/schedule/api/schedule";
@@ -12,6 +17,16 @@ function iso(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/** A day, the way the strip shows it: the weekday and the date. */
+function dayLabel(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function shiftDays(date: Date, by: number) {
@@ -34,6 +49,8 @@ export function ScheduleScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   // the booking being made
   const [booking, setBooking] = useState(false);
+  /** The days ahead, and how free each doctor is. */
+  const [strip, setStrip] = useState<DaySummary[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -50,9 +67,52 @@ export function ScheduleScreen() {
     };
   }, [view, date]);
 
+  // the strip of days: today and the fortnight after it
+  useEffect(() => {
+    let alive = true;
+    const from = iso(new Date());
+    const to = iso(shiftDays(new Date(), 13));
+    fetchAppointmentSummary(from, to)
+      .then((data) => {
+        if (alive) setStrip(data.days);
+      })
+      .catch(() => {
+        // the strip is a convenience — the book itself still works
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const summary = payload?.summary;
-  const appointments = payload?.appointments ?? [];
+  const appointments = useMemo(() => payload?.appointments ?? [], [payload]);
   const days = payload?.days ?? [];
+
+  /** The first slot of the day that nobody has taken. */
+  const firstFree = useMemo(() => {
+    const slots = payload?.slots ?? [];
+    if (slots.length === 0) return null;
+    const taken = new Set(appointments.map((entry) => entry.time));
+    const free = slots.find((slot) => !taken.has(slot.time));
+    return free ? free.label : null;
+  }, [payload, appointments]);
+
+  /** The clinic's own booking link. */
+  const [bookingLink, setBookingLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetchBookingLink()
+      .then((entry) => {
+        if (alive) setBookingLink(entry.link);
+      })
+      .catch(() => {
+        // the link is a convenience; the desk knows it too
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const move = (by: number) => {
     setDate(iso(shiftDays(new Date(date), by)));
@@ -64,7 +124,9 @@ export function ScheduleScreen() {
         <div>
           <h1 className="t-h1">Appointments</h1>
           <p style={{ color: "var(--muted)", marginTop: 4 }}>
-            {payload?.dateLabel ?? "The day's bookings, the working hours and the follow-ups."}
+            {payload?.dateLabel
+              ? `Appointments — ${payload.dateLabel}`
+              : "The day's bookings, the working hours and the follow-ups."}
           </p>
         </div>
         <div className="nq-btns">
@@ -76,6 +138,53 @@ export function ScheduleScreen() {
       </div>
 
       {error ? <div className="note red">{error}</div> : null}
+
+      {/* the days ahead, with what is still free in each doctor's diary */}
+      {strip.length > 0 ? (
+        <div className="bl-days" role="tablist" aria-label="The days ahead">
+          {strip.map((day) => {
+            const free = day.freeByDoctor.reduce((sum, entry) => sum + entry.free, 0);
+            const on = day.date === date;
+            return (
+              <button
+                key={day.date}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                className={cn("bl-day", on && "on")}
+                onClick={() => {
+                  setDate(day.date);
+                  setView("day");
+                }}
+              >
+                <b>{dayLabel(day.date)}</b>
+                <span>{free} free</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {/* the booking page, the first free slot, and the way to take it */}
+      <section className="card bl-book" style={{ padding: 16, marginBottom: 14 }}>
+        <div className="bl-book-row">
+          <div>
+            <span className="t-eyebrow">Online booking page</span>
+            <p className="t-cap" style={{ marginTop: 2 }}>
+              {bookingLink ? bookingLink : "The clinic's own booking link — ask the front desk."}
+            </p>
+          </div>
+          <div>
+            <span className="t-eyebrow">First available</span>
+            <p className="t-cap" style={{ marginTop: 2 }}>
+              {firstFree ?? "Nothing free on this day"}
+            </p>
+          </div>
+          <Button icon="plus" onClick={() => setBooking(true)}>
+            Book
+          </Button>
+        </div>
+      </section>
 
       <div className="bl-bar">
         <div className="bl-day">
