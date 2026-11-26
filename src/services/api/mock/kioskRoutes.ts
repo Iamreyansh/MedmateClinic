@@ -11,6 +11,7 @@
  */
 
 import { mock } from "@/services/api/mock/router";
+import { restorableObject } from "@/services/api/mock/reset";
 import { auth } from "@/services/api/client";
 import { doctors, patients, visits } from "@/services/api/mock/state";
 
@@ -68,7 +69,7 @@ type KioskState = {
   paid: boolean;
 };
 
-const state: KioskState = {
+const state: KioskState = restorableObject({
   // a device at the front desk is in kiosk mode
   open: true,
   step: "mobile",
@@ -80,7 +81,7 @@ const state: KioskState = {
   bookingId: null,
   token: null,
   paid: false,
-};
+});
 
 /** The doctors the patient can choose from, with their fee and their queue. */
 function kioskDoctors(): KioskDoctor[] {

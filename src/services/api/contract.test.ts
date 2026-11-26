@@ -11,7 +11,7 @@
  * The mock's own behaviour is pinned in `mock/contract.test.ts`. This file
  * is the service's side of the same contract.
  */
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -123,7 +123,24 @@ describe("the paths the service declares", () => {
   });
 });
 
+/**
+ * Sign in, so the endpoints behind the session answer.
+ *
+ * The mock refuses a call without a session — the same way the service
+ * does — so the envelope is read as a signed-in person would read it.
+ */
+async function signIn() {
+  const otp = (await mock.handle("POST", "/auth/otp", { phone: "9845012345" })) as {
+    code: string;
+  };
+  await mock.handle("POST", "/auth/verify", { phone: "9845012345", code: otp.code });
+}
+
 describe("the envelope the service uses", () => {
+  beforeEach(async () => {
+    await signIn();
+  });
+
   it("answers the three bare arrays bare, and nothing else", async () => {
     for (const path of BARE_ARRAYS) {
       const answer = await mock.handle("GET", path, undefined);
@@ -135,8 +152,11 @@ describe("the envelope the service uses", () => {
     // A write that answers with a list is a list the screen can read the
     // same way — and the count under it is the count of the whole list, not
     // of the row that was written.
+    // The body is the service's own: the current PIN and the new one, twice.
     const answer = (await mock.handle("PUT", "/clinic/admin/settings/pin", {
-      pin: "4821",
+      currentPin: "1234",
+      newPin: "4821",
+      newPinAgain: "4821",
     })) as { items: unknown[]; meta: { total: number } };
     expect(Array.isArray(answer.items)).toBe(true);
     expect(answer.meta.total).toBe(answer.items.length);

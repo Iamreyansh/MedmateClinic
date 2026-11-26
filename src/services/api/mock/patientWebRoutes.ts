@@ -23,6 +23,7 @@
 
 import { ApiError } from "@/services/api/client";
 import { mock } from "@/services/api/mock/router";
+import { registerMockReset } from "@/services/api/mock/reset";
 import { clinicInstant, clinicLocal } from "@/services/api/mock/clinicClock";
 import {
   appointments,
@@ -83,6 +84,21 @@ type RebookAnswer = {
   doctor: string;
   clinic: string;
 };
+
+/**
+ * The patient's session goes with the rest of the state.
+ *
+ * The session is kept in the browser's storage, so a test that books a visit
+ * leaves the booking in the storage for the test after it. Clearing it here
+ * puts it back the way it was.
+ */
+registerMockReset(() => {
+  try {
+    window.sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // The browser will not let us — the patient can still book.
+  }
+});
 
 /** The session, as it was left. */
 function readSession(): PatientSession {
@@ -515,7 +531,9 @@ export function registerPatientWebRoutes() {
 
     const answer: RebookAnswer = {
       cancelled: true,
-      token: linkKey,
+      // The slip, not the key: the key is the patient's credential, it does
+      // not change when the booking moves, and it must not be drawn.
+      token: visit.token,
       queueToken: visit.token,
       startsAt,
       doctor: doctor.name,

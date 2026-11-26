@@ -12,6 +12,7 @@
 
 import type { IconName } from "@/components/ui/Icon";
 import type { IconTone } from "@/lib/design/tokens";
+import { restorableArray, restorableObject } from "@/services/api/mock/reset";
 
 // ------------------------------------------------------------------ the clinic
 
@@ -41,13 +42,13 @@ export const clinic: MockClinic = {
 
 export const location = "Indiranagar";
 
-export const signedInUser: MockUser = {
+export const signedInUser: MockUser = restorableObject({
   id: "dr_ananya",
   name: "Dr. Ananya Rao",
   initials: "AR",
   detail: "Owner · General Medicine",
   tone: "doctor",
-};
+});
 
 /** What the signed-in person may open, and how far. */
 export const capabilities: Record<string, "view" | "use"> = {
@@ -141,7 +142,7 @@ export type MockPatient = {
   since: string;
 };
 
-export const patients: MockPatient[] = [
+export const patients: MockPatient[] = restorableArray([
   {
     id: "pt_kavya",
     name: "Kavya Nair",
@@ -220,7 +221,7 @@ export const patients: MockPatient[] = [
     visits: 1,
     since: "2026",
   },
-];
+]);
 
 export const patient = (id: string): MockPatient =>
   patients.find((item) => item.id === id) ?? patients[0];
@@ -243,7 +244,7 @@ export type MockVisit = {
   createdAt: string;
 };
 
-export const visits: MockVisit[] = [
+export const visits: MockVisit[] = restorableArray([
   {
     id: "vs_fathima",
     token: "A-014",
@@ -364,7 +365,7 @@ export const visits: MockVisit[] = [
     consultMinutes: 11,
     createdAt: "2026-11-25T09:32:00Z",
   },
-];
+]);
 
 export const visit = (id: string): MockVisit | undefined =>
   visits.find((item) => item.id === id || item.token === id);
@@ -393,7 +394,26 @@ export type MockVitals = {
   recordedBy: string | null;
 };
 
-export const vitals: MockVitals[] = [
+export const vitals: MockVitals[] = restorableArray([
+  {
+    // The patient in consult had her readings taken before she was called
+    // in: the doctor reads them beside her name on the console.
+    id: "vt_fathima",
+    visitId: "vs_fathima",
+    recordedAt: "2026-11-25T09:40:00Z",
+    tempF: 98.4,
+    bp: "128/84",
+    pulse: 92,
+    spo2: 99,
+    weightKg: 62,
+    sugarMg: 104,
+    note: "Antenatal check · BP 128/84",
+    priority: null,
+    breathRate: 18,
+    heightCm: 154,
+    sentTo: "dr_ananya",
+    recordedBy: "Mary Joseph",
+  },
   {
     id: "vt_kavya",
     visitId: "vs_kavya",
@@ -428,7 +448,7 @@ export const vitals: MockVitals[] = [
     sentTo: "dr_vikram",
     recordedBy: "Mary Joseph",
   },
-];
+]);
 
 export const vitalsFor = (visitId: string): MockVitals | undefined =>
   vitals.find((item) => item.visitId === visitId);
@@ -524,7 +544,7 @@ export type MockConsultation = {
   status: string;
 };
 
-export const consultations: MockConsultation[] = [];
+export const consultations: MockConsultation[] = restorableArray([]);
 
 export type MockPrescription = {
   id: string;
@@ -553,7 +573,7 @@ export type MockPrescription = {
   tests: Array<{ name: string }>;
 };
 
-export const prescriptions: MockPrescription[] = [];
+export const prescriptions: MockPrescription[] = restorableArray([]);
 
 export type MockInvoice = {
   id: string;
@@ -571,7 +591,7 @@ export type MockInvoice = {
   discount?: number;
 };
 
-export const invoices: MockInvoice[] = [
+export const invoices: MockInvoice[] = restorableArray([
   {
     id: "inv_0148",
     visitId: "vs_kavya",
@@ -638,7 +658,7 @@ export const invoices: MockInvoice[] = [
     payMode: "card",
     paidAt: "2026-11-25T10:02:00Z",
   },
-];
+]);
 
 export type MockLabOrder = {
   id: string;
@@ -669,7 +689,7 @@ export type MockLabOrder = {
   note: string | null;
 };
 
-export const labOrders: MockLabOrder[] = [
+export const labOrders: MockLabOrder[] = restorableArray([
   {
     // Written by the doctor and not collected yet. The service counts it as
     // open work, so the bench here carries one too: a bench that hid the
@@ -781,7 +801,7 @@ export const labOrders: MockLabOrder[] = [
     critical: true,
     note: "Haemoglobin is critically low. Please call the patient.",
   },
-];
+]);
 
 export type MockAppointment = {
   id: string;
@@ -794,7 +814,7 @@ export type MockAppointment = {
   source: string;
 };
 
-export const appointments: MockAppointment[] = [
+export const appointments: MockAppointment[] = restorableArray([
   {
     id: "ap_1",
     visitId: "vs_kavya",
@@ -885,7 +905,20 @@ export const appointments: MockAppointment[] = [
     status: "no_show",
     source: "booking",
   },
-];
+  {
+    // Ten o'clock on the booking day is already held for Dr. Ananya: the
+    // clinic's book is full at that hour, and the patient is offered the
+    // times that are left.
+    id: "ap_10",
+    visitId: null,
+    patientId: "pt_fathima",
+    doctorId: "dr_ananya",
+    startsAt: "2026-11-26T04:30:00.000Z",
+    mode: "in_clinic",
+    status: "booked",
+    source: "booking",
+  },
+]);
 
 // ------------------------------------------------------------------- billing
 

@@ -32,8 +32,13 @@ function two(value: number): string {
  */
 export function clinicInstant(day: string, time: string): string {
   const [hour, minute] = time.split(":").map(Number);
-  const date = new Date(`${day}T00:00:00+05:30`);
-  date.setUTCHours(hour - 5, minute - 30, 0, 0);
+  // The wall time is read on the clinic's own day, and the offset is then
+  // taken off it. Starting the day at midnight in the clinic's own offset
+  // would land on the day before: the clinic's midnight is the evening
+  // before in UTC, and the instant that comes back is a day early.
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCHours(hour, minute, 0, 0);
+  date.setUTCMinutes(date.getUTCMinutes() - OFFSET_MINUTES);
   return date.toISOString();
 }
 

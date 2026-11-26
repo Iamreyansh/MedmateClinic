@@ -78,6 +78,22 @@ fixture data and a sign-in that accepts any code, so it must never ship:
 `/fidelity` is the style guide: every component in the kit, rendered as the product
 renders it. It is also the fixture the fidelity harness measures.
 
+## The demo clinic
+
+With `DEMO_ENABLED=true` and `DEMO_CLINIC_ID=11111111-1111-4111-8111-111111111111`
+the service seeds a clinic with people, patients, a day of appointments and a
+bench of lab work, so the screens have something real to show.
+
+| | |
+|---|---|
+| The owner's mobile | `9876543210` |
+| The owner's PIN | `1234` |
+| The booking slug | `medmate-clinic` |
+
+The one-time code comes back in the answer while `AUTH_EXPOSE_CODE=true`, which
+is how a developer signs in without a phone. The PIN is the front desk's: it is
+what unlocks a locked device and what closes the kiosk.
+
 ## The environment variables
 
 ### The app (Vite)

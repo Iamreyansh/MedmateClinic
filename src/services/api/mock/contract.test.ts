@@ -23,6 +23,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mock } from "@/services/api/mock/router";
+import { resetMockState } from "@/services/api/mock/reset";
 import { auth } from "@/services/api/client";
 import "@/services/api/mock/routes";
 
@@ -108,7 +109,6 @@ const APP_CALLS: Array<{ method: string; path: string }> = [
   { method: "GET", path: "/clinic/admin/screens" },
   { method: "GET", path: "/clinic/admin/settings" },
   { method: "GET", path: "/clinic/admin/settings/device" },
-  { method: "GET", path: "/clinic/admin/settings/pin" },
   { method: "GET", path: "/clinic/admin/settings/agreements" },
   { method: "GET", path: "/clinic/admin/settings/readiness" },
   { method: "GET", path: "/clinic/admin/account" },
@@ -477,6 +477,8 @@ const FIELDS: Array<{
   path: string;
   keys: string[];
   note?: string;
+  /** The query the endpoint needs, when it needs one to answer at all. */
+  query?: string;
 }> = [
   {
     method: "GET",
@@ -506,9 +508,17 @@ const FIELDS: Array<{
   { method: "GET", path: "/clinic/admin/profiles", keys: ["items", "meta"] },
   { method: "GET", path: "/clinic/admin/locations", keys: ["items", "meta"] },
   { method: "GET", path: "/clinic/admin/pharmacies", keys: ["items", "meta"] },
-  { method: "GET", path: "/clinic/admin/roles", keys: ["roles"], note: "the roles and the capabilities each one carries" },
-  { method: "GET", path: "/clinic/admin/account", keys: ["account"] },
-  { method: "GET", path: "/public/doctors", keys: ["clinic", "doctors", "slots", "day", "nextFree"], note: "the clinic carries its own timezone" },
+  { method: "GET", path: "/clinic/admin/roles", keys: ["items", "meta"], note: "the roles under `items`, each one carrying its capabilities" },
+  { method: "GET", path: "/clinic/admin/account", keys: ["items", "meta"], note: "the one account, under `items`, with the count of it" },
+  {
+    method: "GET",
+    path: "/public/doctors",
+    keys: ["clinic", "doctors", "slots", "day", "nextFree"],
+    // The service needs the clinic's slug: the page is reached through the
+    // clinic's own booking link, and the link carries the slug.
+    query: "?clinic=medmate-clinic",
+    note: "the clinic carries its own timezone",
+  },
   { method: "GET", path: "/clinic/lab", keys: ["counts"], note: "toCollect, inLab, sentOut, reportedToday, abnormalToday" },
 ];
 
@@ -521,7 +531,11 @@ async function signIn() {
 }
 
 beforeEach(() => {
-  // each test starts with no session, so the guard is really tested
+  // Each test starts with no session, so the guard is really tested, and
+  // with the clinic the fixtures describe: a booking made by the test
+  // before it is put back, so a test says what it means rather than being
+  // arranged around the order the tests happen to run in.
+  resetMockState();
   auth.set(null);
 });
 
@@ -691,8 +705,11 @@ describe("the fields in the payload", () => {
     await signIn();
   });
 
-  it.each(FIELDS)("$method $path carries its fields", async ({ method, path, keys }) => {
-    const answer = (await mock.handle(method, path, undefined)) as Record<string, unknown>;
+  it.each(FIELDS)("$method $path carries its fields", async ({ method, path, keys, query }) => {
+    const answer = (await mock.handle(method, `${path}${query ?? ""}`, undefined)) as Record<
+      string,
+      unknown
+    >;
     for (const key of keys) {
       expect(answer, `${method} ${path} is missing "${key}"`).toHaveProperty(key);
     }
@@ -1306,7 +1323,9 @@ describe("the patient-facing web", () => {
       {
         clinic: "medmate-clinic",
         doctorId: "dr_ananya",
-        startsAt: "2026-11-26T09:00:00Z",
+        // The clinic's nine o'clock, as a true instant: 09:00 at the clinic
+        // is 03:30Z, and it is the first time the booking page offers.
+        startsAt: "2026-11-26T03:30:00.000Z",
         name: "Naveen Iyer",
         phone: "9845012345",
         age: "30",
@@ -1323,10 +1342,25 @@ describe("the patient-facing web", () => {
   });
 
   it("a booking without a key for a slot that is taken is refused", async () => {
-    // The slot the booking above took is not free any more. The service
-    // checks the slot before it books, so the second booking for the same
-    // time is a 409 with the service's own title and detail — not a second
-    // visit at the same hour.
+    // The slot is taken here, by this test: the clinic's nine o'clock on the
+    // booking day is booked, and the patient books it again without an
+    // idempotency key.
+    await mock.handle(
+      "POST",
+      "/public/booking",
+      {
+        clinic: "medmate-clinic",
+        doctorId: "dr_ananya",
+        startsAt: "2026-11-26T03:30:00.000Z",
+        name: "Naveen Iyer",
+        phone: "9845012345",
+      },
+      { headers: { "idempotency-key": "key-naveen" } },
+    );
+
+    // The service checks the slot before it books, so the second booking for
+    // the same time is a 409 with the service's own title and detail — not a
+    // second visit at the same hour.
     await expect(
       mock.handle("POST", "/public/booking", {
         clinic: "medmate-clinic",
@@ -1405,13 +1439,35 @@ describe("the clinic's admin endpoints", () => {
   });
 
   it("refuses to remove the clinic's main branch", async () => {
-    // The refusal is the service's envelope: a title a person reads and a
-    // detail that says what to do instead.
+    // The branch is the one the clinic itself calls its main, and the list
+    // says which it is: the test never names an id the fixture owns.
+    const branches = (await mock.handle("GET", "/clinic/admin/locations", undefined)) as {
+      items: Array<{ id: string; primary: boolean }>;
+    };
+    const main = branches.items.find((branch) => branch.primary);
+    if (!main) throw new Error("the clinic has no main branch");
+
+    // The refusal is the service's envelope: a title a person reads, a
+    // detail that says what to do instead, and the status that says it.
     await expect(
-      mock.handle("DELETE", "/clinic/admin/locations/br_main", undefined),
+      mock.handle("DELETE", `/clinic/admin/locations/${main.id}`, undefined),
     ).rejects.toMatchObject({
+      status: 409,
       title: "Not allowed",
       message: "This is the clinic's main branch. Make another branch the main one first.",
+    });
+  });
+
+  it("refuses to remove a branch that is not in this clinic", async () => {
+    // A different rule from the one above, and it is pinned here so that
+    // neither of them is thinner than it looks: an id the clinic does not
+    // hold is not found, and the service answers the same way.
+    await expect(
+      mock.handle("DELETE", "/clinic/admin/locations/br_not_in_this_clinic", undefined),
+    ).rejects.toMatchObject({
+      status: 404,
+      title: "Not found",
+      message: "That branch is not in this clinic.",
     });
   });
 

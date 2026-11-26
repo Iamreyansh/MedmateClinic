@@ -15,13 +15,18 @@ set phone = '080 4123 4567',
     locations = 2
 where clinic_id = '${clinic_id}';
 
+-- The owner's PIN is 1234. The hash is the older SHA-256 form the service
+-- still verifies, and the service rewrites it in the current form the next
+-- time the PIN is used. It has to be a PIN that matches: a hash that no PIN
+-- produces would leave the front desk unable to close the kiosk, because
+-- closing it is what the PIN is for.
 insert into staff (id, clinic_id, role_id, full_name, mobile, email, registration, hpr_id,
                     speciality, pin_hash, active)
 select '22222222-2222-4222-8222-222222222222', '${clinic_id}',
        (select id from roles where clinic_id = '${clinic_id}' and name = 'owner'),
        'Dr. Ananya Rao', '9876543210', 'ananya.rao@example.in', 'KMC 84213',
        '71-4421-8890-3326', 'General Medicine',
-       'c9a2e2f47c3d9a1f5b1e8c4d2a7f6e9b0d3c5a81e2f47c9d3a1f5b1e8c4d2a7f6e9b0', true
+       '9a296e28ba1462d0a94b8aa11ab48917a680d98524f24b3de6736e48daa40d3b', true
 where '${clinic_id}' = '11111111-1111-4111-8111-111111111111';
 
 insert into staff (id, clinic_id, role_id, full_name, mobile, email, registration, hpr_id,

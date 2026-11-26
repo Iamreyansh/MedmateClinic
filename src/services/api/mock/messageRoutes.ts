@@ -10,6 +10,7 @@
  */
 
 import { mock } from "@/services/api/mock/router";
+import { restorableArray } from "@/services/api/mock/reset";
 import { requireSession } from "@/services/api/mock/guard";
 import { patients } from "@/services/api/mock/state";
 
@@ -28,7 +29,7 @@ export type MockMessage = {
 };
 
 /** The log the clinic keeps. */
-const MESSAGES: MockMessage[] = [
+const MESSAGES: MockMessage[] = restorableArray([
   {
     id: "msg_0001",
     kind: "token",
@@ -79,7 +80,7 @@ const MESSAGES: MockMessage[] = [
     sentAt: "2026-11-25T11:30:00Z",
     patientId: "pt_diya",
   },
-];
+]);
 
 /** The card, as the log shows it. */
 function card(message: MockMessage) {

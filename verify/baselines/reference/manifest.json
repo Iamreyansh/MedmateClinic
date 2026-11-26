@@ -9,136 +9,170 @@
   "fullPage": true,
   "mode": "deployed-mvp",
   "apiMode": "the deployed MVP's own API — not the local mock",
-  "signedIn": false,
+  "signedIn": true,
   "note": "The deployed MVP is the shipped design. A route listed as `missing` is one the deployed app does not have; no image was fabricated for it.",
   "routes": {
     "dashboard": {
       "status": "captured",
       "file": "reference/dashboard.png",
       "url": "https://medmate-doctor-clinic.netlify.app/dashboard",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/dashboard",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Dashboard (owner)"
     },
     "patients": {
       "status": "captured",
       "file": "reference/patients.png",
       "url": "https://medmate-doctor-clinic.netlify.app/patients",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/patients",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Patient record"
     },
     "desk": {
       "status": "captured",
       "file": "reference/desk.png",
       "url": "https://medmate-doctor-clinic.netlify.app/desk",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/desk",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Reception desk"
     },
     "billing": {
       "status": "captured",
       "file": "reference/billing.png",
       "url": "https://medmate-doctor-clinic.netlify.app/billing",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/billing",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Billing & POS"
     },
     "schedule": {
       "status": "captured",
       "file": "reference/schedule.png",
       "url": "https://medmate-doctor-clinic.netlify.app/schedule",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/schedule",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Appointments — day view"
     },
     "nurse": {
       "status": "captured",
       "file": "reference/nurse.png",
       "url": "https://medmate-doctor-clinic.netlify.app/nurse",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/nurse",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Nurse station"
     },
     "lab": {
       "status": "captured",
       "file": "reference/lab.png",
       "url": "https://medmate-doctor-clinic.netlify.app/lab",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/lab",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Lab & diagnostics"
     },
     "kiosk": {
       "status": "captured",
       "file": "reference/kiosk.png",
       "url": "https://medmate-doctor-clinic.netlify.app/kiosk",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/kiosk",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Patient kiosk — check-in"
     },
     "subscription": {
       "status": "captured",
       "file": "reference/subscription.png",
       "url": "https://medmate-doctor-clinic.netlify.app/subscription",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/subscription",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Subscription (owner)"
     },
     "inbox": {
       "status": "captured",
       "file": "reference/inbox.png",
       "url": "https://medmate-doctor-clinic.netlify.app/inbox",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/inbox",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Inbox (doctor)"
     },
     "teleconsult": {
       "status": "captured",
       "file": "reference/teleconsult.png",
       "url": "https://medmate-doctor-clinic.netlify.app/teleconsult",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/teleconsult",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Teleconsult (doctor)"
     },
     "templates": {
       "status": "captured",
       "file": "reference/templates.png",
       "url": "https://medmate-doctor-clinic.netlify.app/templates",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/templates",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "My templates (doctor)"
     },
     "queue": {
       "status": "captured",
       "file": "reference/queue.png",
       "url": "https://medmate-doctor-clinic.netlify.app/queue",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/queue",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Doctor console — queue"
     },
     "settings": {
       "status": "captured",
       "file": "reference/settings.png",
       "url": "https://medmate-doctor-clinic.netlify.app/settings",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/settings",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Settings — clinic & letterhead"
     },
     "reports": {
       "status": "captured",
       "file": "reference/reports.png",
       "url": "https://medmate-doctor-clinic.netlify.app/reports",
+      "finalUrl": "https://medmate-doctor-clinic.netlify.app/reports",
       "httpStatus": 200,
+      "signedIn": true,
       "title": "Reports — summary"
     },
     "certificate": {
       "status": "missing",
       "url": "https://medmate-doctor-clinic.netlify.app/certificate",
       "title": "Medical certificate",
+      "signedIn": true,
       "note": "the deployed app answered HTTP 404"
     },
     "visit": {
       "status": "missing",
       "url": "https://medmate-doctor-clinic.netlify.app/visit/vs_kavya",
       "title": "Doctor console — consult & prescription",
+      "signedIn": true,
       "note": "the deployed app drew its not-found screen"
     },
     "rx": {
       "status": "missing",
       "url": "https://medmate-doctor-clinic.netlify.app/rx/vs_kavya",
       "title": "Prescription (A4)",
+      "signedIn": true,
       "note": "the deployed app drew its not-found screen"
     },
     "receipt": {
       "status": "missing",
       "url": "https://medmate-doctor-clinic.netlify.app/billing/receipt/in_0001",
       "title": "Receipt",
+      "signedIn": true,
       "note": "the deployed app answered HTTP 404"
     },
     "login": {
@@ -172,6 +206,7 @@
       "status": "missing",
       "url": "https://medmate-doctor-clinic.netlify.app/lock",
       "title": "Lock screen (PIN)",
+      "signedIn": true,
       "note": "the deployed app answered HTTP 404"
     },
     "book": {
@@ -208,7 +243,5 @@
       "signedIn": false,
       "note": "the deployed app drew its not-found screen"
     }
-  },
-  "storedScale": 0.5,
-  "storedNote": "The committed PNGs are stored at 50% of the capture size. The harness captures the app at the recorded viewport and shrinks it by the same factor before comparing."
+  }
 }

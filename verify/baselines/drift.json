@@ -1,0 +1,327 @@
+{
+  "generatedAt": "2026-11-26T16:34:43.860086Z",
+  "app": "http://127.0.0.1:3100",
+  "viewport": {
+    "history": {
+      "width": 1440,
+      "height": 900
+    },
+    "reference": {
+      "width": 1280,
+      "height": 720
+    },
+    "service": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  "note": "The drift each route shows, and the baseline it was measured against. The harness prints the source per route and writes this file with --json.",
+  "sources": {
+    "history": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)",
+    "reference": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720",
+    "service": "the app against the REAL service with the demo clinic seeded \u2014 the baseline re-measured on 2026-11-26, 1440x900",
+    "figma": "the Figma export \u2014 the design itself; none has been exported yet"
+  },
+  "routes": {
+    "billing": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 8.632,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 9.424,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": {
+          "set": "service",
+          "percent": 0,
+          "declared": null,
+          "source": "the app against the REAL service with the demo clinic seeded \u2014 the baseline re-measured on 2026-11-26, 1440x900"
+        }
+      }
+    },
+    "dashboard": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 10.754,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 11.819,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": {
+          "set": "service",
+          "percent": 0,
+          "declared": null,
+          "source": "the app against the REAL service with the demo clinic seeded \u2014 the baseline re-measured on 2026-11-26, 1440x900"
+        }
+      }
+    },
+    "desk": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 9.771,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 11.929,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "kiosk": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 1.68,
+          "declared": {
+            "percent": 1.7,
+            "tolerance": 2,
+            "reason": "the kiosk's entry prompt is the shipped MVP's own \u2014 the kiosk's screen is behind the staff PIN in both, so only the Figma baseline can measure it"
+          },
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 5.043,
+          "declared": {
+            "percent": 5,
+            "tolerance": 1,
+            "reason": "the deployed MVP answers today's kiosk with the same staff card the app draws, so the two are close; the kiosk's own patient flow is a different surface, and the Figma baseline is the arbiter"
+          },
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "lab": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 7.999,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 10.802,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": {
+          "set": "service",
+          "percent": 0,
+          "declared": null,
+          "source": "the app against the REAL service with the demo clinic seeded \u2014 the baseline re-measured on 2026-11-26, 1440x900"
+        }
+      }
+    },
+    "landing": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 13.647,
+          "declared": {
+            "percent": 13.6,
+            "tolerance": 4,
+            "reason": "the local landing page is a different implementation of the deployed one"
+          },
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 26.51,
+          "declared": {
+            "percent": 26.5,
+            "tolerance": 1,
+            "reason": "the local landing page is a different implementation of the deployed one"
+          },
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "nurse": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 9.972,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 12.371,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "patients": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 9.349,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 10.241,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "queue": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 16.063,
+          "declared": {
+            "percent": 14.8,
+            "tolerance": 4,
+            "reason": "deliberate difference from the deployed MVP \u2014 the app's own six tabs; the Figma baseline is the arbiter"
+          },
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 21.338,
+          "declared": {
+            "percent": 21,
+            "tolerance": 1,
+            "reason": "deliberate difference from the deployed MVP \u2014 the app's own six tabs; the Figma baseline is the arbiter"
+          },
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": {
+          "set": "service",
+          "percent": 0,
+          "declared": null,
+          "source": "the app against the REAL service with the demo clinic seeded \u2014 the baseline re-measured on 2026-11-26, 1440x900"
+        }
+      }
+    },
+    "reports": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 19.433,
+          "declared": {
+            "percent": 19.2,
+            "tolerance": 4,
+            "reason": "deliberate difference from the deployed MVP \u2014 the app's own tab sets; the Figma baseline is the arbiter"
+          },
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 21.214,
+          "declared": {
+            "percent": 21,
+            "tolerance": 1,
+            "reason": "deliberate difference from the deployed MVP \u2014 the app's own tab sets; the Figma baseline is the arbiter"
+          },
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "schedule": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 10.057,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 10.932,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": {
+          "set": "service",
+          "percent": 0,
+          "declared": null,
+          "source": "the app against the REAL service with the demo clinic seeded \u2014 the baseline re-measured on 2026-11-26, 1440x900"
+        }
+      }
+    },
+    "settings": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 5.913,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 8.185,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "subscription": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 11.531,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 12.879,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": null
+      }
+    },
+    "templates": {
+      "comparedAgainst": {
+        "design": {
+          "set": "history",
+          "percent": 9.719,
+          "declared": null,
+          "source": "the deployed MVP as it shipped \u2014 recovered from this repository's own history (git archive 647ea0e^ _research)"
+        },
+        "deployedToday": {
+          "set": "reference",
+          "percent": 11.343,
+          "declared": null,
+          "source": "the deployed MVP captured live (medmate-doctor-clinic.netlify.app), its own API, 1280x720"
+        },
+        "reMeasured": {
+          "set": "service",
+          "percent": 0,
+          "declared": null,
+          "source": "the app against the REAL service with the demo clinic seeded \u2014 the baseline re-measured on 2026-11-26, 1440x900"
+        }
+      }
+    }
+  }
+}

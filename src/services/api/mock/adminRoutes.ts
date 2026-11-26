@@ -6,8 +6,10 @@
  * service's `{title, detail}`.
  */
 
+import { ApiError } from "@/services/api/client";
 import { mock } from "@/services/api/mock/router";
 import { requireSession } from "@/services/api/mock/guard";
+import { restorableArray, restorableObject } from "@/services/api/mock/reset";
 
 /** The clinic's roles, the way the service holds them. */
 type MockRole = { id: string; name: string; label: string; owner: boolean; people: number };
@@ -112,7 +114,7 @@ type MockMember = {
   active: boolean;
 };
 
-const TEAM: MockMember[] = [
+const TEAM: MockMember[] = restorableArray([
   {
     id: "stf_mary",
     name: "Mary Joseph",
@@ -149,10 +151,10 @@ const TEAM: MockMember[] = [
     mobile: "9876543222",
     active: true,
   },
-];
+]);
 
 /** The exceptions one person has to their role. */
-const ACCESS_OVERRIDES: Record<string, Record<string, string>> = {};
+const ACCESS_OVERRIDES: Record<string, Record<string, string>> = restorableObject({});
 
 /** The branches the clinic works from. */
 type MockBranch = {
@@ -169,7 +171,7 @@ type MockBranch = {
   doctors: number;
 };
 
-const BRANCHES: MockBranch[] = [
+const BRANCHES: MockBranch[] = restorableArray([
   {
     id: "brc_indiranagar",
     name: "Indiranagar",
@@ -196,7 +198,7 @@ const BRANCHES: MockBranch[] = [
     active: true,
     doctors: 1,
   },
-];
+]);
 
 /** The pharmacies the clinic sends prescriptions to. */
 type MockPharmacy = {
@@ -212,7 +214,7 @@ type MockPharmacy = {
   prescriptions: number;
 };
 
-const PHARMACIES: MockPharmacy[] = [
+const PHARMACIES: MockPharmacy[] = restorableArray([
   {
     id: "phm_medmate",
     name: "MedMate Pharmacy, Indiranagar",
@@ -225,7 +227,7 @@ const PHARMACIES: MockPharmacy[] = [
     active: true,
     prescriptions: 0,
   },
-];
+]);
 
 /** The profiles the clinic adds people from. */
 type MockProfile = {
@@ -242,7 +244,7 @@ type MockProfile = {
   sessionEnd: string;
 };
 
-const PROFILES: MockProfile[] = [
+const PROFILES: MockProfile[] = restorableArray([
   {
     id: "prf_consultant",
     name: "Consultant",
@@ -256,7 +258,7 @@ const PROFILES: MockProfile[] = [
     sessionStart: "10:00",
     sessionEnd: "13:00",
   },
-];
+]);
 
 /** The doctors the mock keeps, for the add and edit writes. */
 type MockDoctorRow = {
@@ -272,7 +274,7 @@ type MockDoctorRow = {
   videoFee: number;
 };
 
-const DOCTORS: MockDoctorRow[] = [
+const DOCTORS: MockDoctorRow[] = restorableArray([
   {
     id: "dr_ananya",
     name: "Dr. Ananya Rao",
@@ -309,22 +311,22 @@ const DOCTORS: MockDoctorRow[] = [
     consultationFee: 700,
     videoFee: 400,
   },
-];
+]);
 
 /** The hours a doctor keeps, and the days they are away. */
-const SESSIONS: Record<string, { weekday: number; start: string; end: string; slotMinutes: number }[]> = {
+const SESSIONS: Record<string, { weekday: number; start: string; end: string; slotMinutes: number }[]> = restorableObject({
   dr_ananya: [
     { weekday: 1, start: "10:00", end: "13:00", slotMinutes: 15 },
     { weekday: 1, start: "16:00", end: "19:00", slotMinutes: 15 },
     { weekday: 2, start: "10:00", end: "13:00", slotMinutes: 15 },
     { weekday: 3, start: "10:00", end: "13:00", slotMinutes: 15 },
   ],
-};
+});
 
-const LEAVE: Record<string, { from: string; to: string; reason: string }[]> = {};
+const LEAVE: Record<string, { from: string; to: string; reason: string }[]> = restorableObject({});
 
 /** The clinic's own settings. */
-const CLINIC_SETTINGS = {
+const CLINIC_SETTINGS = restorableObject({
   id: "clinic_11111111",
   name: "MedMate Clinic",
   displayName: "MedMate Clinic, Indiranagar",
@@ -343,17 +345,17 @@ const CLINIC_SETTINGS = {
   timezone: "Asia/Kolkata",
   locations: 2,
   branches: BRANCHES.length,
-};
+});
 
 /** The agreements the clinic has been asked to accept. */
-const AGREEMENTS = [
+const AGREEMENTS = restorableArray([
   { kind: "terms", title: "Terms of use", version: "2026-01", accepted: true, acceptedAt: "2026-01-04T10:12:00Z" },
   { kind: "privacy", title: "Privacy policy", version: "2026-01", accepted: true, acceptedAt: "2026-01-04T10:12:00Z" },
   { kind: "consent", title: "Patient consent to treatment and data", version: "2026-01", accepted: false, acceptedAt: "" },
-];
+]);
 
 /** The person signed in, as the account screen reads them. */
-const ACCOUNT = {
+const ACCOUNT = restorableObject({
   id: "stf_owner",
   name: "Dr. Ananya Rao",
   initials: "AR",
@@ -364,11 +366,11 @@ const ACCOUNT = {
   room: "Room 2",
   role: "Owner",
   pinSet: true,
-};
+});
 
-const DEVICES = [
+const DEVICES = restorableArray([
   { id: "dev_1", name: "This device", platform: "Chrome on macOS", lastSeenAt: "2026-01-04T10:12:00Z" },
-];
+]);
 
 /** The list envelope every list in this package answers with. */
 function list<T>(items: T[]) {
@@ -376,10 +378,31 @@ function list<T>(items: T[]) {
 }
 
 /** The failure envelope the service answers with. */
+/**
+ * The status each kind of refusal answers with.
+ *
+ * These are the service's own titles, with the statuses it answers them
+ * with: a person or a place that is not there is a 404, a change the clinic
+ * has to sort out before it can happen is a 409, and a body that does not
+ * make sense is a 400.
+ */
+const REFUSAL_STATUSES: Record<string, number> = {
+  "Not found": 404,
+  "Not allowed": 409,
+  "Check the form": 400,
+  "That did not work": 400,
+  "Please sign in": 401,
+};
+
+/**
+ * A refusal, in the service's envelope.
+ *
+ * The service answers a refusal with a title and a sentence for a person;
+ * the mock answers with the same title, the same sentence and the same
+ * status, so a screen that reads the status behaves the same either way.
+ */
 function refusal(title: string, detail: string) {
-  const error = new Error(detail) as Error & { title?: string };
-  error.title = title;
-  return error;
+  return new ApiError(REFUSAL_STATUSES[title] ?? 400, detail, undefined, "api", title);
 }
 
 function text(body: unknown, field: string): string {

@@ -228,9 +228,12 @@ mock.on("GET", "/clinic/queue", () => {
       wait: item.priority === "urgent" ? "Urgent" : "Waiting",
       waiting:
         item.status === "waiting" ? waiting.findIndex((other) => other.id === item.id) + 1 : null,
+      // The reading the nurse took. The service sends the key whether or
+      // not there is a reading, and null when there is none — a row with no
+      // reading has a blank line, not a missing field.
       vitals: vitalsFor(item.id)
         ? `Temp ${vitalsFor(item.id)?.tempF} °F · SpO₂ ${vitalsFor(item.id)?.spo2}%`
-        : undefined,
+        : null,
     };
   });
   const room = signedInUser.name.includes("Ananya") ? "Room 2" : "Room 1";
@@ -580,7 +583,7 @@ mock.on("POST", "/clinic/prescriptions/:id/sign", (body, context) => {
   // the consult is over
   const visit = findVisit(prescription.visitId);
   if (visit) {
-    visit.status = "seen";
+    visit.status = "done";
     visit.seenBy = signedInUser.id;
     visit.waitedMinutes = 24;
     visit.consultMinutes = 8;

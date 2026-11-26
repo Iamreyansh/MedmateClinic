@@ -27,7 +27,16 @@ export type ApiOptions = {
 function asApiError(reason: unknown): never {
   if (reason instanceof ApiError) throw reason;
   const message = reason instanceof Error ? reason.message : "Something went wrong. Try again.";
-  throw new ApiError(400, message);
+  // The title the mock wrote is kept: the service sends one, and a screen
+  // that reads it must read the same thing whichever backend answered.
+  const title = (reason as { title?: unknown } | null)?.title;
+  throw new ApiError(
+    400,
+    message,
+    undefined,
+    "api",
+    typeof title === "string" && title ? title : undefined,
+  );
 }
 
 export async function apiGet<T>(path: string, options: ApiOptions = {}): Promise<T> {

@@ -110,6 +110,68 @@ function payloadOf(answer) {
 
 const git = (...parts) => execFileSync("git", parts, { cwd: root, encoding: "utf8" }).trim();
 
+/* ------------------------------------------------ the credential-egress proxy */
+
+/**
+ * The platform's own credential-egress proxy.
+ *
+ * The GitHub credential lives on the platform's side, and the service token in
+ * this sandbox's environment is what the proxy accepts. The body is read from
+ * disk and posted as a file, so it never travels through a tool argument — an
+ * inline body over roughly six kilobytes can arrive corrupted with no error,
+ * and a blob stored with the wrong bytes would be published.
+ *
+ * `ROOMOTE_SERVICE_TOKEN_GITHUB_API` is NOT a GitHub token: sending it to
+ * api.github.com answers 401.
+ */
+const EGRESS_TOKEN = process.env.ROOMOTE_SERVICE_TOKEN_GITHUB_API ?? "";
+const EGRESS_BASE =
+  process.env.CREDENTIAL_EGRESS_URL ?? "http://api:3001/api/credential-egress";
+const REPO = "Iamreyansh/MedmateClinic";
+
+/** Post one request to the credential-egress proxy, with the body from disk. */
+async function egressCall(method, gitPath, body) {
+  const url = `${EGRESS_BASE}/repos/${REPO}${gitPath}`;
+  const init = {
+    method,
+    headers: {
+      Authorization: `Bearer ${EGRESS_TOKEN}`,
+      Accept: "application/vnd.github+json",
+    },
+  };
+  if (body !== undefined) {
+    const bodyFile = path.join(WORK, "egress-body.json");
+    writeFileSync(bodyFile, JSON.stringify(body));
+    init.headers["Content-Type"] = "application/json";
+    init.body = readFileSync(bodyFile);
+  }
+  const response = await fetch(url, init);
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`GitHub answered ${response.status} for ${method} ${gitPath}: ${text.slice(0, 300)}`);
+  }
+  return JSON.parse(text);
+}
+
+/**
+ * One call, whichever transport this sandbox has.
+ *
+ * The proxy is preferred: it is the platform's own path for the GitHub
+ * credential. The broker is the fallback for a sandbox that has the
+ * integration but not the service token.
+ */
+async function call(method, gitPath, body) {
+  if (EGRESS_TOKEN) return egressCall(method, gitPath, body);
+  const answer = await brokerCall("integration_request", {
+    integrationId: INTEGRATION_ID,
+    method,
+    path: `/repos/${REPO}${gitPath}`,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    contentType: body === undefined ? undefined : "application/json",
+  });
+  return payloadOf(answer);
+}
+
 /** Every file that differs from the base, as { path, mode, sha }. */
 function changedFiles() {
   const base = git("rev-parse", `${BASE_REF}^{commit}`);
@@ -150,13 +212,7 @@ for (const file of files) {
   const bodyFile = path.join(WORK, "body.json");
   writeFileSync(bodyFile, JSON.stringify(body));
 
-  const answer = await brokerCall("integration_request", {
-    integrationId: INTEGRATION_ID,
-    method: "POST",
-    path: "/repos/Iamreyansh/MedmateClinic/git/blobs",
-    body: JSON.stringify(body),
-    contentType: "application/json",
-  });
+  const answer = await call("POST", "/git/blobs", body);
 
   // The broker answers with the GitHub response, whose body is a JSON string.
   const returned = payloadOf(answer)?.sha;
@@ -173,29 +229,51 @@ for (const file of files) {
 const baseCommit = git("rev-parse", `${BASE_REF}^{commit}`);
 const baseTree = git("rev-parse", `${baseCommit}^{tree}`);
 
-const tree = await brokerCall("integration_request", {
-  integrationId: INTEGRATION_ID,
-  method: "POST",
-  path: "/repos/Iamreyansh/MedmateClinic/git/trees",
-  body: JSON.stringify({ base_tree: baseTree, tree: treeEntries }),
-  contentType: "application/json",
-});
-const treeSha = payloadOf(tree)?.sha;
+const tree = await call("POST", "/git/trees", { base_tree: baseTree, tree: treeEntries });
+const treeSha = tree?.sha;
 if (!treeSha) throw new Error(`no tree sha: ${JSON.stringify(tree).slice(0, 300)}`);
 console.log(`✓ tree ${treeSha}`);
 
-const commit = await brokerCall("integration_request", {
-  integrationId: INTEGRATION_ID,
-  method: "POST",
-  path: "/repos/Iamreyansh/MedmateClinic/git/commits",
-  body: JSON.stringify({
-    message: git("log", "-1", "--pretty=%B").trim(),
-    tree: treeSha,
-    parents: [baseCommit],
-  }),
-  contentType: "application/json",
+// The published tree is read back and compared with the local tree, file by
+// file. A recursive tree lists the directories as well as the blobs, so only
+// the blobs are compared, and a short or truncated read is a failure: a
+// "0 mismatches" from an empty map is not a pass.
+const readBack = await call("GET", `/git/trees/${treeSha}?recursive=1`);
+if (readBack?.truncated) {
+  throw new Error(
+    `the tree GitHub read back is truncated — it holds ${readBack.tree?.length ?? 0} entries`,
+  );
+}
+const remoteBlobs = new Map(
+  (readBack?.tree ?? [])
+    .filter((entry) => entry.type === "blob")
+    .map((entry) => [entry.path, entry.sha]),
+);
+const localBlobs = new Map();
+for (const line of git("ls-tree", "-r", "HEAD").split("\n").filter(Boolean)) {
+  const [meta, file] = line.split("\t");
+  localBlobs.set(file, meta.split(" ")[2]);
+}
+if (remoteBlobs.size !== localBlobs.size) {
+  throw new Error(
+    `the published tree holds ${remoteBlobs.size} blobs and the local tree holds ${localBlobs.size} — the read is short`,
+  );
+}
+const mismatches = [...localBlobs].filter(([file, sha]) => remoteBlobs.get(file) !== sha);
+if (mismatches.length > 0) {
+  throw new Error(
+    `the published tree and the local tree disagree on ${mismatches.length} file(s): ` +
+      mismatches.slice(0, 5).map(([file]) => file).join(", "),
+  );
+}
+console.log(`✓ the published tree matches the local tree (${remoteBlobs.size} blobs)`);
+
+const commit = await call("POST", "/git/commits", {
+  message: git("log", "-1", "--pretty=%B").trim(),
+  tree: treeSha,
+  parents: [baseCommit],
 });
-const commitSha = payloadOf(commit)?.sha;
+const commitSha = commit?.sha;
 if (!commitSha) throw new Error(`no commit sha: ${JSON.stringify(commit).slice(0, 300)}`);
 console.log(`✓ commit ${commitSha}`);
 
@@ -203,39 +281,19 @@ console.log(`✓ commit ${commitSha}`);
 // cheaper than finding out from a 422.
 let exists = false;
 try {
-  const found = await brokerCall("integration_request", {
-    integrationId: INTEGRATION_ID,
-    method: "GET",
-    path: `/repos/Iamreyansh/MedmateClinic/git/ref/heads/${BRANCH}`,
-  });
-  exists = Boolean(payloadOf(found)?.object?.sha);
+  const found = await call("GET", `/git/ref/heads/${BRANCH}`);
+    exists = Boolean(found?.object?.sha);
 } catch {
   exists = false;
 }
 
 const ref = exists
-  ? await brokerCall("integration_request", {
-      integrationId: INTEGRATION_ID,
-      method: "PATCH",
-      path: `/repos/Iamreyansh/MedmateClinic/git/refs/heads/${BRANCH}`,
-      body: JSON.stringify({ sha: commitSha, force: true }),
-      contentType: "application/json",
-    })
-  : await brokerCall("integration_request", {
-      integrationId: INTEGRATION_ID,
-      method: "POST",
-      path: "/repos/Iamreyansh/MedmateClinic/git/refs",
-      body: JSON.stringify({ ref: `refs/heads/${BRANCH}`, sha: commitSha }),
-      contentType: "application/json",
-    });
+  ? await call("PATCH", `/git/refs/heads/${BRANCH}`, { sha: commitSha, force: true })
+  : await call("POST", "/git/refs", { ref: `refs/heads/${BRANCH}`, sha: commitSha });
 console.log(`✓ ref refs/heads/${BRANCH} → ${commitSha}`);
 
-const check = await brokerCall("integration_request", {
-  integrationId: INTEGRATION_ID,
-  method: "GET",
-  path: `/repos/Iamreyansh/MedmateClinic/git/ref/heads/${BRANCH}`,
-});
-const remoteSha = payloadOf(check)?.object?.sha;
+const check = await call("GET", `/git/ref/heads/${BRANCH}`);
+const remoteSha = check?.object?.sha;
 console.log(`remote sha: ${remoteSha}`);
 if (remoteSha !== commitSha) throw new Error(`the remote holds ${remoteSha}, not ${commitSha}`);
 

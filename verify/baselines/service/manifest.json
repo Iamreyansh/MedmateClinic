@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-11-26T16:31:15.090989Z",
+  "source": {
+    "app": "http://127.0.0.1:3100",
+    "api": "http://127.0.0.1:8080",
+    "mode": "the real service",
+    "apiMode": "the real service with the demo clinic seeded \u2014 the mock is OFF (VITE_USE_MOCK=false)",
+    "demoClinicId": "11111111-1111-4111-8111-111111111111",
+    "command": "node verify/pixel-diff.mjs --baseline=service --update",
+    "note": "The six routes whose baseline was re-measured after the demo data moved: dashboard, schedule, billing, queue, lab and templates. These are the app's own pixels against the real service, so they are a record of what the service renders today \u2014 not a design to compare against. The design comparison is the figma set (none exported yet), the reference set (the deployed MVP captured live) and the history set (the deployed MVP as it shipped)."
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "fullPage": true,
+  "routes": {}
+}
